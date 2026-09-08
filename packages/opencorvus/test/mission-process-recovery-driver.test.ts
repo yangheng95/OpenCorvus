@@ -61,9 +61,15 @@ function startWorker(
   }
 }
 
+function workerFailure(message: string, started: ReturnType<typeof startWorker>, stdout: string, stderr: string) {
+  return new Error(
+    `${message} (exit ${started.child.exitCode})\nSTDERR TAIL:\n${stderr.slice(-2000)}\nSTDOUT TAIL:\n${stdout.slice(-1000)}\nFULL STDERR:\n${stderr}\nFULL STDOUT:\n${stdout}`,
+  )
+}
+
 async function finishWorker(started: ReturnType<typeof startWorker>, mode: WorkerMode) {
   const [exitCode, stdout, stderr] = await Promise.all([started.child.exited, started.stdout, started.stderr])
-  if (exitCode !== 0) throw new Error(`Mission ${mode} worker failed (${exitCode}): ${stderr || stdout}`)
+  if (exitCode !== 0) throw workerFailure(`Mission ${mode} worker failed`, started, stdout, stderr)
   return stdout
 }
 
@@ -72,7 +78,7 @@ async function waitForFile(file: string, started: ReturnType<typeof startWorker>
   while (!fs.existsSync(file)) {
     if (started.child.exitCode !== null) {
       const [stdout, stderr] = await Promise.all([started.stdout, started.stderr])
-      throw new Error(`Mission worker exited before ${file}: STDERR=${stderr}\nSTDOUT=${stdout}`)
+      throw workerFailure(`Mission worker exited before ${file}`, started, stdout, stderr)
     }
     if (Date.now() >= deadline) throw new Error(`Timed out waiting for ${file}`)
     await Bun.sleep(10)
@@ -88,16 +94,48 @@ async function waitForProviderRequests(
   while (provider.promptRequests().length < count) {
     if (started.child.exitCode !== null) {
       const [stdout, stderr] = await Promise.all([started.stdout, started.stderr])
-      throw new Error(`Mission worker exited before Provider request ${count}: ${stderr || stdout}`)
+      throw workerFailure(`Mission worker exited before Provider request ${count}`, started, stdout, stderr)
     }
     if (Date.now() >= deadline) {
       started.child.kill()
       const [stdout, stderr] = await Promise.all([started.stdout, started.stderr, started.child.exited])
-      throw new Error(`Timed out waiting for Provider request ${count}: STDERR=${stderr}\nSTDOUT=${stdout}`)
+      throw workerFailure(`Timed out waiting for Provider request ${count}`, started, stdout, stderr)
     }
     await Bun.sleep(10)
   }
 }
+
+test("a failed recovery worker exposes its exit and final diagnostics before verbose startup output", async () => {
+  const provider = startControlledStreamingProvider()
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      "--eval",
+      'console.error("startup ".repeat(2000)); console.error("RecoveryDiagnostic: final failure"); console.log(JSON.stringify({ phase: "recovery", outcome: "failed" })); process.exit(7)',
+    ],
+    { stdout: "pipe", stderr: "pipe" },
+  )
+  const started = { child, stdout: new Response(child.stdout).text(), stderr: new Response(child.stderr).text() }
+  try {
+    await child.exited
+    let failure: unknown
+    try {
+      await waitForProviderRequests(provider, 2, started)
+    } catch (error) {
+      failure = error
+    }
+    expect(failure).toBeInstanceOf(Error)
+    const summary = (failure as Error).message.slice(0, 3200)
+    expect(summary).toContain("Mission worker exited before Provider request 2 (exit 7)")
+    expect(summary).toContain("RecoveryDiagnostic: final failure")
+    expect(summary).toContain('{"phase":"recovery","outcome":"failed"}')
+    expect((failure as Error).message).toContain("startup ".repeat(2000))
+  } finally {
+    provider.server.stop(true)
+    if (child.exitCode === null) child.kill()
+    await child.exited
+  }
+})
 
 function recoveryFacts(databasePath: string, sessionID: string) {
   const sqlite = new SQLite(databasePath, { readonly: true })
@@ -192,7 +230,7 @@ async function waitForRecoveryReplySettlement(
     if (facts.incompleteAssistants === 0) return facts
     if (started.child.exitCode !== null) {
       const [stdout, stderr] = await Promise.all([started.stdout, started.stderr])
-      throw new Error(`Mission recovery worker exited before settlement: ${stderr || stdout}`)
+      throw workerFailure("Mission recovery worker exited before settlement", started, stdout, stderr)
     }
     if (Date.now() >= deadline) {
       throw new Error(`Timed out waiting for Mission recovery settlement: ${JSON.stringify(facts)}`)
@@ -212,9 +250,10 @@ async function waitForRecoveryLeaseRelease(
     const lease = (() => {
       try {
         return sqlite
-          .query<{ expires_at: number }, [string]>(
-            "SELECT expires_at FROM engine_control_activation_lease WHERE target='lifecycle' AND target_id=?",
-          )
+          .query<
+            { expires_at: number },
+            [string]
+          >("SELECT expires_at FROM engine_control_activation_lease WHERE target='lifecycle' AND target_id=?")
           .get(`mission:${sessionID}`)
       } finally {
         sqlite.close()
@@ -223,7 +262,7 @@ async function waitForRecoveryLeaseRelease(
     if (!lease || lease.expires_at <= Date.now()) return
     if (started.child.exitCode !== null) {
       const [stdout, stderr] = await Promise.all([started.stdout, started.stderr])
-      throw new Error(`Deadline owner exited before its lease handback: ${stderr || stdout}`)
+      throw workerFailure("Deadline owner exited before its lease handback", started, stdout, stderr)
     }
     if (Date.now() >= deadline) throw new Error(`Mission recovery deadline did not release lifecycle ownership`)
     await Bun.sleep(20)
