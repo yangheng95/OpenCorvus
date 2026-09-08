@@ -653,7 +653,9 @@ export namespace ProtocolStore {
     }
 
     return withKeyedLock(eventLocks, eventKey(input), async () =>
-      Database.transaction(() => {
+      // Reserve the cross-process writer before reading the next sequence.
+      // The keyed lock only orders callers inside this process.
+      Database.immediateTransaction(() => {
         const sequence =
           typeof input.seq === "number" && input.seq > 0
             ? reserveExplicitAggregateSequence(input.aggregate, input.aggregate_id, input.seq)
