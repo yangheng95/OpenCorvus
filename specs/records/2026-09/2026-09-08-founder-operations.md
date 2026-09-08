@@ -1,5 +1,13 @@
 # OpenCorvus founder operations
 
+## Hosted settlement contract reconciliation — 2026-09-09
+
+Recall: inspect hosted acceptance after a1ff21fce rather than infer platform success from local checks. Read current Protocol append, both database transaction admission entry points, all runtime-execution-settlement tests and searched repository operation-name assertions. Independent pre-edit feedback: 无.
+
+Evidence and plan: public run 34266613019 (#825, 0959d2e) failed on all three platforms at runtime-execution-settlement.test.ts:388 because the test expects Database.transaction while the actual typed admission error correctly reports Database.immediateTransaction. Run 34267601354 (#826, e58dd0d) shows the same Linux/macOS assertion, plus a distinct Windows mission-process-recovery-driver failure before Provider request 2 whose root cause remains unknown. Local unchanged settlement file reproduces the exact stale operation assertion. The earlier primitive change omitted this caller-visible error-contract expectation. Update that one expectation while retaining typed error and successful sequence-1 append after admission reopens; run the entire settlement file, docs/diff checks and independent review before scoped commit/push. No production semantics, API, schema, UI or credentials change. Do not weaken the assertion or restore the deferred writer. Current #827-830 remain running; #820 and #822 completed successfully, which is not current-head acceptance. Wider Mission recovery and shared scheduling audit remain open.
+
+Validation: unchanged-source settlement run exited 1 with 15 passing tests and the exact one hosted failure. After updating the expectation, the same repository runner exited 0 with all 16 tests and 30 assertions passing (8.82 seconds). The file exercises real database admission, Protocol append, Session wake and process-settlement contracts; no UI automation or paid Provider run occurred. Docs check and diff check passed. Independent read-only review of both files passed without findings, confirming the exact typed admission operation and reopened sequence-1 append remain enforced. Hosted current-head acceptance and the separate Mission recovery failure remain unresolved.
+
 ## Atomic Task file-reference merges — 2026-09-09
 
 Recall: continue the autonomous product reliability work after 3e998a828. Read the file-reference owner, Task reducer/project binding, canonical attachment owner test, operator message prepared-attachment caller and runtime-directory architecture; searched all append/replace/prepared callers. Independent pre-implementation feedback: 无.

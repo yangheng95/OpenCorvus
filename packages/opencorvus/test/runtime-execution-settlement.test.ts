@@ -388,7 +388,7 @@ describe("runtime execution settlement authority", () => {
       }).toMatchObject({
         appendError: {
           name: "DatabaseEffectAdmissionClosedError",
-          operation: "Database.transaction",
+          operation: "Database.immediateTransaction",
         },
         appended: { aggregateID, sequence: 1, type: input.type },
       })
