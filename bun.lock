@@ -139,7 +139,7 @@
         "jsonc-parser": "3.3.1",
         "luxon": "catalog:",
         "mime-types": "3.0.2",
-        "minimatch": "10.2.3",
+        "minimatch": "10.2.6",
         "node-screenshots": "0.2.8",
         "open": "10.1.2",
         "open-websearch": "2.1.11",
@@ -385,7 +385,7 @@
     "hono": "4.12.34",
     "js-yaml": "4.3.1",
     "linkify-it": "6.1.0",
-    "minimatch": "10.2.3",
+    "minimatch": "10.2.6",
     "nanoid": "5.1.16",
     "postcss": "8.5.23",
     "seroval": "1.6.2",
@@ -3055,7 +3055,7 @@
 
     "mime-types": ["mime-types@3.0.2", "", { "dependencies": { "mime-db": "^1.54.0" } }, "sha512-Lbgzdk0h4juoQ9fCKXW4by0UJqj+nOOrI9MJ1sSj4nI8aI2eo1qmvQEie4VD1glsS250n15LsWsYtCugiStS5A=="],
 
-    "minimatch": ["minimatch@10.2.3", "", { "dependencies": { "brace-expansion": "^5.0.2" } }, "sha512-Rwi3pnapEqirPSbWbrZaa6N3nmqq4Xer/2XooiOKyV3q12ML06f7MOuc5DVH8ONZIFhwIYQ3yzPH4nt7iWHaTg=="],
+    "minimatch": ["minimatch@10.2.6", "", { "dependencies": { "brace-expansion": "^5.0.8" } }, "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="],
 
     "minimist": ["minimist@1.2.8", "", {}, "sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA=="],
 
