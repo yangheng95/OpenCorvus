@@ -1819,7 +1819,7 @@ describe("MCP OAuth finish from durable facts", () => {
     }
   }, 60_000)
 
-  test("a live finishing owner renews its exact durable lease throughout a slow exchange", async () => {
+  test("a finishing owner commits exact lease extensions while the token exchange is blocked", async () => {
     await using project = await memoryProject()
     let exchangeStarted!: () => void
     const enteredExchange = new Promise<void>((resolve) => (exchangeStarted = resolve))
@@ -1831,7 +1831,7 @@ describe("MCP OAuth finish from durable facts", () => {
         await exchangeRelease
       },
     })
-    const restoreTiming = MCP.TestHooks.setOAuthFinishingLeaseTiming({ durationMs: 300, renewIntervalMs: 50 })
+    const restoreTiming = MCP.TestHooks.setOAuthFinishingLeaseTiming({ durationMs: 60_000, renewIntervalMs: 50 })
     try {
       await Instance.provide({
         directory: project.path,
@@ -1862,21 +1862,56 @@ describe("MCP OAuth finish from durable facts", () => {
             binding.redirectUrl,
           )
           await McpAuth.updateCodeVerifier(authKey, "renewed-slow-verifier", revision)
+          let initialExpiry = Number.POSITIVE_INFINITY
+          const extensions: Array<{ ownerID: string; revision: string; oauthState: string; leaseExpiresAt: number }> =
+            []
+          const originalRenew = McpAuth.renewOAuthFinishing
+          const renewalObserver = spyOn(McpAuth, "renewOAuthFinishing").mockImplementation(async (...args) => {
+            const renewed = await originalRenew(...args)
+            if (renewed && args[4] > initialExpiry) {
+              const persisted = await McpAuth.get(authKey)
+              if (
+                persisted?.oauthFinishing?.ownerID === args[3] &&
+                persisted.oauthFinishing.leaseExpiresAt >= args[4]
+              ) {
+                extensions.push({ revision: persisted.revision, ...persisted.oauthFinishing })
+              }
+            }
+            return renewed
+          })
           const finish = MCP.finishAuthCallback(SERVER, "renewed-slow-code", oauthState)
-          await enteredExchange
-          await expect(McpAuth.beginCredentialLease(authKey, url, identity)).rejects.toThrow(
-            `MCP OAuth finish is still active: ${authKey}`,
-          )
-          await Bun.sleep(750)
-
-          const live = await McpAuth.get(authKey)
-          expect({
-            state: live?.oauthFinishing?.oauthState,
-            leaseIsLive: (live?.oauthFinishing?.leaseExpiresAt ?? 0) > Date.now(),
-            revision: live?.revision,
-          }).toEqual({ state: oauthState, leaseIsLive: true, revision })
-          releaseExchange()
-          expect(await finish).toEqual({ status: "connected" })
+          void finish.catch(() => undefined)
+          try {
+            await enteredExchange
+            const admitted = await McpAuth.get(authKey)
+            initialExpiry = admitted!.oauthFinishing!.leaseExpiresAt
+            const ownerID = admitted!.oauthFinishing!.ownerID
+            await expect(McpAuth.beginCredentialLease(authKey, url, identity)).rejects.toThrow(
+              `MCP OAuth finish is still active: ${authKey}`,
+            )
+            const deadline = Date.now() + 10_000
+            while (extensions.length < 2) {
+              if (Date.now() > deadline) throw new Error("OAuth owner did not commit two lease extensions")
+              await Bun.sleep(20)
+            }
+            for (const extension of extensions.slice(0, 2)) {
+              expect(extension).toMatchObject({ ownerID, revision, oauthState })
+              expect(extension.leaseExpiresAt).toBeGreaterThan(initialExpiry)
+            }
+            const live = await McpAuth.get(authKey)
+            expect({
+              state: live?.oauthFinishing?.oauthState,
+              ownerID: live?.oauthFinishing?.ownerID,
+              leaseIsLive: (live?.oauthFinishing?.leaseExpiresAt ?? 0) > Date.now(),
+              revision: live?.revision,
+            }).toEqual({ state: oauthState, ownerID, leaseIsLive: true, revision })
+            releaseExchange()
+            expect(await finish).toEqual({ status: "connected" })
+          } finally {
+            releaseExchange()
+            await finish.catch(() => undefined)
+            renewalObserver.mockRestore()
+          }
         },
       })
     } finally {
