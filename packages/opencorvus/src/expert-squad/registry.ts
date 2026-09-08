@@ -164,13 +164,15 @@ export namespace ExpertSquadRegistry {
     .strict()
   export type DiscoveryWarning = z.output<typeof DiscoveryWarning>
 
+  const DISCOVERY_MESSAGE_MAX_LENGTH = 4_096
+
   export const DiscoveryIssue = z
     .object({
       phase: z.enum(["location.scan", "namespace.scan", "package.identity", "package.catalog", "identity.duplicate"]),
       location: z.string().max(4_096),
       namespace: Namespace.optional(),
       id: ID.optional(),
-      message: z.string().max(4_096),
+      message: z.string().max(DISCOVERY_MESSAGE_MAX_LENGTH),
     })
     .strict()
   export type DiscoveryIssue = z.infer<typeof DiscoveryIssue>
@@ -2115,10 +2117,17 @@ export namespace ExpertSquadRegistry {
   }
 
   function discoveryIssue(issues: DiscoveryIssue[], input: Omit<DiscoveryIssue, "message">, error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error)
+    // Discovery isolates invalid packages. Its diagnostic must satisfy the same
+    // bounded contract even when a schema error describes many invalid fields.
+    const suffix = `\n[truncated; original length: ${message.length} characters]`
     issues.push(
       DiscoveryIssue.parse({
         ...input,
-        message: error instanceof Error ? error.message : String(error),
+        message:
+          message.length <= DISCOVERY_MESSAGE_MAX_LENGTH
+            ? message
+            : message.slice(0, DISCOVERY_MESSAGE_MAX_LENGTH - suffix.length) + suffix,
       }),
     )
   }

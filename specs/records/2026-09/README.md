@@ -1,5 +1,7 @@
 # 2026-09 Records
 
+- [Expert Squad discovery diagnostic overflow](2026-09-08-discovery-diagnostic-overflow.md)
+
 - [Bilingual case brief and source audit](../../artifacts/2026-09-08-founder-case-brief/README.md)
 
 - [Founder operations and adoption work](2026-09-08-founder-operations.md)
