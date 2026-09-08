@@ -2,7 +2,7 @@ import { AttachmentStore } from "@/storage/attachment-store"
 import { Database, NotFoundError, eq } from "@/storage/db"
 import { EngineTaskTable } from "./engine.sql"
 import { requireTaskInCurrentProject } from "./task-project-read"
-import { updateTask, writeTaskUpdateInTransaction } from "./state"
+import { writeTaskUpdateInTransaction } from "./state"
 
 export type TaskFileRef = {
   sha: string
@@ -69,11 +69,20 @@ async function mergeTaskFileRef(
 ): Promise<TaskFileRef[]> {
   const task = requireTaskInCurrentProject(taskID)
   const canonical = await canonicalTaskFileRef(task, column, file)
-  const prev = Array.isArray(task[column]) ? (task[column] as TaskFileRef[]) : []
-  const result = merge(prev, canonical)
-  if (!result) return prev
-  await updateTask(task, { [column]: result.next } as any, result.reason)
-  return result.next
+  return Database.immediateTransaction((db) => {
+    const current = requireTaskInCurrentProject(taskID)
+    const prev = Array.isArray(current[column]) ? (current[column] as TaskFileRef[]) : []
+    const result = merge(prev, canonical)
+    if (!result) return prev
+    writeTaskUpdateInTransaction({
+      db,
+      taskID,
+      values: { [column]: result.next } as any,
+      summary: result.reason,
+      now: Date.now(),
+    })
+    return result.next
+  })
 }
 
 export async function prepareTaskAttachmentAppends(taskID: string, attachments: readonly TaskInputFileRef[]) {

@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test"
 import { EngineTaskTable } from "@/engine/engine.sql"
 import {
+  appendTaskAttachment,
   appendTaskSystemArtifact,
   prepareTaskAttachmentAppends,
   replaceTaskSystemArtifactByIntent,
@@ -81,6 +82,40 @@ test("persists canonical Task file references through their Engine owner", async
         attachments: [{ ...inputAttachment, intent: "task_input", source: "user-upload" }],
         system_artifacts: [{ ...secondSystem, intent: "design_source", source: "material" }],
       })
+
+      const files = await Promise.all(
+        Array.from({ length: 8 }, (_, index) =>
+          AttachmentStore.write(
+            Instance.project.id,
+            Buffer.from(`parallel file ${index}`),
+            "text/plain",
+            `parallel-${index}.txt`,
+          ),
+        ),
+      )
+      const inputs = files.map((file) => ({ ...file, intent: "task_input" as const, source: "user-upload" as const }))
+      await Promise.all(inputs.map((file) => appendTaskAttachment(taskID, file)))
+      const bySha = (refs: Array<{ sha: string }>) => [...refs].sort((a, b) => a.sha.localeCompare(b.sha))
+      expect(bySha(requireTask(taskID).attachments!)).toEqual(
+        bySha([{ ...inputAttachment, intent: "task_input", source: "user-upload" }, ...inputs]),
+      )
+      await Promise.all(inputs.map((file) => appendTaskAttachment(taskID, file)))
+      expect(bySha(requireTask(taskID).attachments!)).toEqual(
+        bySha([{ ...inputAttachment, intent: "task_input", source: "user-upload" }, ...inputs]),
+      )
+
+      const artifacts = files.map((file, index) => ({ ...file, intent: `parallel-${index}`, source: "material" }))
+      await Promise.all(artifacts.map((file) => appendTaskSystemArtifact(taskID, file)))
+      expect(bySha(requireTask(taskID).system_artifacts!)).toEqual(
+        bySha([{ ...secondSystem, intent: "design_source", source: "material" }, ...artifacts]),
+      )
+      const replacements = artifacts.map((file, index) => ({ ...file, ...files[(index + 1) % files.length] }))
+      await Promise.all(replacements.map((file) => replaceTaskSystemArtifactByIntent(taskID, file.intent, file)))
+      const byIntent = (refs: Array<{ intent?: string }>) =>
+        [...refs].sort((a, b) => (a.intent ?? "").localeCompare(b.intent ?? ""))
+      expect(byIntent(requireTask(taskID).system_artifacts!)).toEqual(
+        byIntent([{ ...secondSystem, intent: "design_source", source: "material" }, ...replacements]),
+      )
     },
   })
 })
