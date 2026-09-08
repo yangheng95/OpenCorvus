@@ -360,6 +360,37 @@ function assertCurrentDataIntegrity(
     })
   }
 
+  const legacyTerminalArtifactIdentity = queryAllFinalized<{ id: string }>(
+    sqlite,
+    `SELECT id FROM engine_artifact
+     WHERE length(id) > ${Identifier.MAX_LENGTH}
+       AND (
+         (id GLOB 'art_build_terminal_*' AND (
+           kind = 'build_host_observation'
+           OR (kind = 'task-infrastructure-error' AND json_extract(payload, '$.component') = 'build-host-observation')
+         ))
+         OR (id GLOB 'art_evolution_mutation_*' AND kind = 'expert_output'
+           AND json_extract(payload, '$.artifact_type') = 'evolution-lab/promotion-receipt'
+           AND json_extract(payload, '$.producer.owner_kind') = 'core'
+           AND json_extract(payload, '$.producer.component_id') = 'expert-squad-package-manager')
+       )
+     UNION ALL
+     SELECT observation_id AS id FROM engine_build_observation_cleanup
+     WHERE length(observation_id) > ${Identifier.MAX_LENGTH}
+       AND observation_id GLOB 'art_build_terminal_*'
+     ORDER BY id LIMIT 1`,
+  )[0]
+  if (legacyTerminalArtifactIdentity) {
+    throw new DatabaseUnavailableError({
+      message:
+        `OpenCorvus database contains legacy expanded terminal Artifact identity ${legacyTerminalArtifactIdentity.id} at ${dbPath}. ` +
+        "Its publication or cleanup occurrence belongs to the prior identity epoch; reset this pre-release database.",
+      path: dbPath,
+      operation: "Database.Client.dataIntegrity.compactTerminalArtifactIdentity",
+      code: "DATA_RESET_REQUIRED",
+    })
+  }
+
   const legacyProjectMemory = queryAllFinalized<{ id: string }>(
     sqlite,
     `SELECT id

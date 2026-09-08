@@ -83,6 +83,13 @@ Mission terminal caller receipt 使用 Mission Session identity 分别 domain-se
 Mission、terminal reason 与正式 receipt pointer 继续在同一事务持久化。旧 expanded receipt graph 在 bootstrap 返回
 `DATA_RESET_REQUIRED`，不同语义占用 compact Message/Part 时在通用 Session upsert 前返回 typed conflict。
 
+Build terminal observation 与 Evolution mutation receipt 使用同一 `Identifier.deterministic` Artifact
+生成器，业务 ID 最长 24 字符。Build 使用 Task/dispatch occurrence，Evolution 使用完整授权、目标修订与证据
+摘要作为 domain-separated 输入；完整 SHA-256 继续保存在事实和精确 locator 中。旧 expanded Build publication、
+尚未 publication 的 cleanup owner 或 Evolution receipt 在 bootstrap 返回 `DATA_RESET_REQUIRED`。
+Evolution 重放按完整 receipt identity 验证后才执行 Manager reconcile；不同语义占用同一短 ID 返回
+`EvolutionMutationReceiptIdentityConflictError`，不增加 alias store 或双读。
+
 所有表定义在 `src/engine/engine.sql.ts`，命名前缀 `engine_`（历史文档里的
 `orchestrator_*` 已全部重命名为 `engine_*`）。旧的多张过程表已合并为单一
 `engine_artifact`，按 `kind` 区分语义。

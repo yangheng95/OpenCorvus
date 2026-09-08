@@ -121,6 +121,11 @@ receipt provenance belong to the prior pre-release epoch and cause `DATA_RESET_R
 
 ### Phase 2 — remaining model-facing digests
 
+September 8 continuation of the remaining Build terminal/Evolution mutation receipt families is tracked in
+the [interrupted-task reconciliation](../2026-09/2026-09-08-interrupted-task-reconciliation.md).
+That bounded slice preserves full integrity digests and includes startup admission for prior expanded receipts
+and unpublished Build cleanup owners. It does not close the remaining Phase 2 inventory below.
+
 Inventory each plugin/package tool field that currently asks the model to repeat a package, resource, workspace, scorer, Git or payload digest. Replace it with a short Host reference derived from a prior authoritative response, then delete the raw model-input field in the same change. This includes replacing `panel.create_task.expectedPackageDigest` with a Host reference that can bind both installed incumbents and uninstalled candidate revisions; removing the digest without that replacement would break candidate Trial creation. Regenerate schemas, SDKs and embedded package payload from canonical sources.
 
 ### Phase 3 — persistence migration and UI

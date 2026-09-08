@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto"
+import { Identifier } from "@/id/id"
+import { NamedError } from "@opencorvus-ai/util/error"
 import z from "zod"
 import {
   canonicalEvolutionJSON,
@@ -75,7 +76,12 @@ export async function authorizeEvolutionPackageMutation(rawInput: EvolutionMutat
   })
 }
 
-function receiptArtifactID(input: {
+export const EvolutionMutationReceiptIdentityConflictError = NamedError.create(
+  "EvolutionMutationReceiptIdentityConflictError",
+  z.object({ artifactID: z.string() }),
+)
+
+type ReceiptIdentity = {
   operation: string
   authorizationMessageID: string
   authorizationMessageSHA256: string
@@ -83,23 +89,43 @@ function receiptArtifactID(input: {
   beforeDigest: string
   afterDigest: string
   evidenceSHA256s: readonly string[]
-}) {
-  return `art_evolution_mutation_${createHash("sha256").update(canonicalEvolutionJSON(input)).digest("hex")}`
 }
 
-function existingReceipt(input: { taskID: string; artifactID: string }) {
+function receiptArtifactID(input: ReceiptIdentity) {
+  return Identifier.deterministic("artifact", `evolution-mutation\0${canonicalEvolutionJSON(input)}`)
+}
+
+function existingReceipt(input: { taskID: string; artifactID: string; identity: ReceiptIdentity }) {
   const row = Database.use((db) => db.select().from(EngineArtifactTable).where(eq(EngineArtifactTable.id, input.artifactID)).get())
   if (!row) return undefined
   if (row.task_id !== input.taskID || row.kind !== "expert_output")
-    throw new Error("Evolution mutation receipt identity belongs to a foreign Artifact partition")
+    throw new EvolutionMutationReceiptIdentityConflictError({ artifactID: input.artifactID })
   const envelope = EngineArtifactEnvelopeSchema.parse(row.payload)
   if (
     envelope.artifact_type !== "evolution-lab/promotion-receipt" ||
     envelope.producer.owner_kind !== "core" ||
     envelope.producer.component_id !== "expert-squad-package-manager"
   )
-    throw new Error("Evolution mutation receipt identity collision")
-  return EvolutionPromotionReceiptSchema.parse(envelope.payload)
+    throw new EvolutionMutationReceiptIdentityConflictError({ artifactID: input.artifactID })
+  const receipt = EvolutionPromotionReceiptSchema.parse(envelope.payload)
+  const identity = {
+    operation: receipt.operation,
+    authorizationMessageID: receipt.authorization.message_id,
+    authorizationMessageSHA256: receipt.authorization.message_sha256,
+    target: receipt.target,
+    beforeDigest: receipt.before_digest,
+    afterDigest: receipt.after_digest,
+    evidenceSHA256s: receipt.evidence.map((locator) => {
+      if (locator.source !== "engine_artifact")
+        throw new EvolutionMutationReceiptIdentityConflictError({ artifactID: input.artifactID })
+      return locator.expected_sha256
+    }),
+  }
+  if (
+    envelope.producer.operation_id !== input.identity.authorizationMessageID ||
+    canonicalEvolutionJSON(identity) !== canonicalEvolutionJSON(input.identity)
+  ) throw new EvolutionMutationReceiptIdentityConflictError({ artifactID: input.artifactID })
+  return receipt
 }
 
 function persistReceipt(input: {
@@ -124,8 +150,12 @@ function persistReceipt(input: {
   Database.transaction((db) => {
     const current = db.select().from(EngineArtifactTable).where(eq(EngineArtifactTable.id, input.artifactID)).get()
     if (current) {
-      if (canonicalEvolutionJSON(EngineArtifactEnvelopeSchema.parse(current.payload)) !== canonicalEvolutionJSON(envelope))
-        throw new Error("Evolution mutation receipt identity collision")
+      if (
+        current.task_id !== input.taskID ||
+        current.kind !== "expert_output" ||
+        canonicalEvolutionJSON(EngineArtifactEnvelopeSchema.parse(current.payload)) !== canonicalEvolutionJSON(envelope)
+      )
+        throw new EvolutionMutationReceiptIdentityConflictError({ artifactID: input.artifactID })
       return
     }
     insertEngineArtifact(db, {
@@ -155,7 +185,7 @@ export async function executeEvolutionPackageMutation(rawInput: EvolutionMutatio
       ...input.authorization,
       expectedText: confirmation,
     })
-    const artifactID = receiptArtifactID({
+    const identity: ReceiptIdentity = {
       operation: input.operation,
       authorizationMessageID: authorization.message_id,
       authorizationMessageSHA256: authorization.message_sha256,
@@ -163,8 +193,9 @@ export async function executeEvolutionPackageMutation(rawInput: EvolutionMutatio
       beforeDigest: prepared.beforeDigest,
       afterDigest: prepared.afterDigest,
       evidenceSHA256s: prepared.evidence.map((locator) => locator.expected_sha256),
-    })
-    const prior = existingReceipt({ taskID: input.authorization.taskID, artifactID })
+    }
+    const artifactID = receiptArtifactID(identity)
+    const prior = existingReceipt({ taskID: input.authorization.taskID, artifactID, identity })
     if (prior) {
       await ExpertSquadPackageManager.reconcileCommittedPackageMutation({
         projectDirectory: Instance.project.worktree,
@@ -206,7 +237,7 @@ export async function executeEvolutionPackageMutation(rawInput: EvolutionMutatio
     ...input.authorization,
     expectedText: confirmation,
   })
-  const artifactID = receiptArtifactID({
+  const identity: ReceiptIdentity = {
     operation: input.operation,
     authorizationMessageID: authorization.message_id,
     authorizationMessageSHA256: authorization.message_sha256,
@@ -214,8 +245,9 @@ export async function executeEvolutionPackageMutation(rawInput: EvolutionMutatio
     beforeDigest: prepared.beforeDigest,
     afterDigest: prepared.afterDigest,
     evidenceSHA256s: prepared.evidence.map((locator) => locator.expected_sha256),
-  })
-  const existing = existingReceipt({ taskID: input.authorization.taskID, artifactID })
+  }
+  const artifactID = receiptArtifactID(identity)
+  const existing = existingReceipt({ taskID: input.authorization.taskID, artifactID, identity })
   if (existing) {
     await ExpertSquadPackageManager.reconcileCommittedPackageMutation({
       projectDirectory: Instance.project.worktree,

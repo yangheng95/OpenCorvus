@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from "bun:test"
+import { afterAll, describe, expect, spyOn, test } from "bun:test"
 import { writeExpertSquadPackage, type ExpertSquadPackageDefinition } from "@opencorvus-ai/sdk/expert-squad-authoring"
 import { EngineArtifactEnvelopeSchema, EvolutionArtifactSchemas } from "@opencorvus-ai/plugin"
 import { rm } from "node:fs/promises"
@@ -14,6 +14,7 @@ import { requireTaskPackageRevisionBinding } from "../src/engine/task-package-re
 import {
   authorizeEvolutionPackageMutation,
   executeEvolutionPackageMutation,
+  EvolutionMutationReceiptIdentityConflictError,
 } from "../src/expert-squad/evolution-mutation"
 import { evolutionMutationConfirmationText } from "../src/expert-squad/evolution-mutation-intent"
 import { ExpertSquadPackageManager } from "../src/expert-squad/manager"
@@ -667,6 +668,8 @@ describe("authorized expert squad evolution mutation", () => {
             expectedCurrentPackageDigest: baselineRevision.package_digest,
           })
           expect(repeated.locator).toEqual(promotion.locator)
+          expect(promotion.locator.artifact_id.length).toBe(Identifier.MAX_LENGTH)
+          expect(promotion.locator.expected_sha256).toMatch(/^[a-f0-9]{64}$/)
           const historyAfterPromotion = await readEvolutionHistory({
             namespace: target.namespace,
             id: target.id,
@@ -818,13 +821,35 @@ describe("authorized expert squad evolution mutation", () => {
               expectedCurrentPackageDigest: candidateRevision.package_digest,
             },
           })
-          const restoration = await executeEvolutionPackageMutation({
+          const restoreRequest = {
             operation: "restoration",
             authorization: restorationAuthorization.authorization,
             priorReceiptLocator: promotion.locator,
             restorePackageDigest: baselineRevision.package_digest,
             expectedCurrentPackageDigest: candidateRevision.package_digest,
-          })
+          } as const
+          // Force a compact-key collision at issuance while keeping both real
+          // authorization and persisted receipt payloads intact.
+          const deterministic = Identifier.deterministic
+          const collision = spyOn(Identifier, "deterministic").mockImplementation((kind, material) =>
+            kind === "artifact" && material.startsWith("evolution-mutation\0")
+              ? promotion.locator.artifact_id
+              : deterministic(kind, material),
+          )
+          try {
+            let conflict: unknown
+            try {
+              await executeEvolutionPackageMutation(restoreRequest)
+            } catch (error) {
+              conflict = error
+            }
+            expect(EvolutionMutationReceiptIdentityConflictError.isInstance(conflict) ? conflict.data : undefined)
+              .toEqual({ artifactID: promotion.locator.artifact_id })
+          } finally {
+            collision.mockRestore()
+          }
+          const restoration = await executeEvolutionPackageMutation(restoreRequest)
+          expect(restoration.locator.artifact_id.length).toBe(Identifier.MAX_LENGTH)
           expect({
             operation: restoration.receipt.operation,
             before: restoration.receipt.before_digest,

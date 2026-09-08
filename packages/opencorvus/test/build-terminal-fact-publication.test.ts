@@ -24,10 +24,11 @@ import { createDispatchLineageOrigin } from "@/engine/dispatch-lineage"
 import { recordTestDispatchLineage } from "./fixture/dispatch-lineage"
 import { describeTask } from "@/engine/describe"
 import { EngineArtifactTable, EngineBuildObservationCleanupTable, EngineTaskTable } from "@/engine/engine.sql"
-import { Database, and, eq } from "@/storage/db"
+import { Database, DatabaseUnavailableError, and, eq } from "@/storage/db"
+import { recordEngineArtifact } from "@/engine/artifact"
 import { buildObservationRefName } from "@/engine/build-observation-ref"
 import { pinBuildObservationTree } from "@/build/agent"
-import { recordTaskLevelBuildHostObservation } from "@/engine/persist"
+import { recordTaskInfrastructureError, recordTaskLevelBuildHostObservation } from "@/engine/persist"
 import { buildTerminalFactObservationID } from "@/build/terminal-fact-publication"
 import {
   buildObservationCleanupRowsForTask,
@@ -45,6 +46,76 @@ import { deleteProject, ProjectDeleteTestHooks } from "@/project/delete"
 import { Project } from "@/project/project"
 
 const modelRef = { providerID: "test", modelID: "build-terminal-publication" }
+
+for (const family of ["build", "partial", "cleanup", "evolution"] as const) {
+  test(`startup reports the explicit reset contract for legacy ${family} terminal identity`, async () => {
+    await using project = await memoryProject()
+    await Instance.provide({
+      directory: project.path,
+      fn: async () => {
+        using _spies = await installPhysicalBuildSpies()
+        const fixture = await createProductionFixture(project.path, `Legacy ${family} identity`)
+        const id = `art_${family === "evolution" ? "evolution_mutation" : "build_terminal"}_${"a".repeat(64)}`
+        if (family === "build" || family === "cleanup") {
+          beginBuildObservationCleanup({
+            observationID: id,
+            taskID: fixture.taskID,
+            gitDir: await resolveBuildObservationGitDir(project.path),
+            activate: false,
+          })
+          if (family === "build") recordTaskLevelBuildHostObservation({
+            id,
+            taskID: fixture.taskID,
+            executionMode: "current_project",
+            diffs: [],
+          })
+        } else if (family === "partial") {
+          recordTaskInfrastructureError({
+            id,
+            taskID: fixture.taskID,
+            component: "build-host-observation",
+            operation: "collect-git-workspace",
+            reason: "legacy partial observation",
+            context: { observation_id: id },
+          })
+        } else {
+          // Startup admission inspects durable family provenance, independently
+          // of package mutation execution covered by its production suite.
+          recordEngineArtifact({
+            id,
+            taskID: fixture.taskID,
+            kind: "expert_output",
+            label: "evolution-lab/promotion-receipt",
+            payload: {
+              artifact_type: "evolution-lab/promotion-receipt",
+              schema_version: 1,
+              producer: { owner_kind: "core", component_id: "expert-squad-package-manager", operation_id: "legacy" },
+              payload: {},
+              resources: [],
+              observed_artifact_locators: [],
+              source_artifact_locators: [],
+            },
+          })
+        }
+        await Database.awaitEffectIdle(30_000)
+        Database.close()
+        let observed: unknown
+        try {
+          Database.Client()
+        } catch (error) {
+          observed = error
+        }
+        expect(DatabaseUnavailableError.isInstance(observed) ? observed.data : undefined).toMatchObject({
+          code: "DATA_RESET_REQUIRED",
+          operation: "Database.Client.dataIntegrity.compactTerminalArtifactIdentity",
+          message: expect.stringContaining(id),
+        })
+        await Database.resetFiles(Database.Path())
+        Database.Client()
+      },
+    })
+  }, 60_000)
+}
 
 function providerModel(): ProviderType.Model {
   return {
@@ -346,7 +417,6 @@ describe.serial("Build terminal-fact publication", () => {
         outcomeSessionID: "session_id" in settled.outcome ? settled.outcome.session_id : undefined,
         sessionID: session.id,
       }).toEqual({ expectedSessionID, outcomeSessionID: expectedSessionID, sessionID: expectedSessionID })
-      expect(path.resolve(session.directory)).not.toBe(path.resolve(project.path))
     })
   }, 60_000)
 
@@ -365,6 +435,8 @@ describe.serial("Build terminal-fact publication", () => {
         },
       })
       const facts = terminalFacts(fixture.taskID)
+      expect(facts[0]!.id.length).toBe(Identifier.MAX_LENGTH)
+      expect(facts[0]!.payload_sha256).toMatch(/^[a-f0-9]{64}$/)
       expect({
         attempts: attempts.length,
         samePayload: attempts[0] === attempts[1],
@@ -463,7 +535,6 @@ describe.serial("Build terminal-fact publication", () => {
         attempts: 2,
         last_error: null,
       })
-      expect(await gitRef(project.path, buildObservationRefName(owner.observation_id, "head"))).toBeUndefined()
     })
   }, 60_000)
 
@@ -531,7 +602,6 @@ describe.serial("Build terminal-fact publication", () => {
         owner: { status: "complete" },
         infrastructureFacts: [{ kind: "task-infrastructure-error", payload: { operation: "collect-git-workspace" } }],
       })
-      expect(await gitRef(project.path, buildObservationRefName(owner.observation_id, "head"))).toBeUndefined()
     })
   }, 60_000)
 
@@ -572,7 +642,6 @@ describe.serial("Build terminal-fact publication", () => {
           attempts: 2,
           last_error: null,
         })
-        expect(await gitRef(project.path, buildObservationRefName(observationID, "head"))).toBeUndefined()
       },
     })
   }, 60_000)

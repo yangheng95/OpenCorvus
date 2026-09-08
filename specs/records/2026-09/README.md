@@ -1,5 +1,7 @@
 # 2026-09 Records
 
+- [Interrupted task reconciliation](2026-09-08-interrupted-task-reconciliation.md)
+
 - [0.0.63-beta release repair and publication](2026-09-06-v0.0.63-beta-release-repair.md)
 
 - [Scheduling razor remediation](2026-09-05-scheduling-razor-remediation.md)

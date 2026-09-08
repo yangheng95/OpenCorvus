@@ -45,9 +45,9 @@
 | TD-05 | Website cwd/root dependency workarounds were replaced by the actual bundler source-export condition. | Closed as already repaired by `ed92a5f37`; current source-only compilation, real Node execution and shared runtime reuse passed 3/3. |
 | TD-06 | Cross-process Prompt ownership, wait/automation identity, Mission closure and deletion are safety-critical and were repeatedly revised. | Original focused audit was not exhaustive: the later S1-S10/D1 audit found additional defects and was implemented in 05605e697. Retain the canonical owners, but use that correction record for decision rollback, recurrence, bounded discovery and backoff evidence. September 8 source inspection confirms those repairs remain; historical tests are not a current full-matrix guarantee. |
 | TD-07 | `specs/README.md` still describes 0.0.61 as unpublished although the final release record says published. | Pointer corrected in Cut 1; historical artifacts unchanged. |
-| TD-08 | Explicit per-test zero budgets bypass the existing finite test-runner ownership window and can trigger Bun's subprocess auto-killer. | GC correction delivered in 8e2b7f3a3. The remaining 85 calls now inherit the same finite runner budget; all 30 affected files pass (177 tests, 1416 assertions), with no budget exception. Independent review of the shared correction passed with zero findings; hosted Windows confirmation remains outstanding. |
+| TD-08 | Explicit per-test zero budgets bypass the existing finite test-runner ownership window and can trigger Bun's subprocess auto-killer. | GC correction delivered in 8e2b7f3a3. The remaining 85 calls now inherit the same finite runner budget; all 30 affected files pass (177 tests, 1416 assertions), with no budget exception. Independent review passed with zero findings. Hosted Windows confirmation completed on September 8: run 34180349461, job 101917997629, source 5a032ee36, success. |
 | TD-09 | A later failed/non-reducing fixpoint pass postpones an earlier still-future semantic wake because penalty admission only sees the current pass. | Repaired in the single driver; final liveness 37/37 and razor primitives 12/12 pass, package typecheck/docs pass, and independent review has zero findings. Real persisted ingress/lease settlement is covered; no real Provider performance claim. |
-| TD-10 | Hosted macOS unit job 101911619182 fails log-lifecycle.test.ts:41 after close/reinit/flush: the read returns no lines instead of the new record. | Repaired the file destination flush-completion contract, with before/after controlled boundary evidence and real file/export validation (8/8). Independent review has zero findings. This is an existing August 9 defect, not attributed to the past ten days of repairs; post-fix hosted macOS confirmation remains outstanding. |
+| TD-10 | Hosted macOS unit job 101911619182 fails log-lifecycle.test.ts:41 after close/reinit/flush: the read returns no lines instead of the new record. | Repaired the file destination flush-completion contract, with before/after controlled boundary evidence and real file/export validation (8/8). Independent review has zero findings. This is an existing August 9 defect, not attributed to the past ten days of repairs. Hosted macOS confirmation completed on September 8: run 34180349461, job 101917997524, source 5a032ee36, success. |
 
 ## Cut 1: early publication admission using the existing owner
 
@@ -599,6 +599,10 @@ the reviewer independently reran the complete log file, 5/5 and 12 assertions.
 Historical source `89094b7968905c2d0fc390dd7611ba228d88a0b6` (August 9) already
 contains the insufficient root-flush plus flushSync combination. The later
 August 23 edit changed redaction. This is an existing defect exposed by current
-CI, not evidence that the past ten days introduced it. Post-fix hosted macOS
-acceptance remains unverified until its actual job result; local evidence is
-not represented as remote completion.
+CI, not evidence that the past ten days introduced it. Subsequent read-only
+verification on September 8 confirmed post-fix hosted macOS job 101917997524
+and Windows job 101917997629 passed in [unit run 34180349461](https://github.com/yangheng95/opencorvus/actions/runs/34180349461),
+bound to source `5a032ee36b4601c88a5328983b779037dcc969b5`. Linux and the aggregate
+job also passed; build check 34180349450 and typecheck 34180349426 passed on
+that exact source. This closes the hosted acceptance gap; it does not establish
+Light Provider performance or native visual acceptance.

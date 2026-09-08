@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { Identifier } from "@/id/id"
 import { exactEngineArtifactLocator } from "@/artifact-catalog"
 import {
   recordTaskInfrastructureError,
@@ -37,10 +37,7 @@ export type BuildTerminalFactWriter = (input: BuildTerminalFactPublicationInput,
 }
 
 export function buildTerminalFactObservationID(input: { taskID: string; dispatchID: string }): string {
-  const digest = createHash("sha256")
-    .update(`build-terminal-fact\0${input.taskID}\0${input.dispatchID}`)
-    .digest("hex")
-  return `art_build_terminal_${digest}`
+  return Identifier.deterministic("artifact", `build-terminal-fact\0${input.taskID}\0${input.dispatchID}`)
 }
 
 function writeBuildTerminalFact(input: BuildTerminalFactPublicationInput): ReturnType<BuildTerminalFactWriter> {
