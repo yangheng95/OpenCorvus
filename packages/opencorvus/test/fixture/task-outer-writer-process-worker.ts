@@ -137,19 +137,58 @@ try {
         return
       }
       if (mode === "file-seed") {
+        const sourceSession = await Session.create({ kind: "root", title: "File source owner" })
+        const sourceTaskID = Identifier.ascending("task")
+        const now = Date.now()
+        Database.immediateTransaction((db) => {
+          db.insert(EngineTaskTable)
+            .values({
+              id: sourceTaskID,
+              project_id: Instance.project.id,
+              session_id: sourceSession.id,
+              source: "test",
+              product_pillar: "code",
+              title: "File source owner",
+              request: "Retain source files while concurrent target writers run",
+              time_created: now,
+            })
+            .run()
+          appendTaskOpenedInTransaction({
+            db,
+            taskID: sourceTaskID,
+            sessionID: sourceSession.id,
+            now,
+            source: "test.file-source",
+          })
+        })
         const files: TaskFileRef[] = []
         for (let index = 0; index < 100; index++) {
-          files.push(
-            await AttachmentStore.write(
-              Instance.project.id,
-              Buffer.from(`Task file ${index}`),
-              "text/plain",
-              `file-${index}.txt`,
-            ),
+          const file = await AttachmentStore.write(
+            Instance.project.id,
+            Buffer.from(`Task file ${index}`),
+            "text/plain",
+            `file-${index}.txt`,
           )
+          await appendTaskAttachment(sourceTaskID, { ...file, intent: "task_input", source: "user-upload" })
+          files.push(file)
         }
         fs.writeFileSync(inputPath, JSON.stringify({ taskID, sessionID, artifacts, files }))
         console.log(JSON.stringify(files))
+        return
+      }
+      if (mode === "file-retain") {
+        if (!files) throw new Error("File retention requires seeded files")
+        const names = files.map((file) => file.url.split("/").at(-1)!)
+        for (const name of names) {
+          const absolute = AttachmentStore.resolveAbsolute(Instance.project.id, name)
+          if (!absolute) throw new Error(`Seeded file ${name} has no project path`)
+          fs.utimesSync(absolute, new Date(0), new Date(0))
+        }
+        const sweep = await AttachmentStore.sweep(Instance.project.id)
+        const contents = await Promise.all(
+          names.map(async (name) => (await AttachmentStore.read(Instance.project.id, name)).toString()),
+        )
+        console.log(JSON.stringify({ kept: sweep.kept, contents }))
         return
       }
       if (mode === "inspect") {

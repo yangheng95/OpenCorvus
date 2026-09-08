@@ -39,6 +39,10 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
   try {
     await read(spawn("init"))
     const files = await read(spawn("file-seed"))
+    expect(await read(spawn("file-retain"))).toEqual({
+      kept: 100,
+      contents: Array.from({ length: 100 }, (_, index) => `Task file ${index}`),
+    })
     await read(spawn("completion-seed"))
     for (const mode of [
       "rewind",
