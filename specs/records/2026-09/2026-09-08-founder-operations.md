@@ -1,5 +1,13 @@
 # OpenCorvus founder operations
 
+## README first-result task parity — 2026-09-09
+
+Recall: continue the operating goal through the first-use entry after community triage. Read both README startup examples, both current quickstarts and serve's UI announcement; search request/continuation descriptions and the prior OPS-002 correction. Independent pre-edit feedback: 无. The quickstarts already specify docs/architecture-overview.md with exact source paths and factual uncertainty, but README still asks to implement an unspecified requested change. Its earlier correction fixed request schema/continuation without making this example independently actionable. No production, UI layout, public route, model settings or credentials change.
+
+Plan and acceptance before editing: use the exact corresponding locale's bounded quickstart request in both README API examples. Immediately after progress streaming, explain opening the generated overview and checking source paths and available commands, retaining the acceptance-versus-completion distinction. Validate both embedded JSON requests parse, compare them manually with current quickstarts, run docs/format/diff checks and obtain independent read-only review before scoped commit/push. This repairs the copied instruction and acceptance guidance; no real model completion or published main/website update is claimed.
+
+Validation: both README JSON bodies parsed through ConvertFrom-Json with productPillar code and the full locale-specific request. Docs check, pinned Prettier for both README files and diff check passed. Independent read-only review passed without findings after comparing the complete three-file diff and both local quickstarts; the policy-blocked Chinese public page was not retried. Real model, published main and website acceptance remain open.
+
 ## Linux atomic replacement acceptance — 2026-09-09
 
 Recall: extend c7e9e6927's local Windows evidence through the same committed real-file checker on available Ubuntu-24.04 under Windows Subsystem for Linux (WSL). Preserve the three unrelated dirty files. No production change, real credentials or user runtime operations. The acceptance target is the unchanged three-test file, not a substitute probe; full Linux suite, macOS and power-loss durability remain outside this local increment.

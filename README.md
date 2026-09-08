@@ -274,7 +274,7 @@ curl -X POST http://127.0.0.1:7878/task \
   -H "x-opencorvus-directory: $PWD" \
   -d '{
     "productPillar": "code",
-    "request": "Implement the requested change, validate it, and stop only when the result is ready for review or a real blocker is visible."
+    "request": "Inspect this repository and create docs/architecture-overview.md. Explain the entry points, main modules, and available build or test commands with exact source paths. Verify those paths and distinguish facts from uncertainty. Do not modify application source."
   }'
 ```
 
@@ -285,6 +285,12 @@ not completion. Set `TASK_ID` to the returned value and stream progress with Ser
 TASK_ID='paste-the-returned-task-id'
 curl -N "http://127.0.0.1:7878/task/$TASK_ID/events"
 ```
+
+Open `docs/architecture-overview.md` in your project and check the cited paths,
+module descriptions, and build or test commands against the repository. A terminal
+Task status alone does not establish that this overview is accurate; use the
+[Quickstart follow-up](https://opencorvus.com/start/quickstart/) to request corrections
+in the same Task.
 
 > [!TIP]
 > If you expose `opencorvus serve` beyond localhost, set `OPENCORVUS_SERVER_PASSWORD`

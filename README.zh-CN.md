@@ -252,7 +252,7 @@ curl -X POST http://127.0.0.1:7878/task \
   -H "x-opencorvus-directory: $PWD" \
   -d '{
     "productPillar": "code",
-    "request": "实现所需改动，完成验证，并在结果可以接受审阅或出现真实阻塞后停止。"
+    "request": "检查此仓库并创建 docs/architecture-overview.md。说明入口、主要模块及已有的构建或测试命令，附上精确源码路径。核验这些路径，区分已证实事实与不确定项。不要修改应用源码。"
   }'
 ```
 
@@ -263,6 +263,10 @@ curl -X POST http://127.0.0.1:7878/task \
 TASK_ID='paste-the-returned-task-id'
 curl -N "http://127.0.0.1:7878/task/$TASK_ID/events"
 ```
+
+打开项目中的 `docs/architecture-overview.md`，对照仓库核验引用路径、模块说明及构建或测试命令。
+Task 进入终态本身不能证明概览准确；需要修正时，按[快速开始的后续消息示例](https://opencorvus.com/zh-cn/start/quickstart/)
+在同一个 Task 中提出。
 
 > [!TIP]
 > 如果要在本机之外暴露 `opencorvus serve`，请先设置
