@@ -1,3 +1,5 @@
+import { resolve, toNamespacedPath } from "node:path"
+
 function nativeError(message: string, code: string, errno?: number): NodeJS.ErrnoException {
   return Object.assign(new Error(message), { code, errno })
 }
@@ -108,20 +110,59 @@ async function renameWindows(source: string, target: string, writeThrough: boole
   }
 }
 
-async function replaceWindows(source: string, target: string): Promise<void> {
+async function replaceWindows(source: string, target: string, writeThrough: boolean): Promise<void> {
+  if (source.includes("\0") || target.includes("\0")) throw nativeError("Invalid rename path", "EINVAL")
   const { dlopen } = await import("bun:ffi")
   const library = dlopen("kernel32.dll", {
-    MoveFileExW: { args: ["ptr", "ptr", "u32"], returns: "bool" },
+    CreateFileW: { args: ["ptr", "u32", "u32", "ptr", "u32", "u32", "ptr"], returns: "i64" },
+    SetFileInformationByHandle: { args: ["i64", "u32", "ptr", "u32"], returns: "bool" },
+    FlushFileBuffers: { args: ["i64"], returns: "bool" },
+    CloseHandle: { args: ["i64"], returns: "bool" },
     GetLastError: { args: [], returns: "u32" },
   })
-  try {
-    // MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH
-    if (library.symbols.MoveFileExW(wideString(source), wideString(target), 0x00000001 | 0x00000008)) return
+  const fail = (operation: string) => {
     const error = library.symbols.GetLastError()
-    throw nativeError(`MoveFileExW replace failed for ${source} -> ${target}`, windowsCode(error), error)
+    return nativeError(`${operation} failed for ${source} -> ${target}`, windowsCode(error), error)
+  }
+  try {
+    // DELETE, plus GENERIC_WRITE for the durable post-rename flush. Share all
+    // access and open the existing source; the caller already wrote its bytes.
+    const handle = library.symbols.CreateFileW(
+      wideString(toNamespacedPath(resolve(source))),
+      writeThrough ? 0x40010000 : 0x00010000,
+      7,
+      null,
+      3,
+      writeThrough ? 0x80000080 : 0x80,
+      null,
+    )
+    if (handle === -1n) throw fail("CreateFileW")
+    try {
+      // FILE_RENAME_INFO on supported 64-bit Windows: flags at 0, root at 8,
+      // name byte length at 16, UTF-16 name at 20, sizeof(struct) = 24.
+      const name = Buffer.from(toNamespacedPath(resolve(target)), "utf16le")
+      const info = Buffer.alloc(24 + name.length)
+      // REPLACE_IF_EXISTS | POSIX_SEMANTICS keeps already-open readers valid.
+      info.writeUInt32LE(3, 0)
+      info.writeUInt32LE(name.length, 16)
+      name.copy(info, 20)
+      if (!library.symbols.SetFileInformationByHandle(handle, 22, info, info.length)) {
+        throw fail("SetFileInformationByHandle(FileRenameInfoEx)")
+      }
+      if (writeThrough && !library.symbols.FlushFileBuffers(handle)) throw fail("FlushFileBuffers")
+    } finally {
+      library.symbols.CloseHandle(handle)
+    }
   } finally {
     library.close()
   }
+}
+
+/** Atomically replace a file while preserving existing readers of the old file. */
+export async function renameReplace(source: string, target: string): Promise<void> {
+  if (process.platform === "win32") return replaceWindows(source, target, false)
+  const { rename } = await import("node:fs/promises")
+  await rename(source, target)
 }
 
 /**
@@ -151,7 +192,7 @@ export async function renameNoReplaceWriteThrough(source: string, target: string
 /** Atomically replace one same-volume target. Windows requests write-through;
  * POSIX callers fsync the affected directories after this namespace change. */
 export async function renameReplaceWriteThrough(source: string, target: string): Promise<void> {
-  if (process.platform === "win32") return replaceWindows(source, target)
+  if (process.platform === "win32") return replaceWindows(source, target, true)
   if (process.platform === "darwin" || process.platform === "linux") {
     const { rename } = await import("node:fs/promises")
     await rename(source, target)

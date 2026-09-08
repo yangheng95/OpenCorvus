@@ -13,6 +13,7 @@ import { traceSync } from "./debug-trace"
 import {
   renameNoReplace as nativeRenameNoReplace,
   renameNoReplaceWriteThrough as nativeRenameNoReplaceWriteThrough,
+  renameReplace as nativeRenameReplace,
   renameReplaceWriteThrough as nativeRenameReplaceWriteThrough,
 } from "./rename-no-replace"
 import { Flag } from "@/flag/flag"
@@ -128,7 +129,7 @@ export namespace Filesystem {
     const tmp = temporaryPath(p, "replace")
     try {
       await writeFile(tmp, content, mode ? { mode } : undefined)
-      await rename(tmp, p)
+      await nativeRenameReplace(tmp, p)
     } catch (err) {
       await rm(tmp, { force: true }).catch(() => {})
       throw err
@@ -187,8 +188,8 @@ export namespace Filesystem {
   }
 
   export async function syncDirectoryMetadata(directory: string): Promise<void> {
-    // Windows namespace durability is provided by MOVEFILE_WRITE_THROUGH.
-    // POSIX requires fsync of each directory whose entries changed.
+    // Windows native moves request write-through; replacement also flushes
+    // its renamed handle. POSIX directory metadata needs a separate sync.
     if (process.platform === "win32") return
     const handle = await open(directory, "r")
     try {
