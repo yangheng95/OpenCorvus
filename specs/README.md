@@ -1,5 +1,7 @@
 # Specs Storage Index
 
+Current founder operations and adoption work: [`2026-09-08-founder-operations.md`](records/2026-09/2026-09-08-founder-operations.md).
+
 Current interrupted-task reconciliation: [`2026-09-08-interrupted-task-reconciliation.md`](records/2026-09/2026-09-08-interrupted-task-reconciliation.md).
 
 Current application and website release repair: [`0.0.63-beta`](records/2026-09/2026-09-06-v0.0.63-beta-release-repair.md).

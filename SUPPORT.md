@@ -4,7 +4,7 @@ OpenCorvus is a community-maintained open-source project.
 
 Before requesting help:
 
-1. Read the [documentation](https://opencorvus.ai/docs) and [troubleshooting guide](https://opencorvus.ai/docs/troubleshooting).
+1. Read the [quickstart](https://opencorvus.com/start/quickstart/) and [troubleshooting guide](https://opencorvus.com/troubleshooting/).
 2. Search existing [issues](https://github.com/yangheng95/opencorvus/issues).
 3. Confirm the exact OpenCorvus version, operating system, architecture, and installation method.
 
