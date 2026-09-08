@@ -47,7 +47,7 @@
 | TD-07 | `specs/README.md` still describes 0.0.61 as unpublished although the final release record says published. | Pointer corrected in Cut 1; historical artifacts unchanged. |
 | TD-08 | Explicit per-test zero budgets bypass the existing finite test-runner ownership window and can trigger Bun's subprocess auto-killer. | GC correction delivered in 8e2b7f3a3. The remaining 85 calls now inherit the same finite runner budget; all 30 affected files pass (177 tests, 1416 assertions), with no budget exception. Independent review of the shared correction passed with zero findings; hosted Windows confirmation remains outstanding. |
 | TD-09 | A later failed/non-reducing fixpoint pass postpones an earlier still-future semantic wake because penalty admission only sees the current pass. | Repaired in the single driver; final liveness 37/37 and razor primitives 12/12 pass, package typecheck/docs pass, and independent review has zero findings. Real persisted ingress/lease settlement is covered; no real Provider performance claim. |
-| TD-10 | Hosted macOS unit job 101911619182 fails log-lifecycle.test.ts:41 after close/reinit/flush: the read returns no lines instead of the new record. | Exact hosted failure observed on run 34178169017; root cause remains unconfirmed. Keep separate from the finite test-budget and Task driver corrections; no log implementation changes in this cut. |
+| TD-10 | Hosted macOS unit job 101911619182 fails log-lifecycle.test.ts:41 after close/reinit/flush: the read returns no lines instead of the new record. | Repaired the file destination flush-completion contract, with before/after controlled boundary evidence and real file/export validation (8/8). Independent review has zero findings. This is an existing August 9 defect, not attributed to the past ten days of repairs; post-fix hosted macOS confirmation remains outstanding. |
 
 ## Cut 1: early publication admission using the existing owner
 
@@ -544,3 +544,61 @@ The correction keeps one existing driver/timer and no durable shadow state.
 This final evidence/ledger update changes documentation only. Remote macOS
 logging failure TD-10 and blocked real Light acceptance remain open; this cut
 does not claim the overall goal or hosted unit matrix complete.
+
+### TD-10: file-log flush completion
+
+Recall: continue from `c634044f4`, preserving the three excluded working files.
+The macOS failure is at an immediate read following reinit/write/flush, not a
+database or scheduling failure. Read the full Log implementation, preload and
+isolated runner, lifecycle test, CLI/Overlay initialization, support-bundle
+export and all Log init/flush/close/read callers. No implementation delegation;
+an uninvolved read-only reviewer will review after focused verification.
+
+The original lifecycle test passes locally on Windows (1/1, six assertions),
+so that run alone does not reproduce the timing boundary. Exact installed and
+upstream [SonicBoom 4.2.1 source](https://github.com/pinojs/sonic-boom/blob/v4.2.1/index.js)
+shows `flush(cb)` immediately invokes its callback for minLength zero, even
+while an asynchronous write is in flight. `flushSync` drains queued buffers,
+but skips that in-flight write. Pino 10.3.1 delegates flush to its destination;
+its multistream used by `print: true` has no asynchronous flush method, so the
+root logger callback in that mode is also immediate. Current Log defaults use
+minLength zero and combine those two insufficient completion paths. Old
+generation invalidation repairs correctly preserve cached logger identity, but
+do not prove file-write completion. This explains the observed read race and
+also affects production support-bundle export; no claim that every hosted
+failure has the same cause is made.
+
+Selected correction: use the existing file destination's positive minimum
+buffer threshold of one byte, so every nonempty JSON record still starts an
+asynchronous write immediately and the library's callback flush waits for drain
+and fsync. Await that destination directly, independent of optional stderr
+fan-out. Remove the redundant synchronous flush. With no open file destination,
+there is no durable file flush obligation; stderr remains diagnostic output.
+Keep the existing lifecycle mutex, generation, pending-init records, file names,
+retention and redaction. No new queue, timer policy, dependency or config surface.
+
+Positive verification: inject a controlled delay before the real filesystem
+write of a uniquely labelled record (then execute the original write), and
+assert exact write-completed-before-flush-resolved order and read contents for
+both print modes. This is controlled boundary evidence, not an OS timing
+reproduction. Also run real unmodified async filesystem lifecycle/reinit loops,
+production support-bundle export and existing subprocess diagnostic tests.
+Check types/docs/diffs, independently review, then scope commit and normal push.
+No Provider, UI automation, database reset, version change or release action.
+
+Validation: before the production correction, both controlled in-flight file
+write tests failed with `flush-resolved` preceding `file-write-completed`; the
+three unmodified-I/O lifecycle/export cases passed. Afterward the complete log
+file passed 5/5 (12 assertions), real local MCP diagnostics passed 2/2 (five),
+and fatal diagnostic ordering passed 1/1 (one). Package typecheck exited 0;
+docs 339/25 and both diff checks passed. Installed caches were reused.
+
+Independent read-only review of tree
+`cc43e54ea0856f5d8fd548fb170f7ff61e225ba8` returned FINAL PASS, P0-P3 zero;
+the reviewer independently reran the complete log file, 5/5 and 12 assertions.
+Historical source `89094b7968905c2d0fc390dd7611ba228d88a0b6` (August 9) already
+contains the insufficient root-flush plus flushSync combination. The later
+August 23 edit changed redaction. This is an existing defect exposed by current
+CI, not evidence that the past ten days introduced it. Post-fix hosted macOS
+acceptance remains unverified until its actual job result; local evidence is
+not represented as remote completion.

@@ -25,3 +25,13 @@ Application recovery failure never becomes a false success. The Promise rejects 
 Wake settlement classifies the exact rejected abort reason carried by its runtime reservation, or a typed execution cancellation, as expected cancellation at info severity. An unrelated error remains a failure; matching shutdown text is not cancellation authority. This logging classification never changes the durable wake receipt or retry policy.
 
 Multiple backends may share one SQLite database. Physical process occurrences, Project maintenance fences, Task activation leases, idempotent recovery facts, and SQLite transactions coordinate ownership; listener readiness neither acquires nor recreates a database-path-wide host lock.
+
+File logging uses one asynchronous Pino destination per process generation. The
+existing lifecycle mutex serializes initialization, flush and close; cached
+loggers resolve the current generation. A completed file flush joins writes
+already in flight through the file destination's callback before readers or
+support-bundle export rely on its bytes. Optional stderr fan-out is diagnostic
+output, not the authority for file completion. With no open file destination
+there is no file flush obligation. Log records remain asynchronous; the one-byte
+minimum buffer threshold enables the library's drain-and-sync completion
+contract without delaying a nonempty JSON record for batching.

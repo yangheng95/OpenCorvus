@@ -124,7 +124,10 @@ export namespace Log {
       if (nextLogPath === logpath) await fs.appendFile(nextLogPath, "")
       else await fs.writeFile(nextLogPath, "")
 
-      const nextFileDestination = pino.destination({ dest: nextLogPath, sync: false, mkdir: true })
+      // Every JSON record exceeds one byte and still starts writing immediately.
+      // A positive threshold also makes SonicBoom's flush callback join writes
+      // already in flight; its default zero threshold completes flush eagerly.
+      const nextFileDestination = pino.destination({ dest: nextLogPath, sync: false, mkdir: true, minLength: 1 })
       try {
         await destinationReady(nextFileDestination)
         const nextDestination = options.print
@@ -304,15 +307,16 @@ export namespace Log {
   }
 
   async function flushCurrent() {
-    const currentRoot = root
     const currentDestination = durableDestination
+    if (!currentDestination) return
+    // File completion belongs to the file destination, not the optional Pino
+    // multistream wrapper (which has no asynchronous flush contract).
     await new Promise<void>((resolve, reject) => {
-      currentRoot.flush((error) => {
+      currentDestination.flush((error) => {
         if (error) reject(error)
         else resolve()
       })
     })
-    currentDestination?.flushSync()
   }
 
   const TAIL_READ_CHUNK_BYTES = 64 * 1024
