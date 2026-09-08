@@ -1,6 +1,6 @@
 # Contributing to OpenCorvus
 
-We want to make it easy for you to contribute to OpenCorvus. Here are the most common type of changes that get merged:
+We welcome contributions that help people complete and inspect real work with OpenCorvus. Useful contributions include:
 
 - Bug fixes
 - Additional LSPs / Formatters
@@ -14,20 +14,34 @@ However, any UI or core product feature must go through a design review with the
 
 If you are unsure if a PR would be accepted, feel free to ask a maintainer or look for issues with any of the following labels:
 
-- [`help wanted`](https://github.com/yangheng95/opencorvus/issues?q=is%3Aissue%20state%3Aopen%20label%3Ahelp-wanted)
+- [`help wanted`](https://github.com/yangheng95/opencorvus/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22help%20wanted%22)
 - [`good first issue`](https://github.com/yangheng95/opencorvus/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)
 - [`bug`](https://github.com/yangheng95/opencorvus/issues?q=is%3Aissue%20state%3Aopen%20label%3Abug)
-- [`perf`](https://github.com/yangheng95/opencorvus/issues?q=is%3Aopen%20is%3Aissue%20label%3A%22perf%22)
 
 > [!NOTE]
 > PRs that ignore these guardrails will likely be closed.
 
 Want to take on an issue? Leave a comment and a maintainer may assign it to you unless it is something we are already working on.
 
+## Your first contribution
+
+Read [AGENTS.md](./AGENTS.md) for repository constraints and the [current architecture index](./specs/current/architecture/README.md) for the subsystem you plan to change. Search existing issues and the code before proposing a fix. A label search may be empty; it is not a promise that a task is available.
+
+Choose one bounded result and describe its acceptance in an issue before implementation:
+
+| Contribution             | Useful starting scope                                                                                            | Evidence to bring                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Documentation correction | One command or explanation in `packages/web/src/content/docs/`, including its `zh-cn/` counterpart when affected | Page URL, actual command/output or current source contract, corrected wording; inspect the real page for layout changes |
+| Reproduction report      | One failure in your own disposable project                                                                       | Version, operating system, exact steps, expected and observed results, minimal redacted evidence                        |
+| Focused code fix         | One confirmed defect in an agreed issue                                                                          | Root cause, affected callers, a focused positive contract test and relevant real-path verification                      |
+
+You can contribute a reproducible report without writing code or buying model credits. Do not submit unrelated formatting changes or generated assets from other work. Feature scope still needs the design review described below.
+
+中文入口：先阅读 [AGENTS.md](./AGENTS.md)，选择一个可验收的小范围问题，再通过[现有问题表单](https://github.com/yangheng95/opencorvus/issues/new/choose)说明现象、复现步骤和预期结果。欢迎中文报告、文档纠错和复现证据；无需先实现完整功能。文档修改请检查受影响的中英文页面，提交时写清验证结果与未验证部分。
+
 ## Adding New Providers
 
-New providers shouldn't require many if ANY code changes, but if you want to add support for a new provider first make a PR to:
-https://github.com/yangheng95/models.dev
+First check the [provider configuration guide](./packages/web/src/content/docs/providers.mdx). A service that works through an existing compatible adapter may only need configuration. For a new integration or model-catalog change, describe the missing capability in an issue and consult the [provider architecture](./specs/current/architecture/06-provider.md) before choosing where to implement it. Configuration, catalog metadata and runtime adapters have different responsibilities.
 
 ## Developing OpenCorvus
 
@@ -66,11 +80,13 @@ Then run it with:
 ./packages/opencorvus/dist/opencorvus-<platform>/opencorvus
 ```
 
-Replace `<platform>` with your platform (e.g., `darwin-arm64`, `linux-x64`).
+Replace `<platform>` with the directory produced by the build (e.g., `darwin-arm64`, `linux-x64`). On Windows the executable is `opencorvus.exe`. This build can regenerate bundled artifacts; review the resulting diff before committing.
 
 - Core pieces:
   - `packages/opencorvus`: Core business logic, server, agents, tools, and MCP
-  - `packages/sdk`: JavaScript SDK (`@opencorvus-ai/sdk`)
+  - `packages/sdk/js`: JavaScript Software Development Kit (SDK, `@opencorvus-ai/sdk`)
+  - `packages/overlay`: Application workbench
+  - `packages/web`: Public website and bilingual documentation
   - `packages/channel-runtime`: Channel runtime adapters (Slack, Telegram, Discord, Feishu, WhatsApp, Google Chat, Microsoft Teams, LINE, Matrix, Mattermost, Signal, WeCom, DingTalk)
   - `packages/plugin`: Plugin system (`@opencorvus-ai/plugin`)
 
@@ -90,51 +106,41 @@ opencorvus --help
 
 ### Running the API Server
 
-To start the OpenCorvus headless API server:
+To start the OpenCorvus Application Programming Interface (API) server and served workbench:
 
 ```bash
 bun --cwd packages/opencorvus ./src/index.ts serve
 ```
 
-This starts the headless server on port 7878 by default. You can specify a different port:
+The default port is 7878 unless server configuration overrides it. Open the `/ui/` URL printed by the server to use the workbench. You can specify a different port:
 
 ```bash
 bun --cwd packages/opencorvus ./src/index.ts serve --port 8080
 ```
 
 > [!NOTE]
-> If you make changes to the API or SDK (e.g. `packages/opencorvus/src/server/server.ts`), run `./script/generate.ts` to regenerate the SDK and related files.
+> If you change the public API or SDK, run `bun run script/generate.ts` from the root to regenerate the SDK and related artifacts. Inspect its complete diff: the shared pipeline also generates bundled expert-squad and Skill artifacts.
 
 Please follow the repository's Biome, TypeScript, EditorConfig, and existing package conventions.
 
 ### Setting up a Debugger
 
-Bun debugging is currently rough around the edges. We hope this guide helps you get set up and avoid some pain points.
-
-The most reliable way to debug OpenCorvus is to run it manually in a terminal via `bun run --inspect=<url> dev ...` and attach
-your debugger via that URL. Other methods can result in breakpoints being mapped incorrectly, at least in VSCode (YMMV).
-
-To debug the server:
+Run the source entrypoint with Bun's `--inspect` option and attach using the debugger URL it prints. See the [official Bun debugging guide](https://bun.sh/docs/runtime/debugger) for supported debugger setup and pause options.
 
 ```bash
-bun run --inspect=ws://localhost:6499/ --cwd packages/opencorvus ./src/index.ts serve --port 7878
+bun --inspect --cwd packages/opencorvus ./src/index.ts serve --port 8080
 ```
 
-Other tips and tricks:
+### Validate the change you made
 
-- You might want to use `--inspect-wait` or `--inspect-brk` instead of `--inspect`, depending on your workflow
-- Specifying `--inspect=ws://localhost:6499/` on every invocation can be tiresome, you may want to `export BUN_OPTIONS=--inspect=ws://localhost:6499/` instead
+Run commands from the repository root unless a package working directory is specified:
 
-#### VSCode Setup
+- Documentation: `bun run docs:check` checks generated API documentation; it does not validate every prose example or page layout. Exercise changed examples and inspect affected real pages separately.
+- TypeScript: `bun run typecheck` runs workspace type checks.
+- API contracts: `bun run api:routes-check`; regenerate affected artifacts as described above.
+- Runtime logic: use the package runner with explicit relevant files: `bun run --cwd packages/opencorvus test test/path/to/relevant.test.ts`. Replace that example path with an existing focused non-UI test. The runner supplies isolated test state; the root test command is intentionally disabled.
 
-If you use VSCode, you can use our example configurations [.vscode/settings.example.json](.vscode/settings.example.json) and [.vscode/launch.example.json](.vscode/launch.example.json).
-
-Some debug methods that can be problematic:
-
-- Debug configurations with `"request": "launch"` can have breakpoints incorrectly mapped and thus unusable
-- The same problem arises when running OpenCorvus in the VSCode `JavaScript Debug Terminal`
-
-With that said, you may want to try these methods, as they might work for you.
+Follow AGENTS.md for positive behavior/error-contract assertions and independent review. For UI changes, use actual page interaction, screenshots and manual visual review; do not add or run automated UI tests. Use the development server's `/ui/` for application acceptance. Record the commands, observed outputs and any unverified boundaries in your pull request. A schema check or mock result alone does not establish successful model execution or end-to-end delivery.
 
 ## Pull Request Expectations
 
