@@ -43,8 +43,9 @@
 | TD-03 | Mission close uses mutable module callback bindings from Session and Task bootstrap. | Retain the verified existing composition boundary. All production caller/binder paths audited; live/dead-owner and retention route tests pass. Module mutability is retained maintainability risk, not a reproduced defect warranting another refactor. |
 | TD-04 | Migration-heavy repairs were followed by removal of historical migrations and exact current-schema/reset admission. | Historical strategy rework confirmed; current explicit reset contract verified, including untouched stale database/WAL bytes. Obsolete permission-ledger migration promise corrected in Cut 2. Changing upgrade compatibility remains a product decision, not an inferred repair. |
 | TD-05 | Website cwd/root dependency workarounds were replaced by the actual bundler source-export condition. | Closed as already repaired by `ed92a5f37`; current source-only compilation, real Node execution and shared runtime reuse passed 3/3. |
-| TD-06 | Cross-process Prompt ownership, wait/automation identity, Mission closure and deletion are safety-critical and were repeatedly revised. | Retain audited current owners: immediate transaction/CAS, exact occurrence, finite per-Project queue, indexed Fire frontier and terminal ownership. Current focused matrix passes; no new correctness defect demonstrated in this scope. This is not a proof about every possible schedule or an unbounded full-repository audit. |
+| TD-06 | Cross-process Prompt ownership, wait/automation identity, Mission closure and deletion are safety-critical and were repeatedly revised. | Original focused audit was not exhaustive: the later S1-S10/D1 audit found additional defects and was implemented in 05605e697. Retain the canonical owners, but use that correction record for decision rollback, recurrence, bounded discovery and backoff evidence. September 8 source inspection confirms those repairs remain; historical tests are not a current full-matrix guarantee. |
 | TD-07 | `specs/README.md` still describes 0.0.61 as unpublished although the final release record says published. | Pointer corrected in Cut 1; historical artifacts unchanged. |
+| TD-08 | Explicit per-test zero budgets bypass the existing finite test-runner ownership window and can trigger Bun's subprocess auto-killer. | The implicated GC case now inherits the runner budget; its complete file passes 60/60 and its independent review found zero issues. Another 85 direct zero-budget tests across 30 files remain to be classified and repaired; hosted Windows confirmation is outstanding. |
 
 ## Cut 1: early publication admission using the existing owner
 
@@ -333,3 +334,74 @@ with zero findings, independently running Light 4/4 (189 assertions) and externa
 contracts 9/9 (30 assertions). Final review must distinguish the verified package
 change from the still-blocked real-model acceptance. No automatic retry, account
 reset, new login flow or additional paid case was attempted.
+
+## September 8 continuation: validation-runtime ownership
+
+### Recall and scope
+
+Resume the original technical-direction goal on HEAD
+`752d8b3d27dfc3a95ba7ef2956efd69250683fa7`. The three unrelated working paths
+are unchanged. The release task confirmed it has finished and does not own this
+record. No release, version update, user process interruption, credential probe
+or second paid Light run is authorized by this continuation. The previous goal
+turn produced ownership evidence; this turn rechecks the remaining actual defect.
+
+The subsequent [scheduling repair](2026-09-05-scheduling-razor-remediation.md)
+was delivered as `05605e697e89e184b446f7fc30f44a65ccec7254`. Current source has
+per-call pending decision claims, indexed lease winner seeks, a retry-not-before
+lower bound, nullable finite recurrence and immutable Fire-origin execution.
+Its recorded 69-test/local streaming-checker evidence is historical, not a new
+real Provider observation. TD-02 still lacks real-model efficiency evidence.
+Do not silently call the earlier TD-06 inspection a proof that S1-S10 did not exist.
+
+### TD-08: zero-timeout override bypasses the test-runner repair
+
+Windows Unit run `34069288629` failed the final Worktree GC uncertainty case.
+The log emits `killed 1 dangling process` immediately before the native helper's
+missing `settled.json` error. Current `run-tests.ts` already selects a 60-second
+per-test budget because Bun 1.3.14's zero sentinel can kill live subprocesses;
+however `project-directory-and-worktree-gc.test.ts` overrides that budget with
+an explicit third argument `0` on this exact case. The production ProcessSupervisor
+correctly rejects absent physical settlement and must not synthesize success.
+
+The exact dependency source corroborates the causal path: in
+[Bun v1.3.14 Execution.zig](https://github.com/oven-sh/bun/blob/bun-v1.3.14/src/test_runner/Execution.zig),
+`onEntryStarted` assigns epoch for timeout zero, while `handleTimeout` compares
+that deadline with now before invoking the subprocess auto-killer. That branch
+does not exclude epoch. The hosted kill diagnostic and retained zero override
+therefore match a known test-host ownership failure, not proof of a Worktree GC
+algorithm failure. The unchanged isolated case passed locally (1/1, 3 assertions),
+so local passage alone does not establish aggregate reliability.
+
+Selected correction: remove only this case's zero override so the normal runner
+owns its finite budget. Keep every preservation/candidate assertion, native
+helper settlement validation and GC implementation unchanged. Run the original
+complete file through the real isolated test runner with the cached exact-source
+native helper; no reinstall/build and no user database access. Independently
+review the complete diff and evidence, then scope-commit and push normally.
+The hosted Windows outcome remains a separate post-push evidence requirement.
+
+Horizontal text search initially found 87 `}, 0)` candidates. After the GC edit,
+a read-only TypeScript syntax-tree walk confirmed 85 remaining direct test/it
+calls with a numeric zero third argument across 30 test files. They need finite
+budgets justified by their runtime contracts, not an arbitrary large timeout or
+blanket textual replacement. This residual scope is open, not silently closed
+by fixing one GC case. No public API, schema,
+runtime compatibility or product version change is needed for this correction.
+Independent feedback before this correction: none; mandatory review follows
+the focused runtime result.
+
+The original complete GC file subsequently finished naturally through
+`bun run test test/project-directory-and-worktree-gc.test.ts`: 60 passed,
+0 failed, 89 assertions, 154.06 seconds. The implicated case took 3379.46 ms.
+This validates all current file contracts under the existing isolated runner,
+not a deterministic before/after reproduction of the hosted timing race.
+The cached native helper was reused. The separate user-authorized database
+reset was an operational request, not part of this test repair or its evidence.
+
+Independent read-only review of the two-path tree
+`705f7c048affaa780ae26845777b424129db6547` returned FINAL PASS, P0-P3 zero.
+The reviewer re-read the actual hosted failure and exact Bun source and
+independently confirmed the remaining 85-call inventory. Documentation check
+passed at 339 operations/25 groups; cached and working diff checks passed.
+The review approves this correction, not overall TD-08 or TD-02 completion.

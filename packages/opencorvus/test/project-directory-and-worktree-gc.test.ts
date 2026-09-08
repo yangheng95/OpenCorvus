@@ -3341,5 +3341,5 @@ describe("Worktree GC uncertainty preservation", () => {
         })
       },
     })
-  }, 0)
+  })
 })
