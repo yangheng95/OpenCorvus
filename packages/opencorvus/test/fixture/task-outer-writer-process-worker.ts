@@ -1,5 +1,9 @@
 import fs from "node:fs"
 import path from "node:path"
+import z from "zod"
+import { Bus } from "@/bus"
+import { BusEvent } from "@/bus/bus-event"
+import { BusPublicationDeliveryReceiptTable } from "@/bus/bus.sql"
 import { Database, and, asc, eq } from "@/storage/db"
 import {
   recordMailboxMessage,
@@ -213,6 +217,8 @@ try {
           "ingress",
           "interaction-answer",
           "interaction-replay",
+          "bus-publish",
+          "bus-replay",
           ...mailboxModes,
           ...fileModes,
         ].includes(mode)
@@ -236,6 +242,49 @@ try {
         await Bun.sleep(10)
       }
       const receipts: Array<{ reason: string; count: number }> = []
+      if (mode === "bus-publish" || mode === "bus-replay") {
+        const event = BusEvent.define("test.bus-writer", z.object({ value: z.string() }))
+        const received: string[] = []
+        const stop = Bus.subscribe(
+          event,
+          ({ properties }) => {
+            received.push(properties.value)
+          },
+          { durableID: "test.bus-writer", effect: "idempotent_by_occurrence" },
+        )
+        const ids: string[] = []
+        try {
+          for (let index = 0; index < 25; index++) {
+            const value = `bus-${label}-${index}`
+            const publication = Bus.publishOwnedExact(event, { value }, Identifier.deterministic("call", value))
+            await publication.retry()
+            ids.push(publication.occurrenceID)
+          }
+          const deliveries = Database.use((db) =>
+            ids.flatMap((id) =>
+              db
+                .select({
+                  occurrenceID: BusPublicationDeliveryReceiptTable.occurrence_id,
+                  phase: BusPublicationDeliveryReceiptTable.phase,
+                  subscriberID: BusPublicationDeliveryReceiptTable.subscriber_id,
+                  outcome: BusPublicationDeliveryReceiptTable.outcome,
+                })
+                .from(BusPublicationDeliveryReceiptTable)
+                .where(
+                  and(
+                    eq(BusPublicationDeliveryReceiptTable.occurrence_id, id),
+                    eq(BusPublicationDeliveryReceiptTable.subscriber_id, "test.bus-writer"),
+                  ),
+                )
+                .all(),
+            ),
+          )
+          console.log(JSON.stringify({ ids, received, deliveries }))
+        } finally {
+          stop()
+        }
+        return
+      }
       if (mode === "interaction-answer" || mode === "interaction-replay") {
         const outcomes = []
         for (let index = 0; index < 25; index++) {

@@ -587,7 +587,7 @@ export namespace Bus {
       if (outcomes.some((receipt) => receipt.outcome === "ignored")) return "ignored" as const
       return outcomes.at(-1)?.outcome
     })
-    Database.transaction((db) => {
+    Database.immediateTransaction((db) => {
       const stale = db
         .select()
         .from(BusPublicationDeliveryTable)
@@ -1046,7 +1046,7 @@ export namespace Bus {
     exactOccurrenceID?: string,
   ): Publication {
     let publication: Publication | undefined
-    Database.transaction(() => {
+    Database.immediateTransaction(() => {
       if (!exactOccurrenceID) {
         publication = publishOwnedInTransaction(def, properties)
         return
