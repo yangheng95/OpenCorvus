@@ -1,5 +1,7 @@
 # 2026-09 Records
 
+- [Bilingual case brief and source audit](../../artifacts/2026-09-08-founder-case-brief/README.md)
+
 - [Founder operations and adoption work](2026-09-08-founder-operations.md)
 
 - [Interrupted task reconciliation](2026-09-08-interrupted-task-reconciliation.md)

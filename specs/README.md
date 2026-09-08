@@ -1,5 +1,7 @@
 # Specs Storage Index
 
+Current bilingual case brief: [artifact and evidence audit](artifacts/2026-09-08-founder-case-brief/README.md).
+
 Current founder operations and adoption work: [`2026-09-08-founder-operations.md`](records/2026-09/2026-09-08-founder-operations.md).
 
 Current interrupted-task reconciliation: [`2026-09-08-interrupted-task-reconciliation.md`](records/2026-09/2026-09-08-interrupted-task-reconciliation.md).

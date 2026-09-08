@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "checkedOn": "2026-09-08",
+  "repository": "https://github.com/yangheng95/deberta-v3-absa-public-evidence",
+  "revision": "ee54b400efac03ed665d86c45653dc4239b4c285",
+  "evidenceLevel": "Published-summary arithmetic rechecked; external raw predictions and runtime provenance not independently verified",
+  "protocol": {
+    "testCount": 1336,
+    "seed": 42,
+    "epochs": 1,
+    "validationCount": 700,
+    "trainCount": 1800
+  },
+  "selectedRun": "innovation-smoothing-seed42",
+  "runs": [
+    {
+      "test": {
+        "count": 1336,
+        "macroF1": 0.8034497325831051,
+        "confusionMatrix": {
+          "0": {
+            "0": 276,
+            "1": 29,
+            "2": 24
+          },
+          "1": {
+            "0": 67,
+            "1": 465,
+            "2": 75
+          },
+          "2": {
+            "0": 36,
+            "1": 27,
+            "2": 337
+          }
+        }
+      },
+      "validation": {
+        "count": 700,
+        "macroF1": 0.8196257991427442,
+        "confusionMatrix": {
+          "0": {
+            "0": 138,
+            "1": 12,
+            "2": 15
+          },
+          "1": {
+            "0": 25,
+            "1": 252,
+            "2": 40
+          },
+          "2": {
+            "0": 14,
+            "1": 18,
+            "2": 186
+          }
+        }
+      },
+      "runId": "baseline-seed42"
+    },
+    {
+      "test": {
+        "count": 1336,
+        "macroF1": 0.8360914009455389,
+        "confusionMatrix": {
+          "0": {
+            "0": 260,
+            "1": 37,
+            "2": 32
+          },
+          "1": {
+            "0": 37,
+            "1": 523,
+            "2": 47
+          },
+          "2": {
+            "0": 20,
+            "1": 37,
+            "2": 343
+          }
+        }
+      },
+      "validation": {
+        "count": 700,
+        "macroF1": 0.8343229869545659,
+        "confusionMatrix": {
+          "0": {
+            "0": 132,
+            "1": 15,
+            "2": 18
+          },
+          "1": {
+            "0": 14,
+            "1": 269,
+            "2": 34
+          },
+          "2": {
+            "0": 9,
+            "1": 23,
+            "2": 186
+          }
+        }
+      },
+      "runId": "innovation-smoothing-seed42"
+    },
+    {
+      "test": {
+        "count": 1336,
+        "macroF1": 0.8057125554227144,
+        "confusionMatrix": {
+          "0": {
+            "0": 224,
+            "1": 64,
+            "2": 41
+          },
+          "1": {
+            "0": 26,
+            "1": 545,
+            "2": 36
+          },
+          "2": {
+            "0": 18,
+            "1": 57,
+            "2": 325
+          }
+        }
+      },
+      "validation": {
+        "count": 700,
+        "macroF1": 0.8340428209397834,
+        "confusionMatrix": {
+          "0": {
+            "0": 120,
+            "1": 26,
+            "2": 19
+          },
+          "1": {
+            "0": 8,
+            "1": 286,
+            "2": 23
+          },
+          "2": {
+            "0": 6,
+            "1": 28,
+            "2": 184
+          }
+        }
+      },
+      "runId": "innovation-freeze-embeddings-seed42"
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/yangheng95/deberta-v3-absa-public-evidence/ee54b400efac03ed665d86c45653dc4239b4c285/reports/task2/experiments/comparison.json",
+      "path": "reports/task2/experiments/comparison.json",
+      "decodedUtf8Sha256": "37e2c26fc2c043ad1288de94d97a0d824b803469b205909989f76dde3b66c3a6"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/yangheng95/deberta-v3-absa-public-evidence/ee54b400efac03ed665d86c45653dc4239b4c285/reports/task4/evidence-analysis/canonical-metrics.json",
+      "path": "reports/task4/evidence-analysis/canonical-metrics.json",
+      "decodedUtf8Sha256": "b0148f782aced3a985379ffdb0b8fc56879a1e644c5175a71311c5f383cf1eb2"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/yangheng95/deberta-v3-absa-public-evidence/ee54b400efac03ed665d86c45653dc4239b4c285/docs/process/public-process-index.json",
+      "path": "docs/process/public-process-index.json",
+      "decodedUtf8Sha256": "d5b90d334d7cc831624b1e8cffc5b1f188d8f6a5cb850014fff6d72d0d28e1a9"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/yangheng95/deberta-v3-absa-public-evidence/ee54b400efac03ed665d86c45653dc4239b4c285/docs/limitations-and-licensing.md",
+      "path": "docs/limitations-and-licensing.md",
+      "decodedUtf8Sha256": "53691118b322b406bf5af3ecbb295ca674b6dd61177339f45b896c651944b83d"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/yangheng95/deberta-v3-absa-public-evidence/ee54b400efac03ed665d86c45653dc4239b4c285/docs/reproducibility.md",
+      "path": "docs/reproducibility.md",
+      "decodedUtf8Sha256": "278938a1023c0ee75939bf6ebb1092eb38385ddfa406c11aea1aca7aed56c7aa"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/yangheng95/deberta-v3-absa-public-evidence/ee54b400efac03ed665d86c45653dc4239b4c285/reports/task2/experiments/evaluation-events.jsonl",
+      "path": "reports/task2/experiments/evaluation-events.jsonl",
+      "decodedUtf8Sha256": "362a98875b219914d7b4194708bd964f90861761e99815746aa28bc131c792b1"
+    }
+  ]
+}
