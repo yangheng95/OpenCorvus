@@ -497,6 +497,18 @@ describe("GitHub Actions workflow contract", () => {
     expect(freezeStep?.run).toContain('RELEASE_ID="${WEBSITE_SOURCE_SHA}-')
 
     const buildSteps = jobs.build?.steps ?? []
+    expect(
+      buildSteps
+        .map(({ name }) => name)
+        .filter((name) =>
+          ["Install frozen dependencies", "Build SDK dependency", "Verify generated repository fixed point"].includes(
+            name ?? "",
+          ),
+        ),
+    ).toEqual(["Install frozen dependencies", "Build SDK dependency", "Verify generated repository fixed point"])
+    expect(buildSteps.find(({ name }) => name === "Build SDK dependency")?.run).toBe(
+      "bun run --cwd packages/sdk/js build",
+    )
     expect(buildSteps.find(({ name }) => name === "Verify generated repository fixed point")).toEqual({
       name: "Verify generated repository fixed point",
       shell: "bash",
