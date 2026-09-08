@@ -602,7 +602,13 @@ describe.serial("Provider OAuth flow occurrence", () => {
     })
   })
 
-  test("a live exchange lease rejects a replacement until the exact callback consumes it", async () => {
+  test.each([
+    ["global", "exchanging"],
+    ["project", "exchanging"],
+    ["global", "credential_ready"],
+    ["project", "credential_ready"],
+  ] as const)("%s %s preserves its executor until credential commit", async (scope, phase) => {
+    const events: string[] = []
     let releaseExchange!: () => void
     const exchangeGate = new Promise<void>((resolve) => {
       releaseExchange = resolve
@@ -611,32 +617,50 @@ describe.serial("Provider OAuth flow occurrence", () => {
     const exchangeStarted = new Promise<void>((resolve) => {
       resolveExchangeStarted = resolve
     })
-    using _hooks = ProviderAuth.TestHooks.installGlobalAuthHooksForTest(
+    if (phase === "credential_ready") {
+      ProviderCredentialExchange.TestHooks.afterCredentialReady = async () => {
+        resolveExchangeStarted()
+        await exchangeGate
+      }
+    }
+    using _hooks = (
+      scope === "global"
+        ? ProviderAuth.TestHooks.installGlobalAuthHooksForTest
+        : ProviderAuth.TestHooks.installProjectAuthHooksForTest
+    )(
       oauthHook({
+        onDispose: async () => {
+          events.push(`disposed:${(await ProviderOAuthFlowStore.get(authorization.flowID))?.state}`)
+        },
         onCallback: async () => {
-          resolveExchangeStarted()
-          await exchangeGate
+          events.push("callback")
+          if (phase === "exchanging") {
+            resolveExchangeStarted()
+            await exchangeGate
+          }
+          events.push("credential")
           return { type: "success", key: "leased-key" }
         },
       }),
     )
 
-    const authorization = await ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope: "global" })
+    const authorization = await ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope })
     const callback = ProviderAuth.callback({
       providerID: PROVIDER,
       method: 0,
       code: "leased-code",
       flowID: authorization.flowID,
-      scope: "global",
+      scope,
     })
     try {
       await exchangeStarted
-      await expect(ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope: "global" })).rejects.toThrow(
+      await expect(ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope })).rejects.toThrow(
         ProviderOAuthFlowStore.ExchangeActiveError,
       )
       releaseExchange()
       await callback
-      const replacement = await ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope: "global" })
+      expect(events).toEqual(["callback", "credential", "disposed:consumed"])
+      const replacement = await ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope })
       expect({
         settled: (await ProviderOAuthFlowStore.get(authorization.flowID))?.state,
         credential: await Auth.get(PROVIDER),

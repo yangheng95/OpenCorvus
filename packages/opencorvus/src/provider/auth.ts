@@ -82,7 +82,7 @@ export namespace ProviderAuth {
   async function disposeSettledExecutors(executors: Map<string, OAuthExecutor>) {
     for (const id of [...executors.keys()]) {
       const record = await ProviderOAuthFlowStore.get(id)
-      if (!record || record.state !== "pending") {
+      if (!record || !["pending", "exchanging", "credential_ready"].includes(record.state)) {
         const settled = executors.get(id)
         settled?.stopRenewal()
         await settled?.dispose()

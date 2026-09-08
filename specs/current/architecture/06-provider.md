@@ -314,6 +314,8 @@ Project `Instance` 释放时，Provider auth state 先停止 owner renewal，再
 `failed` 并释放 plugin executor；loopback listener 等 process-local 资源由 OAuth result 的 `dispose` 生命周期统一回收。
 同一 executor 的并发清理共享一条 disposal Promise，失败后才允许后续重试；清理旧 settled executor 在新 durable
 occurrence 和新 plugin side effect 之前完成。pending owner 过期后的结算与资源回收会在瞬态文件锁或 disposer 故障后重试。
+新授权前的清理只处理终态 executor；`pending`、`exchanging` 和 `credential_ready` 仍由当前 owner 持有。
+新请求必须先由同一 durable admission 返回 live-owner conflict，不能在被拒绝前释放旧 callback 的 listener 或其他资源。
 code method 缺少 code 时返回 typed refusal 且不 claim/settle flow，因此调用者可携带 code 完成同一 occurrence。
 
 callback 在调用 token endpoint 前核对 authorize 时绑定的 `expectedCredentialGeneration`。远端调用前 occurrence 从
