@@ -239,6 +239,9 @@ Download only the file you intend to install.
 
 ### Install from source
 
+Prepare the [development prerequisites](./CONTRIBUTING.md#developing-opencorvus)
+before running these commands, including the native Rust/C++ toolchain on Windows.
+
 ```bash
 git clone https://github.com/yangheng95/opencorvus.git
 cd opencorvus

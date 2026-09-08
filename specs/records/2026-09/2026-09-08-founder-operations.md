@@ -1,5 +1,13 @@
 # OpenCorvus founder operations
 
+## Source-install prerequisite entry — 2026-09-09
+
+Recall: use the hosted-test wait to inspect the actual source installation path. Read both README source blocks, bilingual install pages, build target selection, native supervisor Cargo invocation, root packaging script declaration, LOCAL_PACKAGING.md and the contributor prerequisites delivered in 788980e7e. Independent pre-edit feedback: 无. Default development builds select the native host, so an all-platform-build diagnosis is excluded. Windows build calls Cargo directly, but README lacks a pre-command prerequisites pointer and install pages defer platform guidance until after commands. Existing contributor guidance is the canonical reusable setup explanation.
+
+Plan before edits: link both README source blocks to their repository-relative contributor setup before any command. Add a short pre-command Windows Rust/Cargo and C++ prerequisite pointer in each install locale, using the public contributor guide's existing section. Preserve commands, versions, package selection, release behavior and production code. Validate exact local link/heading targets and source dependency, docs/format/diff checks, then independent review and scoped commit/push. No clean-machine installation, complete binary build, published-site update or new UI layout is claimed.
+
+Validation: current main lacks the Windows subsection, so the install pages pin the already-pushed contributor document at 788980e7eecc1a86be91d6876fa296a28eb14f93 instead of introducing a missing main anchor. The public GitHub page was read successfully and contains the exact heading and toolchain instructions; README relative targets exist locally. Docs, pinned formatting for all four prose files and diff checks passed. Independent read-only review passed without findings after checking the complete five-file diff, pinned/local anchors, source Cargo invocation and pre-command placement. These checks verify source/links, not a clean-machine build or rendered website acceptance.
+
 ## README first-result task parity — 2026-09-09
 
 Recall: continue the operating goal through the first-use entry after community triage. Read both README startup examples, both current quickstarts and serve's UI announcement; search request/continuation descriptions and the prior OPS-002 correction. Independent pre-edit feedback: 无. The quickstarts already specify docs/architecture-overview.md with exact source paths and factual uncertainty, but README still asks to implement an unspecified requested change. Its earlier correction fixed request schema/continuation without making this example independently actionable. No production, UI layout, public route, model settings or credentials change.

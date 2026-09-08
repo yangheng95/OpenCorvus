@@ -218,6 +218,9 @@ x64 平台同时提供适用于不支持高级矢量扩展 2（Advanced Vector E
 
 ### 从源码安装
 
+执行下列命令前，先准备[开发依赖](./CONTRIBUTING.md#developing-opencorvus)，
+包括 Windows 上的 Rust/C++ 原生工具链。
+
 ```bash
 git clone https://github.com/yangheng95/opencorvus.git
 cd opencorvus
