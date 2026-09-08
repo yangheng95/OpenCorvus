@@ -2,6 +2,8 @@
 
 - [Expert Squad discovery diagnostic overflow](2026-09-08-discovery-diagnostic-overflow.md)
 
+- [First-result communication cards and unsent copy](../../artifacts/2026-09-09-first-result-media/README.md)
+
 - [Bilingual case brief and source audit](../../artifacts/2026-09-08-founder-case-brief/README.md)
 
 - [Founder operations and adoption work](2026-09-08-founder-operations.md)
