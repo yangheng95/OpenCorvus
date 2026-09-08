@@ -1,5 +1,15 @@
 # OpenCorvus founder operations
 
+## Cross-process lifecycle diagnostic ownership — 2026-09-09
+
+Recall: the autonomous operating goal includes verified first-use reliability. Hosted unit run 814 reported an idle-dispatch receipt but no standby receipt; its diagnostic lifecycle array was empty. Run 815 separately failed Windows fixture cleanup with EBUSY. The current 606c986 run 819 remains live. These are distinct unresolved failures. Preserve the three unrelated dirty files. Independent pre-implementation feedback: 无.
+
+Analysis: `readSessionLifecycle` in the cross-process owner test filters only `protocol_event.session_id`. The production bridge and ProtocolStore deliberately put standalone Session ownership in `aggregate_type = session` and `aggregate_id`, leaving `session_id` null. ProtocolStore.latestSessionEvent already queries both canonical ownership forms. The diagnostic therefore misses standalone lifecycle facts; an empty array cannot establish missing publication. Prompt execution does call provideInitializedProjectExecution and InstanceBootstrap, so direct fixture route mounting does not by itself omit the bridge. Prior diagnostic additions did not validate this query against successful production writes. The pending standby root cause remains unknown; this repair does not change scheduling, retry, terminal, process recovery, Task/Mission behavior, schema, public interfaces, or timeout budgets.
+
+Plan before implementation: align the read-only diagnostic query with the existing canonical Session ownership predicate, and add a positive assertion to the real cross-process success path proving that it retrieves the exact input's persisted idle lifecycle after standby. Retain the related-Session predicate for Task-owned events. Run the formal test runner in the existing isolated source snapshot, docs check, independent read-only review, and normal scoped commit/push. No model credentials or paid Provider are involved. The local streaming fixture proves runtime wiring only, not real-model first-use acceptance.
+
+Validation: the existing isolated snapshot ran `bun run test ./test/server/session-prompt-cross-process-owner.test.ts`: 5 passed, 44 assertions, 108.97 seconds. This includes live duplicate/queued ownership, successful and failed summarize settlement, and exact dead-owner takeover. The new persisted-idle assertion passed against real child-process writes. `bun run docs:check` passed (339 operations, 25 groups); `git diff --check` passed. The Bun SQLite parameter tuple was corrected before final source verification; that type-only correction does not alter the executed query. Independent read-only review by review_device_preparation passed with no findings, confirming both ownership forms, exact-input assertion and evidence boundaries. The hosted standby failure and separate EBUSY cleanup failure remain unresolved; no timeout or runtime behavior was changed.
+
 ## Recall
 
 - User request: 从现在开始，把你自己当作一个创业人员，负责将opencorvus运营出来，包括产品设计和实现、概念营销、宣传物料、公关，自主治理自主维护，执行 open-ended goal。

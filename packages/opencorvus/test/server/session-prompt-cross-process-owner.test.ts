@@ -46,12 +46,13 @@ function readSessionLifecycle(runtime: string, sessionID: string) {
     return sqlite
       .query<
         { seq: number; emitted_at: number; payload: string },
-        [string]
+        [string, string]
       >(
         "SELECT seq, emitted_at, payload FROM protocol_event " +
-          "WHERE session_id = ? AND type = 'agent.execution.lifecycle' ORDER BY emitted_at, seq",
+          "WHERE ((aggregate_type = 'session' AND aggregate_id = ?) OR session_id = ?) " +
+          "AND type = 'agent.execution.lifecycle' ORDER BY emitted_at, seq",
       )
-      .all(sessionID)
+      .all(sessionID, sessionID)
   } finally {
     sqlite.close()
   }
@@ -203,6 +204,11 @@ describe("durable cross-process Session prompt ownership", () => {
         { owner },
       )
       const standbyReceipt = JSON.parse(await fs.readFile(path.join(barrier, "owner.standby"), "utf8"))
+      expect(readSessionLifecycle(runtime, sessionID).map((event) => JSON.parse(event.payload))).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ inputMessageID: firstMessageID, status: { type: "idle" } }),
+        ]),
+      )
       expect(standbyReceipt).toEqual({
         sessionID,
         standbyCount: 1,
