@@ -422,6 +422,7 @@ bun ./packages/sdk/js/script/build.ts
 ## 文档与贡献
 
 - 产品文档：<https://opencorvus.com/zh-cn/start/quickstart/>
+- 可核对的首次交付：[Parcel Notes 样例与后续任务](./examples/README.md#中文)
 - 更新日志：[`CHANGELOG.md`](./CHANGELOG.md)
 - GitHub Action：[`github/README.md`](./github/README.md)
 - 贡献指南：[`CONTRIBUTING.md`](./CONTRIBUTING.md)

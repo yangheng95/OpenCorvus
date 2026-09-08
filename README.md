@@ -456,6 +456,7 @@ bun ./packages/sdk/js/script/build.ts
 ## Documentation and contributing
 
 - Documentation: <https://opencorvus.com/start/quickstart/>
+- A first result you can check: [Parcel Notes sample and follow-up](./examples/README.md#english)
 - Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
 - GitHub Action: [`github/README.md`](./github/README.md)
 - Contributing: [`CONTRIBUTING.md`](./CONTRIBUTING.md)
