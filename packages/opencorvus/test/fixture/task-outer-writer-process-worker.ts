@@ -10,7 +10,13 @@ import {
 import { Instance } from "@/project/instance"
 import { Session } from "@/session"
 import { Identifier } from "@/id/id"
-import { EngineTaskTable, EngineArtifactTable, EngineBrowserPreviewTargetIdentityTable } from "@/engine/engine.sql"
+import {
+  EngineTaskTable,
+  EngineArtifactTable,
+  EngineBrowserPreviewTargetIdentityTable,
+  EngineTaskRootIngressTable,
+} from "@/engine/engine.sql"
+import { persistProcessShutdownRecoveryHandoffs } from "@/engine/task-root-ingress-delivery"
 import { persistBrowserPreviewTarget, promoteBrowserPreviewTarget } from "@/browser-preview/persist"
 import { appendTaskOpenedInTransaction } from "@/engine/task-lifecycle"
 import { recordEngineArtifact, updateEngineArtifact } from "@/engine/artifact"
@@ -181,6 +187,7 @@ try {
           "promote",
           "state",
           "completion",
+          "shutdown",
           ...mailboxModes,
           ...fileModes,
         ].includes(mode)
@@ -204,6 +211,45 @@ try {
         await Bun.sleep(10)
       }
       const receipts: Array<{ reason: string; count: number }> = []
+      if (mode === "shutdown") {
+        const task = completionTasks?.[Number(label)]
+        if (!task) throw new Error("Shutdown writer requires its seeded Task")
+        const handoffs = Array.from({ length: 25 }, (_, index) => {
+          const reason = `shutdown-${label}-${index}`
+          const result = persistProcessShutdownRecoveryHandoffs({
+            tasks: [{ taskID: task.taskID, ownedSessionIDs: [task.sessionID] }],
+            reason,
+          })
+          if (result.length !== 1) throw new Error("Expected one active Task handoff")
+          return { ...result[0], reason }
+        })
+        const persisted = Database.use((db) =>
+          handoffs.map((handoff) => {
+            const fact = db
+              .select()
+              .from(EngineArtifactTable)
+              .where(eq(EngineArtifactTable.id, handoff.recoveryFactID))
+              .get()
+            const wake = db
+              .select()
+              .from(EngineTaskRootIngressTable)
+              .where(eq(EngineTaskRootIngressTable.id, handoff.wakeID))
+              .get()
+            return {
+              taskID: fact?.task_id,
+              recoveryFactID: fact?.id,
+              wakeID: wake?.id,
+              wakeTaskID: wake?.task_id,
+              source: wake?.source,
+              sourceID: wake?.source_id,
+              epoch: wake?.execution_epoch,
+              reason: (fact?.payload as { reason?: string } | undefined)?.reason,
+            }
+          }),
+        )
+        console.log(JSON.stringify({ handoffs, persisted, previews: [] }))
+        return
+      }
       if (mode === "completion") {
         const task = completionTasks?.[Number(label)]
         if (!task) throw new Error("Completion writer requires its seeded Task")

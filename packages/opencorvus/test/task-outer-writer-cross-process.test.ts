@@ -52,6 +52,7 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       "file-artifact",
       "file-replace",
       "completion",
+      "shutdown",
     ]) {
       const workers = Array.from({ length: 4 }, (_, index) => spawn(mode, String(index)))
       const deadline = Date.now() + 30_000
@@ -75,6 +76,35 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       }
       await fs.writeFile(path.join(directory, `${mode}.start`), "start")
       const results = await Promise.all(workers.map(read))
+      if (mode === "shutdown") {
+        for (const [worker, result] of results.entries()) {
+          expect(result.handoffs.map((handoff: { reason: string }) => handoff.reason)).toEqual(
+            Array.from({ length: 25 }, (_, index) => `shutdown-${worker}-${index}`),
+          )
+          expect(result.persisted).toEqual(
+            result.handoffs.map(
+              (handoff: { taskID: string; recoveryFactID: string; wakeID: string; reason: string }) => ({
+                ...handoff,
+                wakeTaskID: handoff.taskID,
+                source: "engine_artifact",
+                sourceID: handoff.recoveryFactID,
+                epoch: 1,
+              }),
+            ),
+          )
+        }
+        expect(
+          new Set(
+            results.flatMap((result) =>
+              result.handoffs.map((handoff: { recoveryFactID: string }) => handoff.recoveryFactID),
+            ),
+          ).size,
+        ).toBe(100)
+        expect(
+          new Set(results.flatMap((result) => result.handoffs.map((handoff: { wakeID: string }) => handoff.wakeID)))
+            .size,
+        ).toBe(100)
+      }
       if (mode === "completion") {
         expect(results.map((result) => result.closures)).toEqual(
           Array.from({ length: 4 }, (_, worker) =>

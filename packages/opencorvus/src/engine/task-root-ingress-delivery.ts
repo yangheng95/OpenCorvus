@@ -2226,7 +2226,7 @@ export function persistProcessShutdownRecoveryHandoffs(input: {
   now?: number
 }): Array<{ taskID: string; recoveryFactID: string; wakeID: string }> {
   const now = input.now ?? Date.now()
-  return Database.transaction((db) =>
+  return Database.immediateTransaction((db) =>
     input.tasks.flatMap((item) => {
       const task = findTask(item.taskID)
       if (!task || item.ownedSessionIDs.length === 0) return []
