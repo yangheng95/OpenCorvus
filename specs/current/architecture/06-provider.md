@@ -318,6 +318,12 @@ occurrence 和新 plugin side effect 之前完成。pending owner 过期后的�
 新请求必须先由同一 durable admission 返回 live-owner conflict，不能在被拒绝前释放旧 callback 的 listener 或其他资源。
 code method 缺少 code 时返回 typed refusal 且不 claim/settle flow，因此调用者可携带 code 完成同一 occurrence。
 
+内置 OpenAI、GitHub Copilot 和 xAI device callback 由 `ManagedOAuthDeviceAuthorization` 持有五分钟上限；有效的
+provider expiry 可缩短期限。poll、token exchange 的 fetch/body read 和等待共享同一 AbortSignal，期限到达或
+executor disposal 会中止操作，callback rejection 进入现有 exchange failure 结算。成功 callback 释放 timer。
+Overlay authorize/callback 请求仍使用现有有限请求超时；观察端超时不等于服务端 flow 已结算。
+此契约不覆盖尚未返回 executor 的 preparation、未调用 callback 的 pending flow 或 browser token exchange 的网络期限。
+
 callback 在调用 token endpoint 前核对 authorize 时绑定的 `expectedCredentialGeneration`。远端调用前 occurrence 从
 `pending` 进入 `exchanging`，返回 credential 后先写 `credential_ready`、credential digest 和预铸的 output generation，
 再以 compare-and-swap 提交 `auth.json`，只有该 generation 的 credential commit 成功后才能进入 `consumed`。

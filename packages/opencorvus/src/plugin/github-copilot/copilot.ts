@@ -5,7 +5,7 @@ import type { PhysicalProviderHooks } from "@/plugin"
 import type { Model } from "@opencorvus-ai/sdk"
 import { Installation } from "../../installation"
 import { iife } from "@/util/iife"
-import { setTimeout as sleep } from "node:timers/promises"
+import { ManagedOAuthDeviceAuthorization } from "../oauth-lifecycle"
 import { CopilotModels } from "./models"
 
 const CLIENT_ID = "Ov23li8tweQw6odWQebz"
@@ -245,86 +245,91 @@ export async function CopilotAuthPlugin(input: PluginInput): Promise<Hooks & Phy
             const deviceData = (await deviceResponse.json()) as {
               verification_uri: string
               user_code: string
+              expires_in?: number
               device_code: string
               interval: number
             }
 
+            const lifetime = new ManagedOAuthDeviceAuthorization({ expiresIn: deviceData.expires_in })
             return {
               url: deviceData.verification_uri,
               instructions: `Enter code: ${deviceData.user_code}`,
               method: "auto" as const,
-              async callback() {
-                while (true) {
-                  const response = await fetch(urls.ACCESS_TOKEN_URL, {
-                    method: "POST",
-                    headers: {
-                      Accept: "application/json",
-                      "Content-Type": "application/json",
-                      "User-Agent": `opencorvus/${Installation.VERSION}`,
-                    },
-                    body: JSON.stringify({
-                      client_id: CLIENT_ID,
-                      device_code: deviceData.device_code,
-                      grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-                    }),
-                  })
+              dispose: () => lifetime.dispose(),
+              callback: () =>
+                lifetime.run(async () => {
+                  while (true) {
+                    const response = await fetch(urls.ACCESS_TOKEN_URL, {
+                      method: "POST",
+                      signal: lifetime.signal,
+                      headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json",
+                        "User-Agent": `opencorvus/${Installation.VERSION}`,
+                      },
+                      body: JSON.stringify({
+                        client_id: CLIENT_ID,
+                        device_code: deviceData.device_code,
+                        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+                      }),
+                    })
 
-                  if (!response.ok) return { type: "failed" as const }
+                    if (!response.ok) return { type: "failed" as const }
 
-                  const data = (await response.json()) as {
-                    access_token?: string
-                    error?: string
-                    interval?: number
-                  }
-
-                  if (data.access_token) {
-                    const result: {
-                      type: "success"
-                      refresh: string
-                      access: string
-                      expires: number
-                      enterpriseUrl?: string
-                    } = {
-                      type: "success",
-                      refresh: data.access_token,
-                      access: data.access_token,
-                      expires: 0,
+                    const data = (await response.json()) as {
+                      access_token?: string
+                      error?: string
+                      interval?: number
                     }
 
-                    if (deploymentType === "enterprise") {
-                      result.enterpriseUrl = domain
+                    if (data.access_token) {
+                      const result: {
+                        type: "success"
+                        refresh: string
+                        access: string
+                        expires: number
+                        enterpriseUrl?: string
+                      } = {
+                        type: "success",
+                        refresh: data.access_token,
+                        access: data.access_token,
+                        expires: 0,
+                      }
+
+                      if (deploymentType === "enterprise") {
+                        result.enterpriseUrl = domain
+                      }
+
+                      return result
                     }
 
-                    return result
-                  }
+                    if (data.error === "authorization_pending") {
+                      await lifetime.wait(deviceData.interval * 1000 + OAUTH_POLLING_SAFETY_MARGIN_MS)
+                      continue
+                    }
 
-                  if (data.error === "authorization_pending") {
-                    await sleep(deviceData.interval * 1000 + OAUTH_POLLING_SAFETY_MARGIN_MS)
+                    if (data.error === "slow_down") {
+                      // Based on the RFC spec, we must add 5 seconds to our current polling interval.
+                      // (See https://www.rfc-editor.org/rfc/rfc8628#section-3.5)
+                      let newInterval = (deviceData.interval + 5) * 1000
+
+                      // GitHub OAuth API may return the new interval in seconds in the response.
+                      // We should try to use that if provided with safety margin.
+                      const serverInterval = data.interval
+                      if (serverInterval && typeof serverInterval === "number" && serverInterval > 0) {
+                        newInterval = serverInterval * 1000
+                      }
+
+                      await lifetime.wait(newInterval + OAUTH_POLLING_SAFETY_MARGIN_MS)
+                      continue
+                    }
+
+                    if (data.error) return { type: "failed" as const }
+
+                    await lifetime.wait(deviceData.interval * 1000 + OAUTH_POLLING_SAFETY_MARGIN_MS)
                     continue
                   }
-
-                  if (data.error === "slow_down") {
-                    // Based on the RFC spec, we must add 5 seconds to our current polling interval.
-                    // (See https://www.rfc-editor.org/rfc/rfc8628#section-3.5)
-                    let newInterval = (deviceData.interval + 5) * 1000
-
-                    // GitHub OAuth API may return the new interval in seconds in the response.
-                    // We should try to use that if provided with safety margin.
-                    const serverInterval = data.interval
-                    if (serverInterval && typeof serverInterval === "number" && serverInterval > 0) {
-                      newInterval = serverInterval * 1000
-                    }
-
-                    await sleep(newInterval + OAUTH_POLLING_SAFETY_MARGIN_MS)
-                    continue
-                  }
-
-                  if (data.error) return { type: "failed" as const }
-
-                  await sleep(deviceData.interval * 1000 + OAUTH_POLLING_SAFETY_MARGIN_MS)
-                  continue
-                }
-              },
+                }),
             }
           },
         },

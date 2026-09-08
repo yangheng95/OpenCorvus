@@ -4,7 +4,12 @@ import { OAUTH_DUMMY_KEY } from "../auth"
 import { createServer } from "http"
 import { Installation } from "../installation"
 import { escapeHtml } from "@/util/html"
-import { ManagedOAuthCallbackOwner, ManagedOAuthListenerOwner, type OAuthCallbackLease } from "./oauth-lifecycle"
+import {
+  ManagedOAuthDeviceAuthorization,
+  ManagedOAuthCallbackOwner,
+  ManagedOAuthListenerOwner,
+  type OAuthCallbackLease,
+} from "./oauth-lifecycle"
 
 // Public Grok-CLI OAuth client. xAI's auth server rejects loopback OAuth from
 // non-allowlisted clients, so we reuse the Grok-CLI client_id that xAI ships
@@ -29,7 +34,6 @@ const SCOPE = "openid profile email offline_access grok-cli:access api:access"
 const DEVICE_CODE_DEFAULT_INTERVAL_MS = 5_000
 const DEVICE_CODE_MIN_INTERVAL_MS = 1_000
 const DEVICE_CODE_SLOW_DOWN_INCREMENT_MS = 5_000
-const DEVICE_CODE_DEFAULT_EXPIRES_MS = 5 * 60 * 1000
 const OAUTH_POLLING_SAFETY_MARGIN_MS = 3_000
 
 // xAI rejects redirect_uris that don't match what was registered for the
@@ -217,12 +221,6 @@ export async function requestDeviceCode(options: XaiAuthPluginOptions = {}): Pro
   return json
 }
 
-// Default sleep used between device-code polls. Test-injectable so we can
-// exercise authorization_pending / slow_down branches without real waits.
-async function defaultSleep(ms: number): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, ms))
-}
-
 // Normalize a server-supplied seconds value to milliseconds, falling back to
 // the supplied default when the input is missing, non-positive, or not a
 // finite number. Defends the polling loop against garbage like `NaN`, `"NaN"`,
@@ -236,23 +234,22 @@ function positiveSecondsToMs(value: unknown, defaultMs: number): number {
   return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : defaultMs
 }
 
-export async function pollDeviceCodeToken(
+async function pollDeviceCodeToken(
   device: DeviceCodeResponse,
-  options: XaiAuthPluginOptions & { sleep?: (ms: number) => Promise<void>; now?: () => number } = {},
+  options: XaiAuthPluginOptions,
+  lifetime: ManagedOAuthDeviceAuthorization,
 ): Promise<TokenResponse> {
-  const sleep = options.sleep ?? defaultSleep
-  const now = options.now ?? (() => Date.now())
-  const expiresInMs = positiveSecondsToMs(device.expires_in, DEVICE_CODE_DEFAULT_EXPIRES_MS)
-  const deadline = now() + expiresInMs
   let intervalMs = Math.max(
     positiveSecondsToMs(device.interval, DEVICE_CODE_DEFAULT_INTERVAL_MS),
     DEVICE_CODE_MIN_INTERVAL_MS,
   )
 
-  while (now() < deadline) {
+  while (true) {
+    lifetime.signal.throwIfAborted()
     const response = await fetch(options.tokenUrl ?? TOKEN_URL, {
       method: "POST",
       headers: authHeaders(),
+      signal: lifetime.signal,
       body: new URLSearchParams({
         grant_type: DEVICE_CODE_GRANT_TYPE,
         client_id: CLIENT_ID,
@@ -262,17 +259,16 @@ export async function pollDeviceCodeToken(
     if (response.ok) return (await response.json()) as TokenResponse
 
     const body = (await response.json()) as DeviceTokenErrorBody
-    const remaining = Math.max(0, deadline - now())
     // RFC 8628 §3.5: authorization_pending = keep polling at the same
     // interval; slow_down = bump the interval by ≥5s and keep polling.
     // Anything else is terminal.
     if (body.error === "authorization_pending") {
-      await sleep(Math.min(intervalMs + OAUTH_POLLING_SAFETY_MARGIN_MS, remaining))
+      await lifetime.wait(intervalMs + OAUTH_POLLING_SAFETY_MARGIN_MS)
       continue
     }
     if (body.error === "slow_down") {
       intervalMs += DEVICE_CODE_SLOW_DOWN_INCREMENT_MS
-      await sleep(Math.min(intervalMs + OAUTH_POLLING_SAFETY_MARGIN_MS, remaining))
+      await lifetime.wait(intervalMs + OAUTH_POLLING_SAFETY_MARGIN_MS)
       continue
     }
     if (body.error === "access_denied" || body.error === "authorization_denied") {
@@ -284,7 +280,6 @@ export async function pollDeviceCodeToken(
     const detail = body.error_description ?? body.error ?? ""
     throw new Error(`xAI device token exchange failed (${response.status})${detail ? `: ${detail}` : ""}`)
   }
-  throw new Error("xAI device authorization timed out")
 }
 
 const HTML_SUCCESS = `<!doctype html>
@@ -630,25 +625,28 @@ export async function XaiAuthPlugin(input: PluginInput, options: XaiAuthPluginOp
           // environment where 127.0.0.1:56121 isn't reachable from the
           // user's browser. Defends the only attack surface (the polling
           // loop) with the standard authorization_pending / slow_down
-          // backoff and a hard deadline from xAI's `expires_in`.
+          // backoff and a bounded lifetime shortened by xAI's `expires_in`.
           label: "xAI Grok OAuth (Headless / Remote / VPS)",
           type: "oauth",
           authorize: async () => {
             const device = await requestDeviceCode(options)
+            const lifetime = new ManagedOAuthDeviceAuthorization({ expiresIn: device.expires_in })
             const browserUrl = device.verification_uri_complete ?? device.verification_uri
             return {
               url: browserUrl,
               instructions: `Open ${device.verification_uri} on any device and enter code: ${device.user_code}`,
               method: "auto" as const,
-              callback: async () => {
-                const tokens = await pollDeviceCodeToken(device, options)
-                return {
-                  type: "success" as const,
-                  refresh: tokens.refresh_token,
-                  access: tokens.access_token,
-                  expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
-                }
-              },
+              dispose: () => lifetime.dispose(),
+              callback: () =>
+                lifetime.run(async () => {
+                  const tokens = await pollDeviceCodeToken(device, options, lifetime)
+                  return {
+                    type: "success" as const,
+                    refresh: tokens.refresh_token,
+                    access: tokens.access_token,
+                    expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
+                  }
+                }),
             }
           },
         },

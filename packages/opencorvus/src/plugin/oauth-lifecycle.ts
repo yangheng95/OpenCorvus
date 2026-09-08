@@ -1,3 +1,56 @@
+export const OAUTH_AUTHORIZATION_TIMEOUT_MS = 5 * 60 * 1000
+
+/** One device grant owns its requests and waits through expiry or disposal. */
+export class ManagedOAuthDeviceAuthorization {
+  private readonly controller = new AbortController()
+  private readonly timer: ReturnType<typeof setTimeout>
+  private running: Promise<unknown> | undefined
+  readonly signal = this.controller.signal
+
+  constructor(options: { expiresIn?: number; timeoutMs?: number } = {}) {
+    const maximum = options.timeoutMs ?? OAUTH_AUTHORIZATION_TIMEOUT_MS
+    const expiry = options.expiresIn
+    const duration =
+      typeof expiry === "number" && Number.isFinite(expiry) && expiry > 0 ? Math.min(maximum, expiry * 1000) : maximum
+    this.timer = setTimeout(() => this.controller.abort(new Error("Device authorization expired")), duration)
+  }
+
+  async run<T>(operation: () => Promise<T>): Promise<T> {
+    this.signal.throwIfAborted()
+    const running = Promise.resolve().then(operation)
+    this.running = running
+    try {
+      const result = await running
+      this.signal.throwIfAborted()
+      return result
+    } finally {
+      clearTimeout(this.timer)
+    }
+  }
+
+  async wait(milliseconds: number): Promise<void> {
+    this.signal.throwIfAborted()
+    await new Promise<void>((resolve, reject) => {
+      const abort = () => {
+        clearTimeout(timer)
+        this.signal.removeEventListener("abort", abort)
+        reject(this.signal.reason)
+      }
+      const timer = setTimeout(() => {
+        this.signal.removeEventListener("abort", abort)
+        resolve()
+      }, milliseconds)
+      this.signal.addEventListener("abort", abort, { once: true })
+    })
+  }
+
+  async dispose(): Promise<void> {
+    clearTimeout(this.timer)
+    this.controller.abort(new Error("Device authorization disposed"))
+    await this.running?.catch(() => undefined)
+  }
+}
+
 interface OAuthCallbackWaitOptions {
   timeoutMs: number
   supersededError: () => Error

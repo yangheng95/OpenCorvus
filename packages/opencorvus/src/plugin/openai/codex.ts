@@ -5,10 +5,15 @@ import type { PhysicalProviderHooks } from "@/plugin"
 import { Installation } from "../../installation"
 import { Auth, OAUTH_DUMMY_KEY } from "../../auth"
 import os from "os"
-import { setTimeout as sleep } from "node:timers/promises"
+
 import { createServer } from "http"
 import { escapeHtml } from "@/util/html"
-import { ManagedOAuthCallbackOwner, ManagedOAuthListenerOwner, type OAuthCallbackLease } from "../oauth-lifecycle"
+import {
+  ManagedOAuthDeviceAuthorization,
+  ManagedOAuthCallbackOwner,
+  ManagedOAuthListenerOwner,
+  type OAuthCallbackLease,
+} from "../oauth-lifecycle"
 import { ProviderAuthRequiredError } from "@/provider/auth-required-error"
 
 const CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann"
@@ -548,64 +553,69 @@ export async function CodexAuthPlugin(
             }
             const interval = Math.max(parseInt(deviceData.interval) || 5, 1) * 1000
 
+            const lifetime = new ManagedOAuthDeviceAuthorization()
             return {
               url: `${ISSUER}/codex/device`,
               instructions: `Enter code: ${deviceData.user_code}`,
               method: "auto" as const,
-              async callback() {
-                while (true) {
-                  const response = await fetch(`${ISSUER}/api/accounts/deviceauth/token`, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "User-Agent": `opencorvus/${Installation.VERSION}`,
-                    },
-                    body: JSON.stringify({
-                      device_auth_id: deviceData.device_auth_id,
-                      user_code: deviceData.user_code,
-                    }),
-                  })
-
-                  if (response.ok) {
-                    const data = (await response.json()) as {
-                      authorization_code: string
-                      code_verifier: string
-                    }
-
-                    const tokenResponse = await fetch(`${ISSUER}/oauth/token`, {
+              dispose: () => lifetime.dispose(),
+              callback: () =>
+                lifetime.run(async () => {
+                  while (true) {
+                    const response = await fetch(`${ISSUER}/api/accounts/deviceauth/token`, {
                       method: "POST",
-                      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                      body: new URLSearchParams({
-                        grant_type: "authorization_code",
-                        code: data.authorization_code,
-                        redirect_uri: `${ISSUER}/deviceauth/callback`,
-                        client_id: CLIENT_ID,
-                        code_verifier: data.code_verifier,
-                      }).toString(),
+                      signal: lifetime.signal,
+                      headers: {
+                        "Content-Type": "application/json",
+                        "User-Agent": `opencorvus/${Installation.VERSION}`,
+                      },
+                      body: JSON.stringify({
+                        device_auth_id: deviceData.device_auth_id,
+                        user_code: deviceData.user_code,
+                      }),
                     })
 
-                    if (!tokenResponse.ok) {
-                      throw new Error(`Token exchange failed: ${tokenResponse.status}`)
+                    if (response.ok) {
+                      const data = (await response.json()) as {
+                        authorization_code: string
+                        code_verifier: string
+                      }
+
+                      const tokenResponse = await fetch(`${ISSUER}/oauth/token`, {
+                        method: "POST",
+                        signal: lifetime.signal,
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: new URLSearchParams({
+                          grant_type: "authorization_code",
+                          code: data.authorization_code,
+                          redirect_uri: `${ISSUER}/deviceauth/callback`,
+                          client_id: CLIENT_ID,
+                          code_verifier: data.code_verifier,
+                        }).toString(),
+                      })
+
+                      if (!tokenResponse.ok) {
+                        throw new Error(`Token exchange failed: ${tokenResponse.status}`)
+                      }
+
+                      const tokens: TokenResponse = await tokenResponse.json()
+
+                      return {
+                        type: "success" as const,
+                        refresh: tokens.refresh_token,
+                        access: tokens.access_token,
+                        expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
+                        accountId: extractAccountId(tokens),
+                      }
                     }
 
-                    const tokens: TokenResponse = await tokenResponse.json()
-
-                    return {
-                      type: "success" as const,
-                      refresh: tokens.refresh_token,
-                      access: tokens.access_token,
-                      expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
-                      accountId: extractAccountId(tokens),
+                    if (response.status !== 403 && response.status !== 404) {
+                      return { type: "failed" as const }
                     }
-                  }
 
-                  if (response.status !== 403 && response.status !== 404) {
-                    return { type: "failed" as const }
+                    await lifetime.wait(interval + OAUTH_POLLING_SAFETY_MARGIN_MS)
                   }
-
-                  await sleep(interval + OAUTH_POLLING_SAFETY_MARGIN_MS)
-                }
-              },
+                }),
             }
           },
         },
