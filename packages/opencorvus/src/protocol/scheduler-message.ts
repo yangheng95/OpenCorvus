@@ -135,7 +135,7 @@ export async function sendSchedulerMessage(input: {
     threadID = input.invocationID
   }
 
-  const receipt = Database.transaction((db) => {
+  const receipt = Database.immediateTransaction((db) => {
     const persisted = enqueueSchedulerMessageInTransaction(db, {
       invocationID: input.invocationID,
       kind: input.kind,

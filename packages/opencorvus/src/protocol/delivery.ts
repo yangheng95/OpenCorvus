@@ -1117,7 +1117,8 @@ export function enqueueSchedulerMessageInTransaction(
   })
   const recipient = endpointRecipient(target)
   const expectedEventKind = kind === "request" ? "command" : kind === "reply" ? "reply" : "event"
-  const expectedSessionID = target.kind === "mission_scheduler" ? target.session_id : target.root_session_id
+  // Session aggregates own their identity in aggregate_id; only Task envelopes carry a related root Session.
+  const expectedSessionID = target.kind === "mission_scheduler" ? null : target.root_session_id
   const expectedCausationID = input.replyTo ?? input.sourceTerminalEventID ?? null
   let sourceTaskExecutionEpoch: number | null = null
   if (source.kind === "task_scheduler") {
