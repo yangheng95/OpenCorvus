@@ -378,7 +378,7 @@ export function recordMailboxMessage(input: MailboxAgentMessagePayloadType & { c
   const { correlationID, ...payloadInput } = input
   const parsed = MailboxAgentMessagePayload.parse(payloadInput)
   let result: { id: string; createdNow: boolean; payload: MailboxAgentMessagePayloadType } | undefined
-  Database.transaction((db) => {
+  Database.immediateTransaction((db) => {
     const existing = db
       .select()
       .from(ProtocolEventTable)
@@ -448,7 +448,7 @@ function emitMailboxAcknowledgement(source: ProtocolEventRow, messageID: string,
 }
 
 export function acknowledgeMailboxItem(input: { messageID: string; action: MailboxAction }) {
-  return Database.transaction(() => {
+  return Database.immediateTransaction(() => {
     const source = mailboxSourceEvent(input.messageID)
     if (!source || !protocolEventTaskID(source)) throw new MailboxItemNotFoundError(input.messageID)
     const state = mailboxState().get(input.messageID)
@@ -464,7 +464,7 @@ export function acknowledgeMailboxItem(input: { messageID: string; action: Mailb
 }
 
 export function acknowledgeAllMailboxItemsRead(): MailboxReadAllResult {
-  return Database.transaction(() => {
+  return Database.immediateTransaction(() => {
     const state = mailboxState()
     let changedCount = 0
     for (const row of allMailboxSourceRows()) {
@@ -480,7 +480,7 @@ export function acknowledgeAllMailboxItemsRead(): MailboxReadAllResult {
 
 export function deleteMailboxItems(input: { messageIDs: string[] }): MailboxDeleteResult {
   const messageIDs = [...new Set(input.messageIDs)]
-  return Database.transaction(() => {
+  return Database.immediateTransaction(() => {
     const sources = messageIDs.map((messageID) => {
       const source = mailboxSourceEvent(messageID)
       if (!source || !protocolEventTaskID(source)) throw new MailboxItemNotFoundError(messageID)

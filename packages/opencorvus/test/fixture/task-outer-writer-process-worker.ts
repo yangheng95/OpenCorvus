@@ -1,6 +1,12 @@
 import fs from "node:fs"
 import path from "node:path"
-import { Database, asc, eq } from "@/storage/db"
+import { Database, and, asc, eq } from "@/storage/db"
+import {
+  recordMailboxMessage,
+  acknowledgeMailboxItem,
+  acknowledgeAllMailboxItemsRead,
+  deleteMailboxItems,
+} from "@/engine/mailbox"
 import { Instance } from "@/project/instance"
 import { Session } from "@/session"
 import { Identifier } from "@/id/id"
@@ -47,17 +53,18 @@ try {
             payload: { index },
           }),
         )
-        fs.writeFileSync(inputPath, JSON.stringify({ taskID, artifacts }))
+        fs.writeFileSync(inputPath, JSON.stringify({ taskID, sessionID: session.id, artifacts }))
         return
       }
-      const { taskID, artifacts } = JSON.parse(fs.readFileSync(inputPath, "utf8")) as {
+      const { taskID, sessionID, artifacts } = JSON.parse(fs.readFileSync(inputPath, "utf8")) as {
         taskID: string
+        sessionID: string
         artifacts: string[]
       }
       if (mode === "inspect") {
         const events = Database.use((db) =>
           db
-            .select({ type: ProtocolEventTable.type, payload: ProtocolEventTable.payload })
+            .select({ id: ProtocolEventTable.id, type: ProtocolEventTable.type, payload: ProtocolEventTable.payload })
             .from(ProtocolEventTable)
             .where(eq(ProtocolEventTable.aggregate_id, taskID))
             .orderBy(asc(ProtocolEventTable.seq))
@@ -86,7 +93,15 @@ try {
         console.log(JSON.stringify({ events, artifacts: rows, targets, cursor: taskRewindCursor(taskID) }))
         return
       }
-      if (!label || !["rewind", "artifact", "clear", "preview", "promote"].includes(mode))
+      const mailboxModes = [
+        "mailbox-record",
+        "mailbox-read",
+        "mailbox-readall",
+        "mailbox-archive",
+        "mailbox-restore",
+        "mailbox-delete",
+      ]
+      if (!label || !["rewind", "artifact", "clear", "preview", "promote", ...mailboxModes].includes(mode))
         throw new Error("Invalid Task writer mode")
       const targetID =
         mode === "promote"
@@ -106,6 +121,47 @@ try {
         await Bun.sleep(10)
       }
       const receipts: Array<{ reason: string; count: number }> = []
+      if (mailboxModes.includes(mode)) {
+        if (mode === "mailbox-record") {
+          const messages = Array.from({ length: 25 }, (_, index) =>
+            recordMailboxMessage({
+              taskID,
+              sessionID,
+              agentID: "solution-architect",
+              expertSquadID: "advanced",
+              category: "notification",
+              subject: `Status ${index}`,
+              body: `Body ${index}`,
+              attention: true,
+              evidenceLocators: [],
+              summary: `Status ${index}`,
+              correlationID: `concurrent-mailbox-${index}`,
+            }),
+          )
+          console.log(JSON.stringify({ messages }))
+        } else {
+          const sources = Database.use((db) =>
+            db
+              .select({ id: ProtocolEventTable.id })
+              .from(ProtocolEventTable)
+              .where(and(eq(ProtocolEventTable.aggregate_id, taskID), eq(ProtocolEventTable.type, "mailbox.message")))
+              .orderBy(asc(ProtocolEventTable.seq))
+              .all(),
+          )
+          let changedCount = 0
+          if (mode === "mailbox-readall") changedCount = acknowledgeAllMailboxItemsRead().changedCount
+          else if (mode === "mailbox-delete")
+            changedCount = deleteMailboxItems({ messageIDs: sources.map((row) => row.id) }).changedCount
+          else {
+            const action = mode === "mailbox-read" ? "read" : mode === "mailbox-archive" ? "archive" : "restore"
+            for (const row of mode === "mailbox-read" ? sources.slice(0, 1) : sources) {
+              if (acknowledgeMailboxItem({ messageID: row.id, action }).changed) changedCount++
+            }
+          }
+          console.log(JSON.stringify({ changedCount }))
+        }
+        return
+      }
       const previews: Array<{ id: string; updated: number }> = []
       if (mode === "clear") await clearRewindCursor(taskID)
       else
