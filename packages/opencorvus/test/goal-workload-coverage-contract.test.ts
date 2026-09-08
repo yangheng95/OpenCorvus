@@ -1,4 +1,5 @@
 import { Database as BunDatabase } from "bun:sqlite"
+import { createHash } from "node:crypto"
 import { describe, expect, spyOn, test } from "bun:test"
 import fs from "node:fs/promises"
 import path from "node:path"
@@ -995,10 +996,11 @@ describe("Goal Workload coverage contract", () => {
     const dispatchID = Identifier.ascending("artifact")
     const first = goalWorkloadPublicationArtifactID({ taskID, dispatchID })
     const second = goalWorkloadPublicationArtifactID({ taskID, dispatchID })
-    expect({ first, second, valid: /^art_goal_workload_[a-f0-9]{64}$/.test(first) }).toEqual({
+    expect({ first, second, valid: Identifier.isCanonical("artifact", first), length: first.length }).toEqual({
       first,
       second: first,
       valid: true,
+      length: Identifier.MAX_LENGTH,
     })
   })
 
@@ -1159,6 +1161,8 @@ describe("Goal Workload coverage contract", () => {
           now: now + 6,
         })
         const rows = listGoalWorkloadArtifacts(taskID)
+        expect(published.locator.artifact_id.length).toBe(Identifier.MAX_LENGTH)
+        expect(published.locator.expected_sha256).toMatch(/^[a-f0-9]{64}$/)
         expect({
           published,
           replay,
@@ -1415,8 +1419,41 @@ describe("Goal Workload coverage contract", () => {
         })
         await Database.awaitEffectIdle(30_000)
         Database.close()
-        expect(() => Database.Client()).not.toThrow()
+        Database.Client()
         expect(listGoalWorkloadArtifacts(task.taskID)[0]?.payload.schema_version).toBe(2)
+      },
+    })
+  }, 30_000)
+
+  test("startup classifies a genuine prior-format Workload publication through its existing integrity authority", async () => {
+    await using project = await memoryProject()
+    await Instance.provide({
+      directory: project.path,
+      fn: async () => {
+        const task = await createTaskFixture("Prior-format Workload identity")
+        const turn = await createWorkloadTurn({ task, selectedGoalIDs: [] })
+        const material = `opencorvus.goal-workload.publication.v2\0${task.taskID}\0${turn.dispatchID}`
+        const legacyID = `art_goal_workload_${createHash("sha256").update(material).digest("hex")}`
+        const deterministic = Identifier.deterministic
+        const legacyIssuer = spyOn(Identifier, "deterministic").mockImplementation((kind, value) =>
+          kind === "artifact" && value === material ? legacyID : deterministic(kind, value),
+        )
+        try {
+          const published = publishGoalWorkload({
+            taskID: task.taskID,
+            dispatchID: turn.dispatchID,
+            sessionID: turn.child.id,
+            finalMessageID: turn.final.id,
+            briefs: [],
+            now: task.now + 20,
+          })
+          expect(published.locator.artifact_id).toBe(legacyID)
+        } finally {
+          legacyIssuer.mockRestore()
+        }
+        await Database.awaitEffectIdle(30_000)
+        Database.close()
+        await expectStartupResetRequired(legacyID)
       },
     })
   }, 30_000)

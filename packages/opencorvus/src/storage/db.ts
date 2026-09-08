@@ -345,7 +345,12 @@ function assertCurrentDataIntegrity(
     `SELECT id
      FROM engine_artifact
      WHERE kind = 'expert_output'
-       AND id GLOB 'art_idempotent_*'
+       AND (id GLOB 'art_idempotent_*' OR (
+         id GLOB 'art_feedback_revision_*'
+         AND json_extract(payload, '$.artifact_type') = 'evolution-lab/candidate-revision'
+         AND json_extract(payload, '$.producer.owner_kind') = 'core'
+         AND json_extract(payload, '$.producer.component_id') = 'expert-squad-feedback-revision'
+       ))
      ORDER BY id
      LIMIT 1`,
   )[0]

@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto"
+import { Identifier } from "@/id/id"
+import { NamedError } from "@opencorvus-ai/util/error"
 import { mkdir, rm, writeFile } from "node:fs/promises"
 import path from "node:path"
 import z from "zod"
@@ -28,6 +29,11 @@ import { ExpertSquadVersionSchema } from "./version"
  * its own evidence, so the mutation path accepts this component and no other.
  */
 export const FEEDBACK_REVISION_COMPONENT_ID = "expert-squad-feedback-revision"
+
+export const FeedbackRevisionIdentityConflictError = NamedError.create(
+  "FeedbackRevisionIdentityConflictError",
+  z.object({ artifactID: z.string() }),
+)
 
 const MANIFEST = "expert-squad.jsonc"
 const VERSION_FIELD = /("version"\s*:\s*)"(\d{4}\.\d{2}\.\d{2}\.[1-9]\d*)"/
@@ -350,12 +356,15 @@ function persistCandidate(input: {
     observed_artifact_locators: [],
     source_artifact_locators: [],
   })
-  const artifactID = `art_feedback_revision_${createHash("sha256").update(canonicalEvolutionJSON(envelope)).digest("hex")}`
+  const artifactID = Identifier.deterministic("artifact", `feedback-revision\0${input.taskID}\0${canonicalEvolutionJSON(envelope)}`)
   Database.transaction((db) => {
     const current = db.select().from(EngineArtifactTable).where(eq(EngineArtifactTable.id, artifactID)).get()
     if (current) {
-      if (canonicalEvolutionJSON(EngineArtifactEnvelopeSchema.parse(current.payload)) !== canonicalEvolutionJSON(envelope))
-        throw new Error("Expert Squad feedback revision identity collision")
+      if (
+        current.task_id !== input.taskID ||
+        current.kind !== "expert_output" ||
+        canonicalEvolutionJSON(EngineArtifactEnvelopeSchema.parse(current.payload)) !== canonicalEvolutionJSON(envelope)
+      ) throw new FeedbackRevisionIdentityConflictError({ artifactID })
       return
     }
     insertEngineArtifact(db, {

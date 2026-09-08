@@ -90,6 +90,12 @@ Build terminal observation 与 Evolution mutation receipt 使用同一 `Identifi
 Evolution 重放按完整 receipt identity 验证后才执行 Manager reconcile；不同语义占用同一短 ID 返回
 `EvolutionMutationReceiptIdentityConflictError`，不增加 alias store 或双读。
 
+反馈修订 candidate 使用 Task 与完整 envelope 派生 compact Artifact ID，完整 package/payload digest
+保留；同 ID 的 Task、kind 或 envelope 冲突返回 `FeedbackRevisionIdentityConflictError`。
+旧 expanded candidate 由既有 compact Artifact bootstrap admission 拒绝。Goal Workload publication
+使用 Task/dispatch 派生 compact Artifact ID，publisher、store 与启动关系完整性校验复用同一生成器；
+旧 expanded Workload 由既有 `goalWorkloadCoverage` 启动校验返回 `DATA_RESET_REQUIRED`，不增设第二套检查。
+
 所有表定义在 `src/engine/engine.sql.ts`，命名前缀 `engine_`（历史文档里的
 `orchestrator_*` 已全部重命名为 `engine_*`）。旧的多张过程表已合并为单一
 `engine_artifact`，按 `kind` 区分语义。

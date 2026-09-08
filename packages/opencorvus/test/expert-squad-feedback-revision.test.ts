@@ -1,6 +1,7 @@
-import { afterAll, describe, expect, test } from "bun:test"
+import { afterAll, describe, expect, spyOn, test } from "bun:test"
 import { writeExpertSquadPackage, type ExpertSquadPackageDefinition } from "@opencorvus-ai/sdk/expert-squad-authoring"
 import path from "node:path"
+import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
 import { persistEstablishedTask as persistTask } from "./fixture/engine-task"
 import { prepareTaskProcessBinding } from "../src/engine/task-execution-capsule-binding"
@@ -16,6 +17,7 @@ import {
   nextExpertSquadVersion,
   parseFeedbackRevisionTarget,
   reviseInstalledExpertSquadFromFeedback,
+  FeedbackRevisionIdentityConflictError,
 } from "../src/expert-squad/feedback-revision"
 import { readEvolutionHistory } from "../src/expert-squad/evolution-history"
 import { ExpertSquadPackageManager } from "../src/expert-squad/manager"
@@ -24,6 +26,7 @@ import { Global } from "../src/global"
 import { Identifier } from "../src/id/id"
 import { Instance } from "../src/project/instance"
 import { Session } from "../src/session"
+import { Database, DatabaseUnavailableError } from "../src/storage/db"
 import { configureTaskIngressRunner } from "../src/engine/task-root-ingress-delivery"
 import { memoryProject, resetMemoryDatabase } from "./fixture/memory"
 import { capabilityRef, CapabilityRefCodec } from "@opencorvus-ai/util/capability-ref"
@@ -114,6 +117,66 @@ afterAll(async () => {
 })
 
 describe("revising an installed expert squad from operator feedback", () => {
+  test("startup reports the explicit reset contract for a prior-format feedback candidate", async () => {
+    await using project = await memoryProject()
+    const sourceDirectory = path.join(project.path, "feedback-source")
+    await writeExpertSquadPackage({ directory: sourceDirectory, definition: packageDefinition("2026.08.13.1") })
+    await Instance.provide({
+      directory: project.path,
+      fn: async () => {
+        configureTaskIngressRunner(async () => {})
+        const installed = await ExpertSquadPackageManager.importDirectory({
+          projectDirectory: project.path,
+          sourceDirectory,
+          installationScope: "project",
+        })
+        const task = await createTask({
+          namespace: "evolution-test", id: SQUAD_ID, version: "2026.08.13.1", packageDigest: installed.after.packageDigest,
+        })
+        const prefix = `feedback-revision\0${task.taskID}\0`
+        const deterministic = Identifier.deterministic
+        const legacyIssuer = spyOn(Identifier, "deterministic").mockImplementation((kind, material) =>
+          kind === "artifact" && material.startsWith(prefix)
+            ? `art_feedback_revision_${createHash("sha256").update(material.slice(prefix.length)).digest("hex")}`
+            : deterministic(kind, material),
+        )
+        let artifactID: string
+        try {
+          const revision = await reviseInstalledExpertSquadFromFeedback({
+            taskID: task.taskID,
+            sessionID: task.session.id,
+            request: {
+              target_squad_id: SQUAD_ID, feedback: FEEDBACK, conflicting_instruction: "rewritten",
+              hypothesis: "Use tables and charts to show the requested evidence.",
+              files: [{ path: "agents/feedback-revision-worker/system.md", content: REVISED_PROMPT }],
+            },
+          })
+          artifactID = revision.locator.artifact_id
+        } finally {
+          legacyIssuer.mockRestore()
+        }
+        await Database.awaitEffectIdle(30_000)
+        Database.close()
+        let observed: unknown
+        try {
+          Database.Client()
+        } catch (error) {
+          observed = error
+        }
+        try {
+          expect(DatabaseUnavailableError.isInstance(observed) ? observed.data : undefined).toMatchObject({
+            code: "DATA_RESET_REQUIRED",
+            operation: "Database.Client.dataIntegrity.compactArtifactIdentity",
+            message: expect.stringContaining(artifactID),
+          })
+        } finally {
+          await Database.resetFiles(Database.Path())
+          Database.Client()
+        }
+      },
+    })
+  }, 60_000)
+
   test("derives the next daily revision so the author never restates the version", () => {
     const noon = Date.UTC(2026, 7, 18, 12)
     expect(nextExpertSquadVersion({ current: "2026.08.13.1", now: noon })).toBe("2026.08.18.1")
@@ -155,7 +218,7 @@ describe("revising an installed expert squad from operator feedback", () => {
           packageDigest: baselineDigest,
         })
 
-        const revision = await reviseInstalledExpertSquadFromFeedback({
+        const revisionInput: Parameters<typeof reviseInstalledExpertSquadFromFeedback>[0] = {
           taskID: task.taskID,
           sessionID: task.session.id,
           request: {
@@ -165,7 +228,33 @@ describe("revising an installed expert squad from operator feedback", () => {
             hypothesis: "Naming tables and charts in the worker prompt makes reports carry them.",
             files: [{ path: "agents/feedback-revision-worker/system.md", content: REVISED_PROMPT }],
           },
-        })
+        }
+        const revision = await reviseInstalledExpertSquadFromFeedback(revisionInput)
+        expect(revision.locator.artifact_id.length).toBe(Identifier.MAX_LENGTH)
+        expect(revision.candidatePackageDigest).toMatch(/^[a-f0-9]{64}$/)
+        const replay = await reviseInstalledExpertSquadFromFeedback(revisionInput)
+        expect(replay.locator).toEqual(revision.locator)
+        const deterministic = Identifier.deterministic
+        const collision = spyOn(Identifier, "deterministic").mockImplementation((kind, material) =>
+          kind === "artifact" && material.startsWith("feedback-revision\0")
+            ? revision.locator.artifact_id
+            : deterministic(kind, material),
+        )
+        try {
+          let observed: unknown
+          try {
+            await reviseInstalledExpertSquadFromFeedback({
+              ...revisionInput,
+              request: { ...revisionInput.request, hypothesis: "A distinct evidence interpretation of the same edits." },
+            })
+          } catch (error) {
+            observed = error
+          }
+          expect(FeedbackRevisionIdentityConflictError.isInstance(observed) ? observed.data : undefined)
+            .toEqual({ artifactID: revision.locator.artifact_id })
+        } finally {
+          collision.mockRestore()
+        }
         expect({
           before: revision.expectedCurrentPackageDigest,
           changed: revision.changedPaths,

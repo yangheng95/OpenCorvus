@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { Identifier } from "@/id/id"
 import { isDeepStrictEqual } from "node:util"
 import { artifactProvenanceForAgentTurnInTransaction } from "@/agent/artifact-provenance-facts"
 import { findWorkerTurnDescriptorForDispatchInTransaction } from "@/agent/worker-turn-descriptor-facts"
@@ -17,10 +17,7 @@ import {
 } from "./types"
 
 export function goalWorkloadPublicationArtifactID(input: { taskID: string; dispatchID: string }): string {
-  const digest = createHash("sha256")
-    .update(`opencorvus.goal-workload.publication.v2\0${input.taskID}\0${input.dispatchID}`)
-    .digest("hex")
-  return `art_goal_workload_${digest}`
+  return Identifier.deterministic("artifact", `opencorvus.goal-workload.publication.v2\0${input.taskID}\0${input.dispatchID}`)
 }
 
 export function validateGoalWorkloadArtifactRelationalIntegrity(input: {
