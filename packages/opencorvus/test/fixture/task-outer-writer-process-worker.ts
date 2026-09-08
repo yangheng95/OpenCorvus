@@ -16,6 +16,8 @@ import { appendTaskOpenedInTransaction } from "@/engine/task-lifecycle"
 import { recordEngineArtifact, updateEngineArtifact } from "@/engine/artifact"
 import { rewindTask, clearRewindCursor, taskRewindCursor } from "@/engine/rewind"
 import { ProtocolEventTable } from "@/protocol/protocol.sql"
+import { updateTask } from "@/engine/state"
+import { requireTask } from "@/engine/store"
 
 const [mode, directory, label] = process.argv.slice(2)
 if (!mode || !directory) throw new Error("Task writer worker requires mode and directory")
@@ -90,7 +92,15 @@ try {
             .where(eq(EngineBrowserPreviewTargetIdentityTable.task_id, taskID))
             .all(),
         )
-        console.log(JSON.stringify({ events, artifacts: rows, targets, cursor: taskRewindCursor(taskID) }))
+        console.log(
+          JSON.stringify({
+            events,
+            artifacts: rows,
+            targets,
+            title: requireTask(taskID).title,
+            cursor: taskRewindCursor(taskID),
+          }),
+        )
         return
       }
       const mailboxModes = [
@@ -101,7 +111,7 @@ try {
         "mailbox-restore",
         "mailbox-delete",
       ]
-      if (!label || !["rewind", "artifact", "clear", "preview", "promote", ...mailboxModes].includes(mode))
+      if (!label || !["rewind", "artifact", "clear", "preview", "promote", "state", ...mailboxModes].includes(mode))
         throw new Error("Invalid Task writer mode")
       const targetID =
         mode === "promote"
@@ -163,6 +173,7 @@ try {
         return
       }
       const previews: Array<{ id: string; updated: number }> = []
+      const titles: string[] = []
       if (mode === "clear") await clearRewindCursor(taskID)
       else
         for (let index = 0; index < 25; index++) {
@@ -174,6 +185,13 @@ try {
               reason,
             })
             receipts.push({ reason, count: result.rewindCount })
+          } else if (mode === "state") {
+            const updated = await updateTask(
+              requireTask(taskID),
+              { title: `state-${label}-${index}` },
+              "Concurrent title update",
+            )
+            titles.push(updated.title)
           } else if (mode === "preview") {
             const target = await persistBrowserPreviewTarget({
               taskID,
@@ -188,7 +206,7 @@ try {
             previews.push({ id: target.id, updated: target.timeUpdated })
           } else updateEngineArtifact({ id: artifacts[Number(label)]!, label: `worker-${label}-${index}` })
         }
-      console.log(JSON.stringify({ label, receipts, previews }))
+      console.log(JSON.stringify({ label, receipts, previews, titles }))
     },
   })
 } finally {

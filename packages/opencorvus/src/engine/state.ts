@@ -346,7 +346,7 @@ async function applyTaskUpdate(
   cancellationRequest?: ReturnType<typeof ProtocolStore.requireEvent>,
 ) {
   const terminalIntent = isTerminalTaskIntent(values.status)
-  const result = Database.transaction((db) =>
+  const result = Database.immediateTransaction((db) =>
     writeTaskUpdateInTransaction({
       db,
       taskID: row.id,

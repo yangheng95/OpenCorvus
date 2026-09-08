@@ -38,7 +38,7 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
   const previews: Array<{ id: string; updated: number }> = []
   try {
     await read(spawn("init"))
-    for (const mode of ["rewind", "artifact", "clear", "preview", "promote"]) {
+    for (const mode of ["rewind", "artifact", "clear", "preview", "promote", "state"]) {
       const workers = Array.from({ length: 4 }, (_, index) => spawn(mode, String(index)))
       const deadline = Date.now() + 30_000
       while (
@@ -63,8 +63,16 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       const results = await Promise.all(workers.map(read))
       if (mode === "rewind") receipts.push(...results.flatMap((result) => result.receipts))
       previews.push(...results.flatMap((result) => result.previews))
+      if (mode === "state") {
+        expect(results.map((result) => result.titles)).toEqual(
+          Array.from({ length: 4 }, (_, worker) =>
+            Array.from({ length: 25 }, (_, index) => `state-${worker}-${index}`),
+          ),
+        )
+      }
     }
     const result = await read(spawn("inspect"))
+    expect(Array.from({ length: 4 }, (_, worker) => `state-${worker}-24`)).toContain(result.title)
     const rewinds = result.events.filter((event: { type: string }) => event.type === "task.rewound")
     expect(receipts.sort((a, b) => a.count - b.count)).toEqual(
       rewinds.slice(0, 100).map((event: { payload: { reason: string } }, index: number) => ({
