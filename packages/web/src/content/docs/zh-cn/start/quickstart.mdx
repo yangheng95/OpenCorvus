@@ -1,85 +1,145 @@
 ---
-title: Quickstart
-description: 在自己的仓库里跑通第一个端到端任务，5 分钟内完成。
+title: 快速开始
+description: 配置模型、创建 Task，并检查第一份仓库交付物。
 ---
 
-目标：在你自己的仓库里跑通第一个端到端任务，≤ 5 分钟。
+先完成一项容易检查的工作：生成带有源码路径的仓库概览。你需要
+[安装运行包](../install/)、准备项目目录，并拥有可用的模型服务。
+实际耗时和模型费用取决于仓库与所选模型。
 
-## 1. 启动 headless 服务器
+## 1. 选择模型
 
-```bash
-cd /path/to/your/repo
-opencorvus serve
+按照[模型提供商说明](../../providers/)配置服务。在目标项目中创建或编辑
+`.opencorvus/opencorvus.jsonc`，把 `model` 设为该服务可用的精确
+`provider/model` 标识：
+
+```jsonc
+{
+  "model": "your-provider/your-model",
+}
 ```
 
-默认监听 `127.0.0.1:7878`。常用 flag：
+启动前替换示例占位符。凭据必须与所选提供商匹配，并且能被运行环境读取；
+不要把凭据提交到仓库。`opencorvus models` 可以列出模型标识，但模型出现在列表中
+不代表实际请求一定成功。`opencorvus doctor` 检查的是本地平台能力。
 
-| flag                   | 说明                                                |
-| ---------------------- | --------------------------------------------------- |
-| `--hostname 0.0.0.0`   | 对外监听；设置 `OPENCORVUS_SERVER_PASSWORD` 后启用 HTTP Basic Auth |
-| `--port 7878`          | 改端口                                              |
-| `--project-dir <path>` | 指定工作仓库                                        |
-| `--mdns`               | 启用 mDNS 服务发现                                  |
+## 2. 启动服务
 
-> 如果暴露到 localhost 以外且没有设置 `OPENCORVUS_SERVER_PASSWORD`，server 会启动，但会打印 `server is unsecured`，并且不会启用 HTTP Basic Auth。
-
-## 2. 打开 UI（可选）
-
-浏览器访问 `http://127.0.0.1:7878/ui/` 即可看到 Overlay 面板。也可另开一个 Tauri 原生窗：
+在目标项目目录中运行：
 
 ```bash
-bun run dev:overlay   # repo root
+opencorvus serve --hostname 127.0.0.1 --port 7878
 ```
 
-## 3. 创建一个任务（HTTP）
+保持终端运行。从源码启动时，在目标项目目录中运行
+`bun /absolute/path/to/opencorvus/packages/opencorvus/src/index.ts serve --hostname 127.0.0.1 --port 7878`。
+如果选择其他端口，以服务输出的地址为准。
+
+打开[本地工作台](http://127.0.0.1:7878/ui/)查看对话与成果。
+从界面创建工作时，明确选择项目、模型和专家团。也可以使用下面的
+HTTP（Hypertext Transfer Protocol，超文本传输协议）请求提交任务。
+
+下列命令用于未设置密码的本地服务。如果配置了 `OPENCORVUS_SERVER_PASSWORD`，
+在 curl 命令中添加 `--user opencorvus` 并在提示时输入密码；
+PowerShell 请求应提供已配置的 Basic 身份验证凭据。
+向本机以外开放服务前，先阅读[网络配置](../../network/)。
+
+## 3. 提交一个范围明确的 Task
+
+打开第二个终端，进入同一个项目目录。必填字段是 `productPillar`
+（`code` 或 `work`）和 `request`。本例检查仓库，因此使用 `code`。
+任务使用已配置的模型和当前激活的专家团；也可以在请求中用 `model`
+或 `promptProfile` 明确选择。
+
+Bash：
 
 ```bash
-curl -X POST http://127.0.0.1:7878/task \
+curl --fail-with-body -X POST http://127.0.0.1:7878/task \
   -H "content-type: application/json" \
   -H "x-opencorvus-directory: $PWD" \
   -d '{
-    "request": "为 src/foo.ts 新增单元测试，覆盖 happy path 与 2 条错误路径。"
+    "productPillar": "code",
+    "request": "检查此仓库并创建 docs/architecture-overview.md。说明入口、主要模块及已有的构建或测试命令，附上精确源码路径。核验这些路径，区分已证实事实与不确定项。不要修改应用源码。"
   }'
 ```
 
-响应：`202` + `{ "task_id": "tsk_..." }`。
+PowerShell：
 
-## 4. 监听进度（SSE）
-
-```bash
-curl -N http://127.0.0.1:7878/task/<task_id>/events
+```powershell
+$projectDir = (Get-Location).Path
+$headers = @{ "x-opencorvus-directory" = $projectDir }
+$body = @{
+  productPillar = "code"
+  request = "检查此仓库并创建 docs/architecture-overview.md。说明入口、主要模块及已有的构建或测试命令，附上精确源码路径。核验这些路径，区分已证实事实与不确定项。不要修改应用源码。"
+} | ConvertTo-Json
+$accepted = Invoke-RestMethod -Method Post `
+  -Uri "http://127.0.0.1:7878/task" -Headers $headers `
+  -ContentType "application/json; charset=utf-8" `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+$taskId = $accepted.task_id
+$accepted
 ```
 
-你会看到 orchestrator 和各阶段事件，例如 `requirements`、`architect`、`goal.running`、`integrity`、`acceptance_running`、`done`。
+HTTP `202` 响应包含 `task_id`、`project_id` 和 `directory`，请保存这些精确值。
+请求被接受表示已进入处理流程，不代表交付物已经完成。
 
-失败时会看到 `replan.triggered` 或 `retry.triggered`，然后回到执行阶段。
+## 4. 查看进度
 
-## 5. 常用任务端点
-
-| 端点                      | 用途                      | 目录   |
-| ------------------------- | ------------------------- | ------ |
-| `GET /tasks`              | 项目任务列表              | 需要   |
-| `GET /task/<id>`          | 单任务状态                | 不需要 |
-| `GET /task/<id>/board`    | Kanban 视图               | 不需要 |
-| `POST /task/<id>/message` | 追加用户消息（follow-up） | 需要   |
-| `POST /task/<id>/retry`   | 保持 plan，重试执行       | 需要   |
-| `POST /task/<id>/replan`  | 丢弃当前 plan，重新规划   | 需要   |
-| `POST /task/<id>/cancel`  | 取消任务                  | 需要   |
-
-## 6. 通过 Slack 创建任务
+在 Bash 中，把 `TASK_ID` 设为响应返回的值：
 
 ```bash
-export SLACK_BOT_TOKEN=xoxb-...
-export SLACK_APP_TOKEN=xapp-...
-bun run --cwd packages/channel-runtime dev
+TASK_ID='paste-the-returned-task-id'
+curl --fail-with-body "http://127.0.0.1:7878/task/$TASK_ID"
+curl --fail-with-body "http://127.0.0.1:7878/task/$TASK_ID/board"
+curl -N "http://127.0.0.1:7878/task/$TASK_ID/events"
 ```
 
-在任何 Slack 频道里 at 机器人发第一条消息即创建任务；后续同 thread 内的回复会作为 follow-up 注入任务循环。完整配置见 [channels/slack](../channels/slack.md)。
+最后一条命令保持 SSE（Server-Sent Events，服务器发送事件）连接。
+按 Ctrl+C 停止观察不会取消 Task。事件流包含连接和工作进度信息。
+连接中断后，重新读取 Task 与 board，再判断工作是否停止。
 
-## 常见陷阱
+PowerShell 可以读取同一份任务记录和 board，也可以直接在工作台跟进：
 
-1. **任务卡在 spec 阶段**：多半是 LLM provider 连不通。`opencorvus doctor` 检查。
-2. **integrity review 一直不通过**：仓库里可能没有可执行的 build/test 命令。Build / integrity 会从 `owned_paths` 向上找最近的 `package.json`。
-3. **permission 无限等待**：默认权限模式是 `Full access`。如果项目显式选择了 `Ask me`，请在 UI 中回复，或把项目切换为 `Full access`。
+```powershell
+Invoke-RestMethod "http://127.0.0.1:7878/task/$taskId"
+Invoke-RestMethod "http://127.0.0.1:7878/task/$taskId/board"
+```
 
-下一步：[架构总览](../concepts/architecture.md)。
+## 5. 检查成果并继续
+
+打开 `docs/architecture-overview.md`，确认引用路径存在、概览与源码一致，
+并且不确定项和未完成工作都有明确说明。在工作台检查任务改动和证据。
+仅凭终态不能证明这些条件已经满足。
+
+需要修正时，向同一个 Task 发送普通后续消息：
+
+```bash
+curl --fail-with-body -X POST "http://127.0.0.1:7878/task/$TASK_ID/message" \
+  -H "content-type: application/json" \
+  -H "x-opencorvus-directory: $PWD" \
+  -d '{"text":"请再次对照源码核验概览，补齐遗漏的入口路径。","source":"api"}'
+```
+
+```powershell
+$followUp = @{
+  text = "请再次对照源码核验概览，补齐遗漏的入口路径。"
+  source = "api"
+} | ConvertTo-Json
+Invoke-RestMethod -Method Post `
+  -Uri "http://127.0.0.1:7878/task/$taskId/message" -Headers $headers `
+  -ContentType "application/json; charset=utf-8" `
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($followUp))
+```
+
+处于终态的 Task 可以在接受新输入后重新开始执行，同时保留历史和固定专家团。
+检查消息响应与更新后的任务状态；消息被接受不代表修正已经完成。
+
+## 遇到问题时
+
+- **创建请求报错：** 阅读响应正文，检查必填字段、精确项目目录、所选模型和可用专家团。
+- **模型请求失败：** 检查实际返回的模型服务错误和配置；本地 `doctor` 通过不代表凭据或模型访问有效。
+- **等待权限决定：** 在工作台查看具体请求，再决定允许或拒绝。参见[权限说明](../../permissions/)。
+- **结果不完整：** 把具体缺失要求发送给 Task，再检查下一次成果。
+
+接入细节见 [Mission 与 Task API](../../reference/mission-task/)，
+频道设置见 [Slack](../../channels/slack/)，故障诊断见[排查指南](../../troubleshooting/)。

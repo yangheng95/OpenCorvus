@@ -16,7 +16,7 @@ Use first-party sources before changing commands or contracts. OpenCorvus is und
 - [Models command](../../../packages/opencorvus/src/cli/cmd/models.ts): exact provider/model listing and refresh.
 - [Network options](../../../packages/opencorvus/src/cli/network.ts): default host, port, multicast Domain Name System (mDNS), and Cross-Origin Resource Sharing (CORS) options.
 - [Server application](../../../packages/opencorvus/src/server/server.ts): HTTP Basic authentication and request handling.
-- [Task routes](../../../packages/opencorvus/src/server/routes/orchestrator.ts): Task creation, board, events, follow-up, retry, replan, and cancellation routes.
+- [Task routes](../../../packages/opencorvus/src/server/routes/orchestrator.ts): Task creation, board, events, ordinary-message continuation, and cancellation routes.
 - [Task schemas](../../../packages/opencorvus/src/engine/model.ts): `productPillar`, creation body, follow-up body, and Task response contracts.
 - [Transport protocol](../../../packages/transport-protocol/src/index.ts): cancellation request surface and reason contract.
 - [Configuration resolver](../../../packages/opencorvus/src/config/config.ts): configuration locations, precedence, provider, model, and server schema.
@@ -24,7 +24,7 @@ Use first-party sources before changing commands or contracts. OpenCorvus is und
 Published project links:
 
 - [OpenCorvus repository](https://github.com/yangheng95/opencorvus)
-- [OpenCorvus documentation](https://opencorvus.ai/docs)
+- [OpenCorvus documentation](https://opencorvus.com/start/quickstart/)
 - [OpenCorvus configuration schema](https://opencorvus.ai/config.json)
 
 ## Assistant skill hosts

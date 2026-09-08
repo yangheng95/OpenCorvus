@@ -69,7 +69,7 @@ After Task creation, retain:
 
 Observe progress through the Task event stream and board. Send ordinary user follow-up through `/task/<task_id>/message`. Reserve `inject` and session steering routes for callers that understand their narrower live-execution semantics.
 
-Use retry only for a failed or otherwise retryable Task, and replan when the requested outcome or plan genuinely needs regeneration. Do not repeatedly retry an unchanged root cause.
+After resolving a blocker or changing the requirements, send the concrete update through the same message route. Accepted new input can reopen a terminal Task while preserving its history and fixed Expert Squad. Read the response and subsequent Task evidence before reporting progress.
 
 ## Stop safely
 

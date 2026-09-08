@@ -85,19 +85,9 @@ curl --user opencorvus \
   }'
 ```
 
-The response includes `wake_status` and `should_resume`. Treat `queued` as accepted follow-up work, not completion.
+The response reports `wake_status` as `accepted` or `not_woken`, with a message explaining the result. Inspect that response and the refreshed Task state. Acceptance is not completion.
 
-## Retry or replan
-
-```bash
-curl --user opencorvus \
-  -X POST "$OPENCORVUS_URL/task/$TASK_ID/retry" \
-  -H "x-opencorvus-directory: $PROJECT_DIR"
-
-curl --user opencorvus \
-  -X POST "$OPENCORVUS_URL/task/$TASK_ID/replan" \
-  -H "x-opencorvus-directory: $PROJECT_DIR"
-```
+A terminal Task can reopen on accepted ordinary follow-up input, retaining its history and fixed Expert Squad. Use the same message route for corrected requirements or to continue after resolving a blocker. A new Task is needed when the work requires a different Expert Squad.
 
 ## Cancel a Task
 

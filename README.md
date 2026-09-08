@@ -255,6 +255,10 @@ development Actions artifact is not a public installer feed.
 
 Start the headless server in the repository where you want OpenCorvus to work:
 
+Before starting, configure a reachable provider and an exact `provider/model` in the
+project's `.opencorvus/opencorvus.jsonc`. See [Quickstart](https://opencorvus.com/start/quickstart/)
+for model setup, a bounded first result, and PowerShell commands.
+
 ```bash
 OPENCORVUS_SOURCE=/path/to/opencorvus/packages/opencorvus/src/index.ts
 cd /path/to/your/repo
@@ -262,21 +266,24 @@ bun "$OPENCORVUS_SOURCE" serve
 ```
 
 Open the local Overlay at `http://127.0.0.1:7878/ui/`, or create a Task through the
-HTTP API:
+HTTP API using the configured model and active Expert Squad:
 
 ```bash
 curl -X POST http://127.0.0.1:7878/task \
   -H "content-type: application/json" \
   -H "x-opencorvus-directory: $PWD" \
   -d '{
+    "productPillar": "code",
     "request": "Implement the requested change, validate it, and stop only when the result is ready for review or a real blocker is visible."
   }'
 ```
 
-The server returns `202` with a `task_id`. Stream progress with Server-Sent Events:
+The server returns `202` with `task_id`, `project_id`, and `directory`. Acceptance is
+not completion. Set `TASK_ID` to the returned value and stream progress with Server-Sent Events:
 
 ```bash
-curl -N http://127.0.0.1:7878/task/<task_id>/events
+TASK_ID='paste-the-returned-task-id'
+curl -N "http://127.0.0.1:7878/task/$TASK_ID/events"
 ```
 
 > [!TIP]
@@ -355,8 +362,8 @@ Use $opencorvus to start OpenCorvus for /absolute/path/to/project, create a Task
 Once invoked, the assistant selects the relevant packaged reference and controls
 OpenCorvus through its current CLI or HTTP API. You can ask it to inspect an
 installation without changing it, configure a provider, start a local or
-password-protected service, create or monitor a Task, send a follow-up message, retry
-or replan work, cancel with explicit authority, and inspect the board, events,
+password-protected service, create or monitor a Task, continue work with a follow-up
+message, cancel with explicit authority, and inspect the board, events,
 Artifacts, and blockers before declaring completion. For host-specific installation
 details, PowerShell commands, safe credential handling, and complete operating
 examples, see the [`skill-installation`](./skills/opencorvus/references/skill-installation.md)
@@ -397,8 +404,6 @@ Useful Task endpoints:
 - `GET /task/<task_id>` without a project directory
 - `GET /task/<task_id>/board` without a project directory
 - `POST /task/<task_id>/message` with the Task project directory
-- `POST /task/<task_id>/retry` with the Task project directory
-- `POST /task/<task_id>/replan` with the Task project directory
 - `POST /task/<task_id>/cancel` with the Task project directory
 
 ### Coding CLI shortcuts

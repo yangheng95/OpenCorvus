@@ -59,7 +59,7 @@ An HTTP `401` indicates missing or incorrect authentication. A connection refusa
 2. Check for an unanswered permission or question interaction.
 3. Identify the direct failing tool, provider, session, or evidence dependency.
 4. Send precise follow-up input when the Task can continue with new information.
-5. Use retry only after the failure cause has changed. Use replan when the plan or request must change.
+5. After resolving the cause, send ordinary follow-up input through `/task/<task_id>/message` with `text` and `source`. Check the response and Task state; accepted input can reopen a terminal Task.
 
 Do not use database reset, repeated cancellation/restart, or an alternate project directory to hide the cause.
 

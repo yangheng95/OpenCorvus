@@ -233,28 +233,35 @@ bun packages/opencorvus/src/index.ts doctor
 
 在希望 OpenCorvus 工作的仓库中启动无头服务：
 
+启动前，在项目的 `.opencorvus/opencorvus.jsonc` 中配置可用的模型提供商与精确的
+`provider/model`。模型设置、范围明确的首次任务和 PowerShell 命令见
+[快速开始](https://opencorvus.com/zh-cn/start/quickstart/)。
+
 ```bash
 OPENCORVUS_SOURCE=/path/to/opencorvus/packages/opencorvus/src/index.ts
 cd /path/to/your/repo
 bun "$OPENCORVUS_SOURCE" serve
 ```
 
-打开本地 Overlay `http://127.0.0.1:7878/ui/`，或通过 HTTP API 创建 Task：
+打开本地 Overlay `http://127.0.0.1:7878/ui/`，或通过 HTTP API 创建 Task，
+使用已配置的模型和当前激活的专家团：
 
 ```bash
 curl -X POST http://127.0.0.1:7878/task \
   -H "content-type: application/json" \
   -H "x-opencorvus-directory: $PWD" \
   -d '{
+    "productPillar": "code",
     "request": "实现所需改动，完成验证，并在结果可以接受审阅或出现真实阻塞后停止。"
   }'
 ```
 
-服务会返回 `202` 和一个 `task_id`。通过服务器发送事件（Server-Sent Events，SSE）
-持续接收进度：
+服务会返回 `202`，包含 `task_id`、`project_id` 和 `directory`。请求被接受不代表完成。
+把 `TASK_ID` 设为返回值，通过服务器发送事件（Server-Sent Events，SSE）持续接收进度：
 
 ```bash
-curl -N http://127.0.0.1:7878/task/<task_id>/events
+TASK_ID='paste-the-returned-task-id'
+curl -N "http://127.0.0.1:7878/task/$TASK_ID/events"
 ```
 
 > [!TIP]
@@ -329,8 +336,8 @@ openclaw skills check
 
 Skill 被调用后，助理会选择包内对应 reference，并通过 OpenCorvus 当前的命令行界面
 （Command-Line Interface，CLI）或 HTTP API 完成操作。你可以让它只读检查安装，
-配置模型提供商，启动本地或密码保护的服务，创建或跟进 Task，发送后续消息，重试或
-重新规划工作，在得到明确授权后取消 Task，并在宣告完成前检查 board、events、
+配置模型提供商，启动本地或密码保护的服务，创建或跟进 Task，通过后续消息继续工作，
+在得到明确授权后取消 Task，并在宣告完成前检查 board、events、
 Artifact 和真实阻塞。宿主专用安装细节、PowerShell 命令、安全凭据处理与完整操作
 示例见 [`skill-installation`](./skills/opencorvus/references/skill-installation.md) 和
 [`operations`](./skills/opencorvus/references/operations.md)。
@@ -369,8 +376,6 @@ Worker。Orchestrator 根据这些记录和宿主观察处理生命周期决策�
 - `GET /task/<task_id>`，不需要项目目录
 - `GET /task/<task_id>/board`，不需要项目目录
 - `POST /task/<task_id>/message`，需要 Task 项目目录
-- `POST /task/<task_id>/retry`，需要 Task 项目目录
-- `POST /task/<task_id>/replan`，需要 Task 项目目录
 - `POST /task/<task_id>/cancel`，需要 Task 项目目录
 
 ### Coding CLI 快捷入口

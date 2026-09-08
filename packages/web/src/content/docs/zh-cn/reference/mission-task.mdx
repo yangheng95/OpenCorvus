@@ -26,6 +26,7 @@ const client = createOpenCorvusClient({
 })
 
 const created = await client.task.create({
+  productPillar: "code",
   title: "修复登录页提交失败",
   request: "修复登录页表单提交失败的问题，并补充测试。",
   promptProfile: "advanced",
@@ -92,15 +93,16 @@ Task 有自己的 ID、状态、进度、对话、执行证据和最终代码归
 | 追加说明 | `client.task.message({ taskID, source, text })`                          | `POST /task/{taskID}/message`        |
 | 下载代码 | `client.task.projectArchive({ taskID })`                                 | `GET /task/{taskID}/project-archive` |
 | 取消任务 | `client.task.cancel({ taskID, surface: "api", reason: "用户停止任务" })` | `POST /task/{taskID}/cancel`         |
-| 重试任务 | `client.task.retry({ taskID })`                                          | `POST /task/{taskID}/retry`          |
-| 重新规划 | `client.task.replan({ taskID })`                                         | `POST /task/{taskID}/replan`         |
+
+解决阻塞或需要修正结果时，通过上述消息接口发送普通输入。终态 Task 可以在接受新输入后重新开始执行，保留历史和固定专家团。检查消息响应与后续任务证据，再判断是否完成。
 
 ## 创建 Task
 
-最小请求只有 `request`：
+最小请求需要 `productPillar`（`code` 或 `work`）和 `request`。先配置可用的模型提供商与精确模型，参见[快速开始](../../start/quickstart/)。
 
 ```typescript
 const result = await client.task.create({
+  productPillar: "code",
   request: "把用户列表改成分页加载。",
 })
 
@@ -112,6 +114,7 @@ console.log(result.data.task_id)
 
 ```typescript
 const result = await client.task.create({
+  productPillar: "code",
   title: "用户列表分页",
   request: [
     "把用户列表改成分页加载。",
@@ -133,6 +136,7 @@ const result = await client.task.create({
 | 字段            | 是否必填 | 说明                                                                       |
 | --------------- | -------- | -------------------------------------------------------------------------- |
 | `request`       | 是       | 任务正文。这里要写清楚目标、限制、验收条件。                               |
+| `productPillar` | 是       | 仓库工作使用 `code`，知识交付使用 `work`。                                 |
 | `title`         | 否       | UI 里显示的标题。不传时系统会生成。                                        |
 | `promptProfile` | 否       | 本 Task 激活的精确专家团 package ID；不传则使用当前配置的 active package。 |
 | `priority`      | 否       | `critical`、`high`、`normal`、`low`。                                      |
@@ -148,6 +152,7 @@ import { readFile } from "node:fs/promises"
 const image = await readFile("./bug.png")
 
 await client.task.create({
+  productPillar: "code",
   title: "修复截图里的按钮错位",
   request: "按截图修复按钮和输入框的对齐问题。",
   attachments: [
@@ -168,7 +173,7 @@ await client.task.create({
 curl -X POST "http://127.0.0.1:7878/task" \
   -H "content-type: application/json" \
   -H "x-opencorvus-directory: D:\repo\my-project" \
-  -d "{\"title\":\"用户列表分页\",\"request\":\"把用户列表改成分页加载，并补测试。\",\"promptProfile\":\"advanced\"}"
+  -d "{\"productPillar\":\"code\",\"title\":\"用户列表分页\",\"request\":\"把用户列表改成分页加载，并补测试。\",\"promptProfile\":\"advanced\"}"
 ```
 
 成功返回：
@@ -182,11 +187,11 @@ curl -X POST "http://127.0.0.1:7878/task" \
 如果服务端设置了 `OPENCORVUS_SERVER_PASSWORD`，curl 要加 Basic Auth：
 
 ```bash
-curl -u "opencorvus:$OPENCORVUS_SERVER_PASSWORD" \
+curl --user opencorvus \
   -X POST "http://127.0.0.1:7878/task" \
   -H "content-type: application/json" \
   -H "x-opencorvus-directory: D:\repo\my-project" \
-  -d "{\"request\":\"修复登录页提交失败。\"}"
+  -d "{\"productPillar\":\"code\",\"request\":\"修复登录页提交失败。\"}"
 ```
 
 ## 查询 Task 状态

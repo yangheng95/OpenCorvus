@@ -1,83 +1,152 @@
 ---
 title: Quickstart
-description: Drive the first end-to-end task in your own repo in 5 minutes or less.
+description: Configure a model, start a Task, and inspect your first repository deliverable.
 ---
 
-## 1. Start the headless server
+Start with a small result you can check: a repository overview with source paths.
+You need an [installed runtime](../install/), a project directory, and access to a
+model provider. Completion time and model cost depend on your repository and model.
 
-```bash
-cd /path/to/your/repo
-opencorvus serve
+## 1. Choose a model
+
+Configure your provider using the [provider guide](../../providers/). In the target
+project, create or edit `.opencorvus/opencorvus.jsonc` and set `model` to an exact
+`provider/model` identifier available to that provider:
+
+```jsonc
+{
+  "model": "your-provider/your-model",
+}
 ```
 
-Default: `127.0.0.1:7878`. Common flags:
+Replace the placeholder before starting. The credential must belong to the same
+provider and be available to the runtime. Keep it out of committed configuration.
+`opencorvus models` lists model identifiers; listing a model does not prove a live
+request will succeed. `opencorvus doctor` checks local platform capabilities.
 
-| flag                   | purpose                                                   |
-| ---------------------- | --------------------------------------------------------- |
-| `--hostname 0.0.0.0`   | Listen externally; set `OPENCORVUS_SERVER_PASSWORD` to enable HTTP Basic Auth |
-| `--port 7878`          | Change port                                               |
-| `--project-dir <path>` | Target repo                                               |
-| `--mdns`               | Enable mDNS service discovery                             |
+## 2. Start the server
 
-> If you expose beyond localhost without `OPENCORVUS_SERVER_PASSWORD`, the server starts but prints `server is unsecured` and leaves HTTP Basic Auth disabled.
-
-## 2. Open the UI (optional)
-
-Browse to `http://127.0.0.1:7878/ui/` for the overlay panel. Or launch the native Tauri window:
+From the project directory, run:
 
 ```bash
-bun run dev:overlay   # from repo root
+opencorvus serve --hostname 127.0.0.1 --port 7878
 ```
 
-## 3. Create a task over HTTP
+Keep this terminal running. For a source checkout, use
+`bun /absolute/path/to/opencorvus/packages/opencorvus/src/index.ts serve --hostname 127.0.0.1 --port 7878`
+from the target project. Use the address printed by the server if you choose another port.
+
+Open [the local workbench](http://127.0.0.1:7878/ui/) to inspect conversations and results.
+Choose the project, model and Expert Squad deliberately when creating work in the interface.
+The HTTP (Hypertext Transfer Protocol) examples below provide an alternative submission path.
+
+These examples use a local server without a password. If you configured
+`OPENCORVUS_SERVER_PASSWORD`, add `--user opencorvus` to curl and enter the password
+at its prompt. In PowerShell, supply your configured Basic authentication credentials.
+See [network configuration](../../network/) before exposing the service beyond localhost.
+
+## 3. Submit a bounded Task
+
+In a second terminal, change to the same project directory. The required fields are
+`productPillar` (`code` or `work`) and `request`. This example uses `code` because
+it inspects a repository. The configured model and active Expert Squad apply; use
+`model` or `promptProfile` in the request to select them explicitly.
+
+Bash:
 
 ```bash
-curl -X POST http://127.0.0.1:7878/task \
+curl --fail-with-body -X POST http://127.0.0.1:7878/task \
   -H "content-type: application/json" \
   -H "x-opencorvus-directory: $PWD" \
   -d '{
-    "request": "Add unit tests for src/foo.ts covering happy path and 2 error paths."
+    "productPillar": "code",
+    "request": "Inspect this repository and create docs/architecture-overview.md. Explain the entry points, main modules, and available build or test commands with exact source paths. Verify those paths and distinguish facts from uncertainty. Do not modify application source."
   }'
 ```
 
-Response: `202` with `{ "task_id": "tsk_..." }`.
+PowerShell:
 
-## 4. Stream progress (SSE)
-
-```bash
-curl -N http://127.0.0.1:7878/task/<task_id>/events
+```powershell
+$projectDir = (Get-Location).Path
+$headers = @{ "x-opencorvus-directory" = $projectDir }
+$body = @{
+  productPillar = "code"
+  request = "Inspect this repository and create docs/architecture-overview.md. Explain the entry points, main modules, and available build or test commands with exact source paths. Verify those paths and distinguish facts from uncertainty. Do not modify application source."
+} | ConvertTo-Json
+$accepted = Invoke-RestMethod -Method Post `
+  -Uri "http://127.0.0.1:7878/task" `
+  -Headers $headers -ContentType "application/json" -Body $body
+$taskId = $accepted.task_id
+$accepted
 ```
 
-You'll see orchestrator and stage events such as `requirements`, `architect`, `goal.running`, `integrity`, `acceptance_running`, and `done`.
+HTTP `202` returns `task_id`, `project_id` and `directory`. Save these exact values.
+Acceptance means the request was admitted; it does not mean the deliverable is ready.
 
-On failure, `replan.triggered` or `retry.triggered` fire, then execution resumes.
+## 4. Observe progress
 
-## 5. Task endpoints
-
-| endpoint                  | purpose                  | directory  |
-| ------------------------- | ------------------------ | ---------- |
-| `GET /tasks`              | list project tasks       | required   |
-| `GET /task/<id>`          | task state               | not needed |
-| `GET /task/<id>/board`    | Kanban view              | not needed |
-| `POST /task/<id>/message` | append follow-up         | required   |
-| `POST /task/<id>/retry`   | retry with same plan     | required   |
-| `POST /task/<id>/replan`  | discard plan and re-plan | required   |
-| `POST /task/<id>/cancel`  | cancel                   | required   |
-
-## 6. Via Slack
+In Bash, set `TASK_ID` to the returned value:
 
 ```bash
-export SLACK_BOT_TOKEN=xoxb-...
-export SLACK_APP_TOKEN=xapp-...
-bun run --cwd packages/channel-runtime dev
+TASK_ID='paste-the-returned-task-id'
+curl --fail-with-body "http://127.0.0.1:7878/task/$TASK_ID"
+curl --fail-with-body "http://127.0.0.1:7878/task/$TASK_ID/board"
+curl -N "http://127.0.0.1:7878/task/$TASK_ID/events"
 ```
 
-At-mention the bot's first message in any channel to create a task; later messages in the same thread are injected as follow-ups. See [Slack channel](../channels/slack.md).
+The last command keeps a Server-Sent Events (SSE) connection open. Press Ctrl+C to
+stop watching; this does not cancel the Task. The stream includes connection and
+progress events. After a disconnect, read the Task and board again before deciding
+whether work has stopped.
 
-## Common pitfalls
+In PowerShell, inspect the same record and board, or follow the Task in the workbench:
 
-1. **Stuck in spec phase** — LLM provider is unreachable. Run `opencorvus doctor`.
-2. **Integrity review keeps failing** — repo has no executable build/test commands. Build / integrity walks up from `owned_paths` to find the nearest `package.json`.
-3. **Permission request never resolves** — `Full access` is the default. If the project explicitly selects `Ask me`, reply in an operator UI or switch the project to `Full access`.
+```powershell
+Invoke-RestMethod "http://127.0.0.1:7878/task/$taskId"
+Invoke-RestMethod "http://127.0.0.1:7878/task/$taskId/board"
+```
 
-Next: [Architecture](../concepts/architecture.md).
+## 5. Check the result and continue
+
+Open `docs/architecture-overview.md`. Confirm the cited paths exist, the overview
+matches the repository, and any uncertainty or incomplete work is explicit. Inspect
+the Task's changes and evidence in the workbench. A terminal status alone is not
+proof that these conditions were met.
+
+For a correction, send ordinary follow-up input to the same Task:
+
+```bash
+curl --fail-with-body -X POST "http://127.0.0.1:7878/task/$TASK_ID/message" \
+  -H "content-type: application/json" \
+  -H "x-opencorvus-directory: $PWD" \
+  -d '{"text":"Check the overview against the source again and add any missing entry-point paths.","source":"api"}'
+```
+
+```powershell
+$followUp = @{
+  text = "Check the overview against the source again and add any missing entry-point paths."
+  source = "api"
+} | ConvertTo-Json
+Invoke-RestMethod -Method Post `
+  -Uri "http://127.0.0.1:7878/task/$taskId/message" `
+  -Headers $headers -ContentType "application/json" -Body $followUp
+```
+
+A terminal Task can reopen on accepted new input while retaining its history and
+fixed Expert Squad. Read the response and refreshed Task state; an accepted message
+is not a completed correction.
+
+## When you get stuck
+
+- **Creation returns an error:** read the response body. Confirm both required fields,
+  the exact project directory, selected model and available Expert Squad.
+- **Model request fails:** inspect the reported provider/model error and provider
+  configuration. Local `doctor` success does not validate credentials or model access.
+- **Permission is waiting:** inspect the pending request in the workbench and decide
+  whether to allow or deny it. See [permissions](../../permissions/).
+- **The result is incomplete:** send the specific missing requirement to the Task and
+  inspect the next result.
+
+Continue with the [Mission and Task API](../../reference/mission-task/) for integration
+details, [Slack](../../channels/slack/) for channel setup, or
+[troubleshooting](../../troubleshooting/) for diagnosis.
