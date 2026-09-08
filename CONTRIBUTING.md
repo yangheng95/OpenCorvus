@@ -52,6 +52,23 @@ First check the [provider configuration guide](./packages/web/src/content/docs/p
   bun install
   ```
 
+### Windows runtime tests and binary builds
+
+Install [Rust through rustup](https://rust-lang.org/tools/install/) and the Visual Studio C++ build tools requested by its installer. Open a terminal where `rustup`, `cargo`, and `rustc` are available. OpenCorvus uses a native Windows process supervisor: the runtime test runner builds it when the matching helper is missing, and Windows binary builds compile it with Cargo.
+
+From the repository root, check the installed tools and prepare the test helper:
+
+```powershell
+rustup show active-toolchain
+cargo --version
+rustc --version
+bun packages/opencorvus/script/prepare-test-process-supervisor.ts
+```
+
+The last command prints the helper's executable path. It can reuse an existing helper for the current native source, so success is not evidence of a complete binary build. If Rust reports a missing linker, finish installing the C++ build tools before retrying. Documentation-only checks do not require this native build.
+
+Runtime tests can also invoke tools such as `git`, `rg` (ripgrep), and Python. Check the requirements of your selected test and the [test workflow](./.github/workflows/test.yml); its Windows job uses Python 3.13 and installs ripgrep. The Windows ripgrep installer in `script/` uses GitHub Actions environment paths and is intended for that workflow.
+
 ### Running against a different directory
 
 Run the source CLI entrypoint and pass the project directory explicitly:
