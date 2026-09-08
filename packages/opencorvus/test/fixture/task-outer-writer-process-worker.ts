@@ -15,7 +15,10 @@ import {
   EngineArtifactTable,
   EngineBrowserPreviewTargetIdentityTable,
   EngineTaskRootIngressTable,
+  EngineInteractionOutcomeTable,
 } from "@/engine/engine.sql"
+import { insertEngineInteractionRequest, resolveEngineInteractionRequest } from "@/engine/interaction-request"
+import { findInteractionByExternal } from "@/engine/store"
 import { dispatchTaskLoop, persistProcessShutdownRecoveryHandoffs } from "@/engine/task-root-ingress-delivery"
 import { persistBrowserPreviewTarget, promoteBrowserPreviewTarget } from "@/browser-preview/persist"
 import { appendTaskOpenedInTransaction } from "@/engine/task-lifecycle"
@@ -83,6 +86,25 @@ try {
         artifacts: string[]
         files?: TaskFileRef[]
         completionTasks?: Array<{ taskID: string; sessionID: string }>
+      }
+      if (mode === "interaction-seed") {
+        const interactions = Array.from({ length: 100 }, (_, index) =>
+          Database.immediateTransaction((db) =>
+            insertEngineInteractionRequest(db, {
+              taskID,
+              sessionID,
+              externalID: `writer-interaction-${index}`,
+              requestType: "question",
+              title: "Writer question",
+              body: "Confirm",
+              payload: {},
+              eventSource: "test.interaction-writer",
+              eventSummary: "Writer question",
+            }),
+          ),
+        )
+        console.log(JSON.stringify(interactions))
+        return
       }
       if (mode === "completion-seed") {
         const completionTasks = []
@@ -189,6 +211,8 @@ try {
           "completion",
           "shutdown",
           "ingress",
+          "interaction-answer",
+          "interaction-replay",
           ...mailboxModes,
           ...fileModes,
         ].includes(mode)
@@ -212,6 +236,38 @@ try {
         await Bun.sleep(10)
       }
       const receipts: Array<{ reason: string; count: number }> = []
+      if (mode === "interaction-answer" || mode === "interaction-replay") {
+        const outcomes = []
+        for (let index = 0; index < 25; index++) {
+          const slot = Number(label) * 25 + index
+          const row = findInteractionByExternal(`writer-interaction-${slot}`)
+          if (!row) throw new Error("Interaction writer requires its seeded request")
+          Database.immediateTransaction((db) =>
+            resolveEngineInteractionRequest(db, {
+              row,
+              status: "answered",
+              response: { answers: [[String(slot)]] },
+              eventSource: "test.interaction-writer",
+            }),
+          )
+          outcomes.push(
+            Database.use((db) =>
+              db
+                .select({
+                  id: EngineInteractionOutcomeTable.id,
+                  interactionID: EngineInteractionOutcomeTable.interaction_id,
+                  outcome: EngineInteractionOutcomeTable.outcome,
+                  response: EngineInteractionOutcomeTable.response,
+                })
+                .from(EngineInteractionOutcomeTable)
+                .where(eq(EngineInteractionOutcomeTable.interaction_id, row.id))
+                .get(),
+            ),
+          )
+        }
+        console.log(JSON.stringify(outcomes))
+        return
+      }
       if (mode === "ingress") {
         const task = completionTasks?.[Number(label)]
         if (!task) throw new Error("Ingress writer requires its seeded Task")

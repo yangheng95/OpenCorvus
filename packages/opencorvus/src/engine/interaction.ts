@@ -223,7 +223,7 @@ async function abandonPendingInteraction(input: RecoveredAbandonment, requestTyp
   const interaction = findInteractionByExternal(input.requestID)
   if (!interaction) return
   requireInteractionSession(interaction, input.sessionID, requestType, "abandonment")
-  Database.transaction((db) => resolveEngineInteractionRequest(db, {
+  Database.immediateTransaction((db) => resolveEngineInteractionRequest(db, {
     row: interaction,
     status: "expired",
     response: { origin: "infrastructure" },
@@ -464,7 +464,7 @@ async function resolveInteraction(
   userInput?: InteractionUserInput,
   sourceOccurrenceID?: string,
 ) {
-  Database.transaction((db) => {
+  Database.immediateTransaction((db) => {
     resolveEngineInteractionRequest(db, {
       row: interaction,
       status,
@@ -499,7 +499,7 @@ function assertResolvedReplay(interaction: InteractionRow, userInput?: Interacti
   if (!userInput) return
   const timeResolved = interaction.time_resolved
   if (!timeResolved) throw new Error(`Interaction ${interaction.id} terminal replay has no resolution time`)
-  Database.transaction((db) => {
+  Database.immediateTransaction((db) => {
     const task = db.select().from(EngineTaskTable).where(eq(EngineTaskTable.id, interaction.task_id)).get()
     if (!task) throw new Error(`Interaction ${interaction.id} replay Task owner not found`)
     ProjectMemory.captureOccurrenceInTransaction(db, {

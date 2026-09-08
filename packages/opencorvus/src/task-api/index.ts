@@ -2799,7 +2799,7 @@ export namespace EngineService {
         if (answers.length !== 1 || answers[0]?.length !== 1 || answers[0][0] !== "acknowledge_unknown") {
           throw new Error("Activity reconciliation requires the exact acknowledge_unknown answer")
         }
-        Database.transaction((db) =>
+        Database.immediateTransaction((db) =>
           resolveEngineInteractionRequest(db, {
             row,
             status: "answered",
@@ -2872,7 +2872,7 @@ export namespace EngineService {
         if (answers.length !== 1 || answers[0]?.length !== 1 || answers[0][0] !== "acknowledge_unknown") {
           throw new Error("Activity reconciliation requires the exact acknowledge_unknown answer")
         }
-        Database.transaction((db) =>
+        Database.immediateTransaction((db) =>
           resolveEngineInteractionRequest(db, {
             row,
             status: "answered",
