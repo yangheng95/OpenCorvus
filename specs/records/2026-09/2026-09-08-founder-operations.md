@@ -1,5 +1,15 @@
 # OpenCorvus founder operations
 
+## Shared-database project recovery isolation — 2026-09-09
+
+Recall: after afdbe5a31, inspect the remaining project-isolation scope of Question recovery. Read Bus outbox project/directory authority, directory-filtered resume, the committed process-exit worker, and project-filtered authored memory. Independent pre-edit feedback: 无. This acceptance increment changes no production code or committed test; use isolated processes/data and preserve the user's dirty files.
+
+Method: derive a local probe from the committed recovery worker, scope its unresolved-outbox checks to the active project, give alpha and beta distinct literal answers, and report both projects' canonical statuses/memory counts. Both projects use the same OPENCORVUS_HOME/database but distinct project directories and independently seeded Tasks. Exit each source process with 23 after the existing controlled post-commit HTTP 500 checkpoint. Recover beta before alpha, then start another fresh verifier process for each. The parent checks exact saved Task/Session/interaction ownership, answer text, one terminal occurrence, one project-owned memory, and unchanged full own-project results in fresh successors.
+
+Results: all eight phases returned their expected exits (init 0, source 23, recover 0, verify 0). After beta recovered, alpha remained pending with memoryCount 0, while beta was answered with memoryCount 1. After alpha recovered, both were answered with memoryCount 1. Distinct answers and original occurrence/owner identities matched in both fresh verifiers. Evidence is question-multi-project-33087a7ff36c4b4b86596fd2d1040f1d/multi-project.report.json, alpha/beta checkpoints and phase logs under the isolated validation directory; local package probes are .question-multi-project-probe.ts and .question-multi-project-worker.ts. Source-process logs name the same database path; checkpoints carry distinct project IDs.
+
+Scope: this is sequential, reversed-order recovery of two independent projects in a shared database at a controlled fault boundary, using real subscribers/drain and in-process HTTP handlers. It is not simultaneous recovery, same-ID cross-project collision, OS reboot, startup-service bootstrap, network-listener/UI or model continuation acceptance. Existing committed single-project regression remains the automated guard; this two-project scenario is a separate local acceptance probe. Docs and diff checks passed. Independent read-only review passed without findings after checking the actual probes, saved report, shared database configuration, canonical results and these evidence limits.
+
 ## Question reply process-exit recovery — 2026-09-09
 
 Recall: continue the recovery evidence gap after 1fa242e38. Read Question's post-commit hook, real HTTP reply handler, EngineInteraction subscriber and source-backed outcome, Bus durable drain/phase completion, authored-memory capture, and existing same-process interruption test. Independent pre-edit feedback: 无. Keep all production code and unrelated work unchanged; no credentials, model calls or user-process operations.
