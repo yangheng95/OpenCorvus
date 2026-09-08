@@ -42,8 +42,8 @@ export default defineConfig({
    *   - Content that became a landing-page section points at that section's anchor.
    */
   redirects: {
-    "/download": "/#start",
-    "/zh-cn/download": "/zh-cn/#start",
+    "/download": "/#download",
+    "/zh-cn/download": "/zh-cn/#download",
     "/mission": "/concepts/mission/",
     "/zh-cn/mission": "/zh-cn/concepts/mission/",
     "/use-with-agents": "/integrations/agent-hosts/",

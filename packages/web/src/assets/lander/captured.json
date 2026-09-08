@@ -1,5 +1,5 @@
 {
-  "note": "Provenance for the landing page's product material. Staleness in a capture is invisible in review — the old gallery shipped a v0.0.42beta window with an empty Mission Board and a stray text selection for weeks. Recording what each asset was captured from makes the gap a fact instead of an impression. test/lander-assets.test.ts asserts this file agrees with both src/assets/lander and public/media, whose files are listed here under a media/ prefix.",
+  "note": "Provenance for the landing page's product material. Staleness in a capture is invisible in review — the old gallery shipped a v0.0.42beta window with an empty Mission Board and a stray text selection for weeks. Recording what each asset was captured from makes the gap a fact instead of an impression. This inventory covers src/assets/lander and public/media, whose files are listed here under a media/ prefix. Verify provenance against the actual files during manual review.",
   "refresh": {
     "gallery": "Run the desktop app on the target release, drive it to the state each shot describes, and capture the window. Shots must show real work, not an empty state.",
     "conceptFlow": "qa/record-real-client-demo.ps1 records the desktop window against a live task, then qa/curate-client-demo.mjs edits the frames into the GIF.",
