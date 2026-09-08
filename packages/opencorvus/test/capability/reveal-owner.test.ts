@@ -653,7 +653,7 @@ describe("occurrence capability reveal owner", () => {
         expect(idempotentResult.metadata).toMatchObject({ reveal_revision: 3, active_ref_count: 0 })
       },
     })
-  }, 0)
+  })
 
   test("settles concurrent reveal preparation through one revision compare-and-swap winner", async () => {
     await using project = await memoryProject()
@@ -712,7 +712,7 @@ describe("occurrence capability reveal owner", () => {
         expect((failure?.reason as Error).message).toContain("compare-and-swap expected revision 0, current is 1")
       },
     })
-  }, 0)
+  })
 
   test("settles the revision compare-and-swap across two operating-system processes", async () => {
     await using project = await memoryProject()

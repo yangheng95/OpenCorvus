@@ -166,7 +166,7 @@ export default tool({
     } finally {
       await nativeFiles.rm(packageRoot, { recursive: true, force: true })
     }
-  }, 0)
+  })
 
   test("compiles every repository package-tool closure through the current plugin runtime", async () => {
     const expectedBundles = [
@@ -182,5 +182,5 @@ export default tool({
       loadedBundles.push([relativeRoot, loaded.packageToolBundles.size])
     }
     expect(loadedBundles).toEqual(expectedBundles)
-  }, 0)
+  })
 })

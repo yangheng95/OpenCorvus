@@ -183,5 +183,5 @@ describe("Artifact catalog cursor", () => {
         ).rejects.toThrow(/artifact_search cursor/)
       },
     })
-  }, 0)
+  })
 })

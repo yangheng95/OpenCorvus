@@ -159,7 +159,7 @@ describe("Viral Content Expert Squad package", () => {
     for (const [type, schema] of Object.entries(ViralContentArtifactSchemas)) {
       expect(schema.parse(samples[type as keyof typeof samples])).toEqual(samples[type as keyof typeof samples])
     }
-  }, 0)
+  })
 
   test("projects the package and publishes a typed producer-to-consumer chain", async () => {
     await using project = await memoryProject()
@@ -390,5 +390,5 @@ describe("Viral Content Expert Squad package", () => {
         })
       },
     })
-  }, 0)
+  })
 })

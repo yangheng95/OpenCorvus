@@ -1045,5 +1045,5 @@ describe("authorized expert squad evolution mutation", () => {
     } finally {
       await rm(sourceRoot, { recursive: true, force: true })
     }
-  }, 0)
+  })
 })

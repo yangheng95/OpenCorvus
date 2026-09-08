@@ -324,7 +324,7 @@ describe("Tax Compliance Expert Squad", () => {
         }
       },
     })
-  }, 0)
+  })
 
   test("parses one complete current value for every package Artifact codec", () => {
     expect(Object.keys(values).sort()).toEqual(Object.keys(TaxComplianceArtifactSchemas).sort())
@@ -480,5 +480,5 @@ describe("Tax Compliance Expert Squad", () => {
         })
       },
     })
-  }, 0)
+  })
 })

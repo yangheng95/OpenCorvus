@@ -209,7 +209,7 @@ describe("capability catalog executable discovery", () => {
         expect(snapshot.descriptors.filter((item) => item.ref.kind === "expert_squad").length).toBeGreaterThan(1)
       },
     })
-  }, 0)
+  })
 
   test("uses the canonical project worktree when Mission cwd is a subdirectory", async () => {
     await using project = await memoryProject()
@@ -241,7 +241,7 @@ describe("capability catalog executable discovery", () => {
         ).toEqual(["evolution-lab"])
       },
     })
-  }, 0)
+  })
 
   test("searches stable owner descriptors through caller-specific executable views", () => {
     const mcpDescriptors = [entry("mcp_tool", "computer_session_create"), entry("mcp_server", "computer")]

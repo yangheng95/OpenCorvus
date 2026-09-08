@@ -225,7 +225,7 @@ describe("Task package revision binding", () => {
       },
     })
     await waitForIngressDeliveryHooksForTest()
-  }, 0)
+  })
 
   test("commits one exact package revision with the Task and projects it through Task reads", async () => {
     await using project = await memoryProject()
@@ -265,7 +265,7 @@ describe("Task package revision binding", () => {
         )
       },
     })
-  }, 0)
+  })
 
   test("accepts same-profile root configuration updates and returns the immutable-profile error contract", async () => {
     const project = await memoryProject()
@@ -307,7 +307,7 @@ describe("Task package revision binding", () => {
       await project[Symbol.asyncDispose]()
     }
     expect(ProcessSupervisor.metricsSnapshot()).toEqual({ live: 0, owners: {} })
-  }, 0)
+  })
 
   test("creates and idempotently replays a Task against the exact resolved package digest", async () => {
     await using project = await memoryProject()
@@ -459,7 +459,7 @@ describe("Task package revision binding", () => {
       },
     })
     await waitForIngressDeliveryHooksForTest()
-  }, 0)
+  })
   test("reopens a persisted Task against the same package revision after Project runtime disposal", async () => {
     const project = await memoryProject()
     try {
@@ -523,7 +523,7 @@ describe("Task package revision binding", () => {
       await project[Symbol.asyncDispose]()
     }
     expect(ProcessSupervisor.metricsSnapshot()).toEqual({ live: 0, owners: {} })
-  }, 0)
+  })
   test("binds an external Task to an exact materialized candidate without changing the installed revision", async () => {
     await using project = await memoryProject()
     await Instance.provide({
@@ -664,5 +664,5 @@ describe("Task package revision binding", () => {
       },
     })
     await waitForIngressDeliveryHooksForTest()
-  }, 0)
+  })
 })

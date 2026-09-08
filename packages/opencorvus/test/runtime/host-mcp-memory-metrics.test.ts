@@ -33,5 +33,5 @@ describe("Host MCP runtime memory metrics", () => {
 
     await Instance.provide({ directory: second.path, fn: () => Instance.dispose() })
     expect(await MCP.connectionStats()).toEqual(zeroSnapshot)
-  }, 0)
+  })
 })

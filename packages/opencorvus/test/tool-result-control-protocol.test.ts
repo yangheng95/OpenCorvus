@@ -808,7 +808,7 @@ describe("single Tool-result turn-control protocol", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("treats a completed immediate-park Tool outcome as the durable reply boundary", () => {
     const userMessageID = "message:parked-input"

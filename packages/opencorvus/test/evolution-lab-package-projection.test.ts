@@ -172,5 +172,5 @@ describe("Evolution Lab complete package projection", () => {
         }
       },
     })
-  }, 0)
+  })
 })

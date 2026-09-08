@@ -45,7 +45,7 @@
 | TD-05 | Website cwd/root dependency workarounds were replaced by the actual bundler source-export condition. | Closed as already repaired by `ed92a5f37`; current source-only compilation, real Node execution and shared runtime reuse passed 3/3. |
 | TD-06 | Cross-process Prompt ownership, wait/automation identity, Mission closure and deletion are safety-critical and were repeatedly revised. | Original focused audit was not exhaustive: the later S1-S10/D1 audit found additional defects and was implemented in 05605e697. Retain the canonical owners, but use that correction record for decision rollback, recurrence, bounded discovery and backoff evidence. September 8 source inspection confirms those repairs remain; historical tests are not a current full-matrix guarantee. |
 | TD-07 | `specs/README.md` still describes 0.0.61 as unpublished although the final release record says published. | Pointer corrected in Cut 1; historical artifacts unchanged. |
-| TD-08 | Explicit per-test zero budgets bypass the existing finite test-runner ownership window and can trigger Bun's subprocess auto-killer. | The implicated GC case now inherits the runner budget; its complete file passes 60/60 and its independent review found zero issues. Another 85 direct zero-budget tests across 30 files remain to be classified and repaired; hosted Windows confirmation is outstanding. |
+| TD-08 | Explicit per-test zero budgets bypass the existing finite test-runner ownership window and can trigger Bun's subprocess auto-killer. | GC correction delivered in 8e2b7f3a3. The remaining 85 calls now inherit the same finite runner budget; all 30 affected files pass (177 tests, 1416 assertions), with no budget exception. Independent review of the shared correction passed with zero findings; hosted Windows confirmation remains outstanding. |
 
 ## Cut 1: early publication admission using the existing owner
 
@@ -405,3 +405,59 @@ The reviewer re-read the actual hosted failure and exact Bun source and
 independently confirmed the remaining 85-call inventory. Documentation check
 passed at 339 operations/25 groups; cached and working diff checks passed.
 The review approves this correction, not overall TD-08 or TD-02 completion.
+
+### TD-08 shared correction: remaining test budgets
+
+Recall: continue the same goal from delivered GC correction `8e2b7f3a3`.
+The three unrelated working paths remain excluded. Hosted run `34176991218`
+is still running; it is not evidence of a successful Windows test result yet.
+No additional independent implementation agent is used; delivery review follows
+the complete affected validation. No Provider, database reset or release action.
+
+The syntax-tree inventory identifies 85 direct `test`/`it` calls in 30 files:
+20 capability catalog/binding/reveal/budget cases; 21 Mission, Task, Session
+memory, host metrics and control-result cases; three isolated HTTP route probes;
+41 package, artifact, revision and evolution cases. The HTTP probes perform
+40/46 local requests over fixed package sets; compaction and Dynamic use local
+mock Providers and existing 10-second execution waits; catalog fixtures have
+bounded installed sets; bundle cases compile finite source closures. These are
+non-UI contracts, not real paid-model or visual tests. Their local zero overrides
+predate or bypass the current runner's finite per-test policy.
+
+Selected repair: remove only the third numeric-zero argument from these exact
+syntax-tree-identified calls, retaining the single existing 60-second runner
+budget. Do not edit ordinary timers, assertions, Provider fixtures, production
+deadlines, cleanup or explicit nonzero budgets. This is not a text-wide zero
+replacement or a new large timeout. A case exceeding that budget must be
+investigated using its actual execution/cleanup evidence before any exception.
+Run all 30 complete affected files through the existing isolated runner,
+sequentially with the cached native helper. Record per-file natural terminal
+results and inspect failures; output observation loss is not permission to rerun
+a live process. Validate documentation and types, review the entire scoped diff
+independently, then commit and normally push the verified changes.
+
+First validation completed naturally with exit code 0: all 30 selected files,
+177 passed tests, zero failures, 1416 assertions. This includes production local
+HTTP routes, real native subprocess/Node execution, two-process reveal ownership,
+compaction and parked-result recovery, and controlled mock-Provider parallel
+dispatch. These are not paid-model or visual acceptance results. No case needed
+a timeout exception. The complete captured output is outside Git at
+`C:/Users/hengu/AppData/Local/Temp/opencorvus-td08-20260908-093652/affected-tests.log`.
+Package typecheck exited 0; docs check passed 339 operations/25 groups; diff
+check passed. A before/after syntax-tree comparison verifies that all 30 test
+file diffs consist solely of removing these exact numeric-zero arguments.
+An additional syntax-tree scan of the test tree finds zero direct zero-budget
+test calls and zero zero-budget lifecycle hooks/default setters. Ordinary
+zero-delay timers remain unchanged. The previous GC commit's hosted build and
+type checks succeeded; its OS unit jobs are still running, not yet acceptance.
+
+Independent read-only review found one P3 in the explanatory category counts
+(20 capability and 41 package/artifact cases, rather than 22 and 39). The total
+85 and runtime evidence were correct. After that documentation-only correction,
+review of tree `2bbc2a62bcaee1c60a330a2824ab1a45590aac5f` returned FINAL PASS,
+P0-P3 zero. Test bytes did not change and the completed matrix was not rerun.
+The reviewer independently matched the complete log hash, all 30 terminal
+summaries and the exact AST-only edits. Slowest case: 16900.76 ms; summed
+per-file test-host duration: 515.68 seconds. The excluded Session source has
+the same syntax tree as HEAD after ignoring formatting/comments; its working
+changes remain uncommitted and outside this delivery.

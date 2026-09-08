@@ -255,7 +255,7 @@ describe("Light Expert Squad package", () => {
         }
       },
     })
-  }, 0)
+  })
 
   test.each([false, true])("settles four overlapping Light dispatches (injected fixture failure: %s)", async (failAfterStarted) => {
     await using project = await memoryProject()

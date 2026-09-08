@@ -72,4 +72,4 @@ test("serves ten new and three repaired Skill-complete Squads through an isolate
   } finally {
     await fs.rm(isolatedRoot, { recursive: true, force: true })
   }
-}, 0)
+})

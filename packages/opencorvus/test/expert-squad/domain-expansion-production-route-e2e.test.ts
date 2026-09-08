@@ -51,4 +51,4 @@ test("serves all ten new Skill-and-asset domain Squads through an isolated produ
   } finally {
     await fs.rm(isolatedRoot, { recursive: true, force: true })
   }
-}, 0)
+})

@@ -291,7 +291,7 @@ describe("Commercial Legal Expert Squad", () => {
         }
       },
     })
-  }, 0)
+  })
 
   test("parses one complete current value for every package Artifact codec", () => {
     expect(Object.keys(values).sort()).toEqual(Object.keys(CommercialLegalArtifactSchemas).sort())
@@ -447,5 +447,5 @@ describe("Commercial Legal Expert Squad", () => {
         })
       },
     })
-  }, 0)
+  })
 })

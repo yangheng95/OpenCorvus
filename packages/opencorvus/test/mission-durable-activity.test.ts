@@ -684,7 +684,7 @@ describe("Mission durable activity", () => {
         expect((await Session.get(mission.id)).metadata?.configOverlay).toEqual(initial.metadata?.configOverlay)
       },
     })
-  }, 0)
+  })
 
   test("resumes only the same immutable Expert Squad snapshot", async () => {
     await using project = await memoryProject()
@@ -738,7 +738,7 @@ describe("Mission durable activity", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("projects one restart-safe cursor from Mission and child Task durable facts", async () => {
     await using project = await memoryProject()
@@ -1014,5 +1014,5 @@ describe("Mission durable activity", () => {
         })
       },
     })
-  }, 0)
+  })
 })

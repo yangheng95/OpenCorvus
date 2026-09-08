@@ -336,7 +336,7 @@ describe("occurrence-bound capability catalog", () => {
         expect(secondRestored).toEqual(restored)
       },
     })
-  }, 0)
+  })
 
   test("binds a previously accepted Task-root Message only inside assistant admission", async () => {
     await using project = await memoryProject()
@@ -433,7 +433,7 @@ describe("occurrence-bound capability catalog", () => {
         expect(CatalogOccurrenceBinding.hash(restored)).toBe(binding.snapshot_hash)
       },
     })
-  }, 0)
+  })
 
   test("returns typed cross-project and missing-blob occurrence corruption", async () => {
     await using project = await memoryProject()
@@ -487,7 +487,7 @@ describe("occurrence-bound capability catalog", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("rejects a stale parent snapshot when another persisted TextPart is concurrently pre-bound", async () => {
     await using project = await memoryProject()
@@ -558,7 +558,7 @@ describe("occurrence-bound capability catalog", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("derives every catalog caller from the execution authority", () => {
     expect(
@@ -637,7 +637,7 @@ describe("occurrence-bound capability catalog", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("maps partial carriers, duplicate carriers, and scope drift to exact occurrence errors", () => {
     const payload = CatalogOccurrenceBinding.payload({
@@ -742,7 +742,7 @@ describe("occurrence-bound capability catalog", () => {
         expect(after[0]?.ref.local_ref).toBe("capability_search")
       },
     })
-  }, 0)
+  })
 
   test("advances the next-occurrence owner generation after a real Config settlement", async () => {
     await using project = await memoryProject()
@@ -757,7 +757,7 @@ describe("occurrence-bound capability catalog", () => {
         expect(await CapabilityCatalogCache.ownerGeneration("skill-manager")).toBeGreaterThan(0)
       },
     })
-  }, 0)
+  })
 
   test("collects every deterministic MCP Tool page and rejects a repeated cursor", async () => {
     const calls: Array<string | undefined> = []
@@ -842,7 +842,7 @@ describe("occurrence-bound capability catalog", () => {
         }
       },
     })
-  }, 0)
+  })
 
   test("converges five concurrent exact leaves on one identical immutable owner snapshot", async () => {
     await using project = await memoryProject()
@@ -899,7 +899,7 @@ describe("occurrence-bound capability catalog", () => {
         }
       },
     })
-  }, 0)
+  })
 
   test("advances scoped MCP inventory while a long Tool call is still running", async () => {
     await using project = await memoryProject()
@@ -980,7 +980,7 @@ describe("occurrence-bound capability catalog", () => {
         }
       },
     })
-  }, 0)
+  })
 
   test("converges when listChanged arrives before the in-flight tools/list response", async () => {
     await using project = await memoryProject()
@@ -1020,7 +1020,7 @@ describe("occurrence-bound capability catalog", () => {
         }
       },
     })
-  }, 0)
+  })
 
   test("rejects same-server and cross-server MCP runtime-name collisions without dropping capabilities", async () => {
     await using project = await memoryProject()
@@ -1082,7 +1082,7 @@ describe("occurrence-bound capability catalog", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("publishes paginated shared MCP resources through the same listChanged snapshot", async () => {
     await using project = await memoryProject()
@@ -1120,7 +1120,7 @@ describe("occurrence-bound capability catalog", () => {
         expect(Object.values(refreshed).map((resource) => resource.name).sort()).toEqual(["one", "three", "two"])
       },
     })
-  }, 0)
+  })
 
   test("serializes a verified Catalog read with duplicate publication of the same immutable blob", async () => {
     await using project = await memoryProject()

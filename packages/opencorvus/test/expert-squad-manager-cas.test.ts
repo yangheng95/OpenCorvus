@@ -258,5 +258,5 @@ describe("Expert Squad Manager package publication", () => {
       await project[Symbol.asyncDispose]()
       await rm(sourceRoot, { recursive: true, force: true })
     }
-  }, 0)
+  })
 })

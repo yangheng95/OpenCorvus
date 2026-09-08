@@ -304,7 +304,7 @@ describe("Generate Expert Squads expert squad", () => {
       description: "Publish the source-backed briefing evidence through its typed package ABI.",
       execute: expect.any(Function),
     })
-  }, 0)
+  })
 
   test("is available from a clean project catalog as an embedded system package", { timeout: 30_000 }, async () => {
     await using project = await memoryProject()

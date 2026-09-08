@@ -141,5 +141,5 @@ describe("Ten-swimlane generated payload integration", () => {
         }
       },
     })
-  }, 0)
+  })
 })

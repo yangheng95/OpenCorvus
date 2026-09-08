@@ -2088,7 +2088,7 @@ describe.serial("Evolution Artifact and exact evidence Host", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("loads the self-contained package ABI and materializes one exact immutable revision", async () => {
     const source = path.resolve(import.meta.dir, "../../../expert-squads/builtin/evolution-lab")
@@ -2826,7 +2826,7 @@ describe.serial("Evolution Artifact and exact evidence Host", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("collects one exact terminal occurrence with canonical identities and selected Message content", async () => {
     const project = await sharedProject()
@@ -3401,7 +3401,7 @@ describe.serial("Evolution Artifact and exact evidence Host", () => {
         await retainedExecution.close()
       },
     })
-  }, 0)
+  })
 
   test("anchors inactive and awaiting-interaction Trial outcomes to exact durable activity", async () => {
     const project = await sharedProject()
@@ -3499,5 +3499,5 @@ describe.serial("Evolution Artifact and exact evidence Host", () => {
         })
       },
     })
-  }, 0)
+  })
 })

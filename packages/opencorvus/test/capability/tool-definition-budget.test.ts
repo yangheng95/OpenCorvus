@@ -155,7 +155,7 @@ describe("search-native Tool definition budgets", () => {
         expect(search!.tokens).toBeLessThanOrEqual(CAPABILITY_SEARCH_INITIAL_MAX_TOKENS)
       },
     })
-  }, 0)
+  })
 
   test("admits the real Light collection Tool beside capability search for Anthropic and strict OpenAI", async () => {
     await using project = await memoryProject()
@@ -334,7 +334,7 @@ describe("search-native Tool definition budgets", () => {
         expect(measurements.map((entry) => entry.provider).sort()).toEqual(["anthropic", "openai"])
       },
     })
-  }, 0)
+  })
 
   test("admits Mission terminal audit and final completion while keeping publication isolated", async () => {
     await using project = await memoryProject()
@@ -480,5 +480,5 @@ describe("search-native Tool definition budgets", () => {
         ])
       },
     })
-  }, 0)
+  })
 })

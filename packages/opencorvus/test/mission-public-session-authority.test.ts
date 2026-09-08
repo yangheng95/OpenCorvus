@@ -216,7 +216,7 @@ describe("Mission public Session authority", () => {
         }
       },
     })
-  }, 0)
+  })
 
   test("serializes Mission authority from reusable Panel messages and shared Session mutations", async () => {
     await using project = await memoryProject()

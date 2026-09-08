@@ -336,7 +336,7 @@ describe("Session MEMORY.MD compaction checkpoint", () => {
         ].join("\n"))
       },
     })
-  }, 0)
+  })
 
   test("runs the real compaction integration and exposes its checkpoint to the next compaction only", async () => {
     await using project = await memoryProject()
@@ -525,7 +525,7 @@ describe("Session MEMORY.MD compaction checkpoint", () => {
         }
       },
     })
-  }, 0)
+  })
 
   test("continues a compacted reader result through the real provider tool loop into one checkpoint", async () => {
     await using project = await memoryProject()
@@ -796,7 +796,7 @@ describe("Session MEMORY.MD compaction checkpoint", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("settles an empty compaction continuation as one typed failed control", async () => {
     await using project = await memoryProject()
@@ -984,7 +984,7 @@ describe("Session MEMORY.MD compaction checkpoint", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("preserves compaction failure diagnostics, settlement authority, and atomic publication", async () => {
     await using project = await memoryProject()
@@ -1252,7 +1252,7 @@ describe("Session MEMORY.MD compaction checkpoint", () => {
         })
       },
     })
-  }, 0)
+  })
 
   test("returns the canonical never-compacted document state through tool and HTTP surfaces", async () => {
     await using project = await memoryProject()
@@ -1294,7 +1294,7 @@ describe("Session MEMORY.MD compaction checkpoint", () => {
       timeCreated: null,
       timeUpdated: null,
     })
-  }, 0)
+  })
 
   test("keeps the last completed checkpoint when a newer summary attempt is incomplete", async () => {
     await using project = await memoryProject()
@@ -1341,7 +1341,7 @@ describe("Session MEMORY.MD compaction checkpoint", () => {
         }))
       },
     })
-  }, 0)
+  })
 
   test("reconstructs a forked checkpoint and enforces project ownership at the HTTP boundary", async () => {
     await using projectA = await memoryProject()
@@ -1366,7 +1366,7 @@ describe("Session MEMORY.MD compaction checkpoint", () => {
     })
     expect(response.status).toBe(404)
     expect(await response.json()).toEqual(expect.objectContaining({ name: "NotFoundError" }))
-  }, 0)
+  })
 
   test("serves the bound checkpoint through the read-only tool and owned HTTP contract", async () => {
     await using project = await memoryProject()
@@ -1404,5 +1404,5 @@ describe("Session MEMORY.MD compaction checkpoint", () => {
       sourceMessageID,
       content: "# API checkpoint\n\n- verified",
     }))
-  }, 0)
+  })
 })

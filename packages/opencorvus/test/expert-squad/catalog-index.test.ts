@@ -116,7 +116,7 @@ describe("Expert Squad catalog index", () => {
       workflow_count: 2,
       next_workflow_cursor: null,
     })
-  }, 0)
+  })
 
   test("loads one exact full detail for a selected index identity", async () => {
     await using project = await catalogProject()
@@ -145,7 +145,7 @@ describe("Expert Squad catalog index", () => {
       "base-researcher": "explore",
       "base-tester": "delegated-worker",
     })
-  }, 0)
+  })
 
   test("preserves the integrity review execution contract in selected catalog detail", async () => {
     await using project = await catalogProject()
@@ -159,7 +159,7 @@ describe("Expert Squad catalog index", () => {
       base_role: "integrity",
       execution_contract: "platform_integrity_review",
     })
-  }, 0)
+  })
 
   test("reads full package bodies only for the exact selected installed identity", async () => {
     await using project = await catalogProject()
@@ -193,7 +193,7 @@ describe("Expert Squad catalog index", () => {
     } finally {
       exactLoad.mockRestore()
     }
-  }, 0)
+  })
 
   test("pages a hundred installed declarations through one bounded cursor contract", async () => {
     await using project = await catalogProject()
@@ -234,7 +234,7 @@ describe("Expert Squad catalog index", () => {
     } finally {
       readText.mockRestore()
     }
-  }, 0)
+  })
 
   test("returns one bounded Mission capability_search result for a hundred held Squads", async () => {
     await using project = await memoryProject()
@@ -433,7 +433,7 @@ describe("Expert Squad catalog index", () => {
         expect(metadata.active_payload_tokens).toBeLessThanOrEqual(CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS)
       },
     })
-  }, 0)
+  })
 
   test("keeps independent bounded cursor sequences stable for different queries", async () => {
     await using project = await catalogProject()
@@ -472,7 +472,7 @@ describe("Expert Squad catalog index", () => {
     })
     expect([...alpha.entries, ...alphaTail.entries].map((entry) => entry.id)).toEqual(["alpha-one", "alpha-two"])
     expect([...beta.entries, ...betaTail.entries].map((entry) => entry.id)).toEqual(["beta-one", "beta-two"])
-  }, 0)
+  })
 
   test("pages one exact Squad workflow catalog without unbounded inspection output", async () => {
     await using project = await catalogProject()
@@ -568,7 +568,7 @@ describe("Expert Squad catalog index", () => {
       version: updatedInspection?.version,
       workflowIDs: updatedInspection?.workflows.map((workflow) => workflow.id),
     }).toEqual({ revisionCount: 2, version: "2026.08.10.2", workflowIDs: ["replacement-workflow"] })
-  }, 0)
+  })
 
   test("pages discovery diagnostics while inventory status stays count-only", async () => {
     await using project = await catalogProject()
@@ -593,7 +593,7 @@ describe("Expert Squad catalog index", () => {
       cursor = page.next_cursor ?? undefined
     } while (cursor)
     expect(observed).toEqual(Array.from({ length: 45 }, () => "issue"))
-  }, 0)
+  })
 
   test("filters Market installation state before pagination and loads exact selected detail", async () => {
     await using project = await memoryProject()
@@ -655,7 +655,7 @@ describe("Expert Squad catalog index", () => {
         },
       ],
     })
-  }, 0)
+  })
 
   test("ranks Market packages from package-owned Skill and prompt evidence", async () => {
     await using project = await memoryProject()
@@ -678,7 +678,7 @@ describe("Expert Squad catalog index", () => {
       skillMatch: "actuarial-reserving",
       promptMatch: "actuarial-reserving",
     })
-  }, 0)
+  })
 
   test("keeps Market scope ordering and revision deterministic across Resolver call order", async () => {
     await using project = await catalogProject()
@@ -711,7 +711,7 @@ describe("Expert Squad catalog index", () => {
       await rm(globalRoot, { recursive: true, force: true })
       await ExpertSquadRegistry.invalidateAvailable()
     }
-  }, 0)
+  })
 
   test("serves active, index, inspection, status, diagnostics, and selected detail route contracts", async () => {
     await using project = await memoryProject()
@@ -747,7 +747,7 @@ describe("Expert Squad catalog index", () => {
         expect(marketDetail).toMatchObject({ id: "deep-research" })
       },
     })
-  }, 0)
+  })
 
   test("projects one project-over-global identity and keeps a damaged project reservation authoritative", async () => {
     await using project = await catalogProject()
@@ -792,5 +792,5 @@ describe("Expert Squad catalog index", () => {
       await rm(globalRoot, { recursive: true, force: true })
       await ExpertSquadRegistry.invalidateAvailable()
     }
-  }, 0)
+  })
 })

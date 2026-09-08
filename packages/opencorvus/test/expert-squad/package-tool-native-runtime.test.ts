@@ -208,5 +208,5 @@ describe("native Task package-tool process authority", () => {
         ).rejects.toThrow(/resource_set|Unrecognized key/)
       },
     })
-  }, 0)
+  })
 })

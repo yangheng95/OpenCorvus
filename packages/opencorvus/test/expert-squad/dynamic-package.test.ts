@@ -211,7 +211,7 @@ describe("Dynamic Expert Squad package", () => {
         )
       },
     })
-  }, 0)
+  })
 
   test("runs repeated generated members as overlapping direct-dispatch sibling Sessions", async () => {
     await using project = await memoryProject()
@@ -843,5 +843,5 @@ describe("Dynamic Expert Squad package", () => {
       providerSpy?.mockRestore()
       ingressRunnerLease?.[Symbol.dispose]()
     }
-  }, 0)
+  })
 })

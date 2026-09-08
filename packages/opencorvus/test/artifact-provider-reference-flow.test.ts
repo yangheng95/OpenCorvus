@@ -262,7 +262,7 @@ describe("provider Artifact references", () => {
         })).toEqual(locator)
       },
     })
-  }, 0)
+  })
 
   test("resolves paginated read and explicit selection references to one canonical publication locator", async () => {
     await using project = await memoryProject()
@@ -630,7 +630,7 @@ describe("provider Artifact references", () => {
         ).toEqual([legacyLocator, locator])
       },
     })
-  }, 0)
+  })
 
   test("rejects one selection token bound to different canonical provenance", async () => {
     await using project = await memoryProject()
@@ -745,5 +745,5 @@ describe("provider Artifact references", () => {
         expect((failure as ArtifactReferenceAmbiguityError).code).toBe("ARTIFACT_REFERENCE_AMBIGUOUS")
       },
     })
-  }, 0)
+  })
 })
