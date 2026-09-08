@@ -207,14 +207,14 @@ function waitForOAuthCallback(state: string, lease: object): OAuthCallbackLease<
   )
 }
 
-async function listRouters(bearer: string): Promise<RouterEntry[]> {
+async function listRouters(bearer: string, signal?: AbortSignal): Promise<RouterEntry[]> {
   const res = await fetch(`${DO_GENAI_API}/models/routers`, {
     headers: {
       Authorization: `Bearer ${bearer}`,
       Accept: "application/json",
       "User-Agent": `opencorvus/${Installation.VERSION}`,
     },
-    signal: AbortSignal.timeout(10_000),
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
   })
   if (!res.ok) throw new Error(`DigitalOcean router discovery failed: ${res.status} ${await res.text()}`)
   const body = (await res.json()) as { model_routers: RouterEntry[] }
@@ -333,7 +333,8 @@ export async function DigitalOceanAuthPlugin(input: PluginInput): Promise<Hooks>
               async callback() {
                 try {
                   const tokens = await callback.promise
-                  const routers = await listRouters(tokens.access_token)
+                  const routers = await listRouters(tokens.access_token, callback.signal)
+                  callback.signal.throwIfAborted()
                   return {
                     type: "success" as const,
                     key: tokens.access_token,
@@ -348,6 +349,7 @@ export async function DigitalOceanAuthPlugin(input: PluginInput): Promise<Hooks>
                     },
                   }
                 } finally {
+                  callback.complete()
                   await stopOAuthServer(lease)
                 }
               },

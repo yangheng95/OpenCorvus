@@ -62,9 +62,10 @@ function randomState(): string {
   return crypto.randomBytes(32).toString("base64url")
 }
 
-async function exchangeToken(instanceUrl: string, input: Record<string, string>) {
+async function exchangeToken(instanceUrl: string, input: Record<string, string>, signal?: AbortSignal) {
   if (GitlabAuthTestHooks.exchangeToken) return GitlabAuthTestHooks.exchangeToken(instanceUrl, input)
   const response = await fetch(`${instanceUrl}/oauth/token`, {
+    signal,
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
     body: new URLSearchParams({ client_id: CLIENT_ID, ...input }).toString(),
@@ -204,19 +205,28 @@ export async function GitlabAuthPlugin(input: PluginInput): Promise<Hooks> {
                 await oauthServer.stop(lease)
               },
               async callback() {
-                const result = await callback.promise
-                const tokens = await exchangeToken(instanceUrl, {
-                  code: result.code,
-                  grant_type: "authorization_code",
-                  redirect_uri: redirectUri,
-                  code_verifier: codes.verifier,
-                })
-                return {
-                  type: "success" as const,
-                  access: tokens.access_token,
-                  refresh: tokens.refresh_token,
-                  expires: Date.now() + tokens.expires_in * 1000,
-                  enterpriseUrl: instanceUrl,
+                try {
+                  const result = await callback.promise
+                  const tokens = await exchangeToken(
+                    instanceUrl,
+                    {
+                      code: result.code,
+                      grant_type: "authorization_code",
+                      redirect_uri: redirectUri,
+                      code_verifier: codes.verifier,
+                    },
+                    callback.signal,
+                  )
+                  callback.signal.throwIfAborted()
+                  return {
+                    type: "success" as const,
+                    access: tokens.access_token,
+                    refresh: tokens.refresh_token,
+                    expires: Date.now() + tokens.expires_in * 1000,
+                    enterpriseUrl: instanceUrl,
+                  }
+                } finally {
+                  callback.complete()
                 }
               },
             }

@@ -95,8 +95,9 @@ function buildAuthorizeUrl(account: string, role: string | undefined, state: str
   return `https://${account}.snowflakecomputing.com/oauth/authorize?${params.toString()}`
 }
 
-async function exchangeCodeForToken(account: string, code: string, pkce: PkceCodes) {
+async function exchangeCodeForToken(account: string, code: string, pkce: PkceCodes, signal: AbortSignal) {
   const response = await fetch(`https://${account}.snowflakecomputing.com/oauth/token-request`, {
+    signal,
     method: "POST",
     headers: {
       ...authHeaders(),
@@ -224,7 +225,7 @@ async function startOAuthServer(): Promise<object> {
             return
           }
 
-          exchangeCodeForToken(current.context.account, code, current.context.pkce)
+          exchangeCodeForToken(current.context.account, code, current.context.pkce, current.signal)
             .then((tokens) => current.resolve(tokens))
             .catch((err) => current.reject(err instanceof Error ? err : new Error(String(err))))
 
@@ -478,6 +479,7 @@ export async function SnowflakeCortexAuthPlugin(_input: PluginInput): Promise<Ho
               async callback() {
                 try {
                   const tokens = await callback.promise
+                  callback.signal.throwIfAborted()
                   return {
                     type: "success" as const,
                     refresh: tokens.refresh_token!,
@@ -486,6 +488,7 @@ export async function SnowflakeCortexAuthPlugin(_input: PluginInput): Promise<Ho
                     accountId: account,
                   }
                 } finally {
+                  callback.complete()
                   await stopOAuthServer(lease)
                 }
               },

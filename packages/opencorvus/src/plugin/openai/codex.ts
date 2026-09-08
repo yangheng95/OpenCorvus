@@ -125,8 +125,14 @@ interface CodexAuthPluginOptions {
   codexApiEndpoint?: string
 }
 
-async function exchangeCodeForTokens(code: string, redirectUri: string, pkce: PkceCodes): Promise<TokenResponse> {
+async function exchangeCodeForTokens(
+  code: string,
+  redirectUri: string,
+  pkce: PkceCodes,
+  signal: AbortSignal,
+): Promise<TokenResponse> {
   const response = await fetch(`${ISSUER}/oauth/token`, {
+    signal,
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -341,7 +347,12 @@ async function startOAuthServer(): Promise<{ port: number; redirectUri: string; 
             return
           }
 
-          exchangeCodeForTokens(code, `http://localhost:${OAUTH_PORT}/auth/callback`, current.context.pkce)
+          exchangeCodeForTokens(
+            code,
+            `http://localhost:${OAUTH_PORT}/auth/callback`,
+            current.context.pkce,
+            current.signal,
+          )
             .then((tokens) => current.resolve(tokens))
             .catch((err) => current.reject(err))
 
@@ -516,6 +527,7 @@ export async function CodexAuthPlugin(
               callback: async () => {
                 try {
                   const tokens = await callbackPromise.promise
+                  callbackPromise.signal.throwIfAborted()
                   const accountId = extractAccountId(tokens)
                   return {
                     type: "success" as const,
@@ -525,6 +537,7 @@ export async function CodexAuthPlugin(
                     accountId,
                   }
                 } finally {
+                  callbackPromise.complete()
                   await stopOAuthServer(lease)
                 }
               },

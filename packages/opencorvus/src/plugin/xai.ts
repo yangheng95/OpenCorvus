@@ -150,9 +150,11 @@ export function buildAuthorizeUrl(
 async function exchangeCodeForTokens(
   code: string,
   pkce: PkceCodes,
+  signal: AbortSignal,
   options: XaiAuthPluginOptions = {},
 ): Promise<TokenResponse> {
   const response = await fetch(options.tokenUrl ?? TOKEN_URL, {
+    signal,
     method: "POST",
     headers: authHeaders(),
     body: new URLSearchParams({
@@ -445,7 +447,7 @@ async function startOAuthServer(): Promise<{ port: number; redirectUri: string; 
             return
           }
 
-          exchangeCodeForTokens(code, current.context.pkce)
+          exchangeCodeForTokens(code, current.context.pkce, current.signal)
             .then((tokens) => current.resolve(tokens))
             .catch((err) => current.reject(err))
 
@@ -604,6 +606,7 @@ export async function XaiAuthPlugin(input: PluginInput, options: XaiAuthPluginOp
               callback: async () => {
                 try {
                   const tokens = await callbackPromise.promise
+                  callbackPromise.signal.throwIfAborted()
                   return {
                     type: "success" as const,
                     refresh: tokens.refresh_token,
@@ -611,6 +614,7 @@ export async function XaiAuthPlugin(input: PluginInput, options: XaiAuthPluginOp
                     expires: Date.now() + (tokens.expires_in ?? 3600) * 1000,
                   }
                 } finally {
+                  callbackPromise.complete()
                   await stopOAuthServer(lease)
                 }
               },

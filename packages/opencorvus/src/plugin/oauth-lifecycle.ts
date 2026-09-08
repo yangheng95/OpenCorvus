@@ -60,12 +60,16 @@ interface OAuthCallbackWaitOptions {
 
 export interface OAuthCallbackOwner<Context, Result> {
   readonly context: Context
+  readonly signal: AbortSignal
   resolve(result: Result): void
   reject(error: Error): void
 }
 
 export interface OAuthCallbackLease<Result> {
   readonly promise: Promise<Result>
+  readonly signal: AbortSignal
+  /** Release the deadline after all callback-owned network work has settled. */
+  complete(): void
   reject(error: Error): void
 }
 
@@ -77,32 +81,38 @@ export class ManagedOAuthCallbackOwner<Context, Result> {
   }
 
   wait(context: Context, options: OAuthCallbackWaitOptions): Promise<Result> {
-    return this.begin(context, options).promise
+    const lease = this.begin(context, options)
+    return lease.promise.finally(() => lease.complete())
   }
 
   begin(context: Context, options: OAuthCallbackWaitOptions): OAuthCallbackLease<Result> {
     this.pending?.reject(options.supersededError())
 
+    const controller = new AbortController()
+    let timeout: ReturnType<typeof setTimeout>
+    const complete = () => clearTimeout(timeout)
     let owner!: OAuthCallbackOwner<Context, Result> & { claimed: boolean }
     const promise = new Promise<Result>((resolve, reject) => {
       let settled = false
-      let timeout: ReturnType<typeof setTimeout>
       owner = {
         context,
+        signal: controller.signal,
         claimed: false,
         resolve: (result) => settle(() => resolve(result)),
-        reject: (error) => settle(() => reject(error)),
+        reject: (error) => {
+          complete()
+          controller.abort(error)
+          settle(() => reject(error))
+        },
       }
       const settle = (complete: () => void) => {
         if (settled) return
         settled = true
-        clearTimeout(timeout)
         if (this.pending === owner) this.pending = undefined
         complete()
       }
 
       timeout = setTimeout(() => {
-        if (this.pending !== owner) return
         owner.reject(options.timeoutError())
         void Promise.resolve()
           .then(() => options.onTimeout?.())
@@ -116,6 +126,8 @@ export class ManagedOAuthCallbackOwner<Context, Result> {
     void promise.catch(() => undefined)
     return {
       promise,
+      signal: controller.signal,
+      complete,
       reject: (error) => owner.reject(error),
     }
   }

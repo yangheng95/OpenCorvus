@@ -322,7 +322,11 @@ code method 缺少 code 时返回 typed refusal 且不 claim/settle flow，因�
 provider expiry 可缩短期限。poll、token exchange 的 fetch/body read 和等待共享同一 AbortSignal，期限到达或
 executor disposal 会中止操作，callback rejection 进入现有 exchange failure 结算。成功 callback 释放 timer。
 Overlay authorize/callback 请求仍使用现有有限请求超时；观察端超时不等于服务端 flow 已结算。
-此契约不覆盖尚未返回 executor 的 preparation、未调用 callback 的 pending flow 或 browser token exchange 的网络期限。
+浏览器 callback lease 的同一期限覆盖回调数据到达后的网络操作，直到 consumer 在 finally 中调用 `complete()`。
+timeout、supersession 和 disposal 以原错误中止同一 AbortSignal。OpenAI、xAI、Snowflake 的浏览器 token exchange
+使用 claimed owner 的 signal；GitLab 保持在 ProviderAuth claim 后交换 token，使用 callback lease 的 signal。
+DigitalOcean 路由发现同时受 lease signal 与原有十秒请求期限约束。callback 返回 credential 前检查 signal。
+此契约不覆盖尚未返回 executor 的 preparation、未调用 callback 的 durable pending flow、runtime refresh 或任意外部插件。
 
 callback 在调用 token endpoint 前核对 authorize 时绑定的 `expectedCredentialGeneration`。远端调用前 occurrence 从
 `pending` 进入 `exchanging`，返回 credential 后先写 `credential_ready`、credential digest 和预铸的 output generation，
