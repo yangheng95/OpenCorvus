@@ -20,6 +20,10 @@ import { updateTask } from "@/engine/state"
 import { requireTask } from "@/engine/store"
 import { AttachmentStore } from "@/storage/attachment-store"
 import {
+  acquireTaskCompletionClosureInTransaction,
+  releaseTaskCompletionClosureInTransaction,
+} from "@/engine/task-completion-closure"
+import {
   appendTaskAttachment,
   appendTaskSystemArtifact,
   replaceTaskSystemArtifactByIntent,
@@ -65,11 +69,40 @@ try {
         fs.writeFileSync(inputPath, JSON.stringify({ taskID, sessionID: session.id, artifacts }))
         return
       }
-      const { taskID, sessionID, artifacts, files } = JSON.parse(fs.readFileSync(inputPath, "utf8")) as {
+      const { taskID, sessionID, artifacts, files, completionTasks } = JSON.parse(
+        fs.readFileSync(inputPath, "utf8"),
+      ) as {
         taskID: string
         sessionID: string
         artifacts: string[]
         files?: TaskFileRef[]
+        completionTasks?: Array<{ taskID: string; sessionID: string }>
+      }
+      if (mode === "completion-seed") {
+        const completionTasks = []
+        for (let index = 0; index < 4; index++) {
+          const root = await Session.create({ kind: "root", title: `Completion writer ${index}` })
+          const id = Identifier.ascending("task")
+          const now = Date.now()
+          Database.immediateTransaction((db) => {
+            db.insert(EngineTaskTable)
+              .values({
+                id,
+                project_id: Instance.project.id,
+                session_id: root.id,
+                source: "test",
+                product_pillar: "code",
+                title: "Completion writer",
+                request: "Verify closure writer",
+                time_created: now,
+              })
+              .run()
+            appendTaskOpenedInTransaction({ db, taskID: id, sessionID: root.id, now, source: "test.completion-writer" })
+          })
+          completionTasks.push({ taskID: id, sessionID: root.id })
+        }
+        fs.writeFileSync(inputPath, JSON.stringify({ taskID, sessionID, artifacts, files, completionTasks }))
+        return
       }
       if (mode === "file-seed") {
         const files: TaskFileRef[] = []
@@ -140,7 +173,17 @@ try {
       const fileModes = ["file-append", "file-replay", "file-artifact", "file-replace"]
       if (
         !label ||
-        !["rewind", "artifact", "clear", "preview", "promote", "state", ...mailboxModes, ...fileModes].includes(mode)
+        ![
+          "rewind",
+          "artifact",
+          "clear",
+          "preview",
+          "promote",
+          "state",
+          "completion",
+          ...mailboxModes,
+          ...fileModes,
+        ].includes(mode)
       )
         throw new Error("Invalid Task writer mode")
       const targetID =
@@ -161,6 +204,31 @@ try {
         await Bun.sleep(10)
       }
       const receipts: Array<{ reason: string; count: number }> = []
+      if (mode === "completion") {
+        const task = completionTasks?.[Number(label)]
+        if (!task) throw new Error("Completion writer requires its seeded Task")
+        const ownerID = `completion-${label}`
+        const closures = []
+        for (let index = 0; index < 25; index++) {
+          const acquired = Database.immediateTransaction((db) =>
+            acquireTaskCompletionClosureInTransaction(db, {
+              taskID: task.taskID,
+              ownerID,
+              orchestratorSessionID: task.sessionID,
+              orchestratorMessageID: Identifier.ascending("message"),
+              toolCallID: `call-${index}`,
+              toolPartID: Identifier.ascending("part"),
+              timeAcquired: Date.now(),
+            }),
+          )
+          const released = Database.immediateTransaction((db) =>
+            releaseTaskCompletionClosureInTransaction(db, { taskID: task.taskID, ownerID }),
+          )
+          closures.push({ ownerID: acquired.owner_id, released })
+        }
+        console.log(JSON.stringify({ closures, previews: [] }))
+        return
+      }
       if (fileModes.includes(mode)) {
         if (!files || files.length !== 100) throw new Error("File writers require seeded canonical files")
         const references = []

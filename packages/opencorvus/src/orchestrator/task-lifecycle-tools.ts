@@ -148,7 +148,7 @@ export function createTaskLifecycleTools(input: {
             },
             visibleToolName: execution.visibleToolName,
         })
-        Database.transaction((db) =>
+        Database.immediateTransaction((db) =>
           acquireTaskCompletionClosureInTransaction(db, {
             taskID: input.taskID,
             ownerID: closureOwnerID,
@@ -185,7 +185,7 @@ export function createTaskLifecycleTools(input: {
           // here would otherwise hold the Task uncompletable for the whole
           // lease while the model retries into that window.
           try {
-            Database.transaction((db) =>
+            Database.immediateTransaction((db) =>
               releaseTaskCompletionClosureInTransaction(db, { taskID: input.taskID, ownerID: closureOwnerID }),
             )
           } catch (releaseError) {

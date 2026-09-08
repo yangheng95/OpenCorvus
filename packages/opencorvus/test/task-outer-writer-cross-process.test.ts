@@ -39,6 +39,7 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
   try {
     await read(spawn("init"))
     const files = await read(spawn("file-seed"))
+    await read(spawn("completion-seed"))
     for (const mode of [
       "rewind",
       "artifact",
@@ -50,6 +51,7 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       "file-replay",
       "file-artifact",
       "file-replace",
+      "completion",
     ]) {
       const workers = Array.from({ length: 4 }, (_, index) => spawn(mode, String(index)))
       const deadline = Date.now() + 30_000
@@ -73,6 +75,13 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       }
       await fs.writeFile(path.join(directory, `${mode}.start`), "start")
       const results = await Promise.all(workers.map(read))
+      if (mode === "completion") {
+        expect(results.map((result) => result.closures)).toEqual(
+          Array.from({ length: 4 }, (_, worker) =>
+            Array.from({ length: 25 }, () => ({ ownerID: `completion-${worker}`, released: true })),
+          ),
+        )
+      }
       if (mode.startsWith("file-")) {
         expect(results.flatMap((result) => result.references)).toEqual(
           files.map((file: object, slot: number) =>
