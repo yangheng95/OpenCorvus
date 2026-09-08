@@ -68,6 +68,19 @@ export namespace ProviderOAuthFlowStore {
   /** Settled occurrences older than this are pruned on the next write. */
   const SETTLED_RETENTION_MS = 24 * 60 * 60 * 1000
   export const EXCHANGE_LEASE_MS = 120_000
+  /** Liveness renewal cannot extend the user's pending authorization indefinitely. */
+  export const PENDING_AUTHORIZATION_TIMEOUT_MS = 5 * 60 * 1000
+
+  export function pendingAuthorizationExpiresAt(flow: Pick<Flow, "timeCreated">): number {
+    return flow.timeCreated + PENDING_AUTHORIZATION_TIMEOUT_MS
+  }
+
+  export function ownerLeaseExpiresAt(flow: Flow): number {
+    const lease = flow.exchangeLeaseExpiresAt ?? 0
+    return flow.state === "pending" && flow.operation === "authorization"
+      ? Math.min(lease, pendingAuthorizationExpiresAt(flow))
+      : lease
+  }
 
   const locks = new Map<string, Promise<unknown>>()
 
@@ -180,12 +193,12 @@ export namespace ProviderOAuthFlowStore {
         const conflictingProviderID = [...providerIDs].find((providerID) => ownsProvider(existing, providerID))
         if (!conflictingProviderID) continue
         if (existing.state === "pending" && existing.operation === "authorization") {
-          if ((existing.exchangeLeaseExpiresAt ?? 0) > now) {
+          if (ownerLeaseExpiresAt(existing) > now) {
             throw new ExchangeActiveError({
               providerID: conflictingProviderID,
               scope: existing.scope,
               flowID: existing.id,
-              leaseExpiresAt: existing.exchangeLeaseExpiresAt!,
+              leaseExpiresAt: ownerLeaseExpiresAt(existing),
             })
           }
           existing.state = "failed"
@@ -195,12 +208,12 @@ export namespace ProviderOAuthFlowStore {
           continue
         }
         if (existing.state !== "exchanging" && existing.state !== "credential_ready") continue
-        if ((existing.exchangeLeaseExpiresAt ?? 0) > now) {
+        if (ownerLeaseExpiresAt(existing) > now) {
           throw new ExchangeActiveError({
             providerID: conflictingProviderID,
             scope: existing.scope,
             flowID: existing.id,
-            leaseExpiresAt: existing.exchangeLeaseExpiresAt!,
+            leaseExpiresAt: ownerLeaseExpiresAt(existing),
           })
         }
         await settleExpired(existing, now)
@@ -229,7 +242,7 @@ export namespace ProviderOAuthFlowStore {
         (existing) =>
           ownsProvider(existing, input.providerID) &&
           (existing.state === "pending" || existing.state === "exchanging" || existing.state === "credential_ready") &&
-          (existing.exchangeLeaseExpiresAt ?? 0) > now,
+          ownerLeaseExpiresAt(existing) > now,
       )
       if (active) {
         return {
@@ -240,7 +253,7 @@ export namespace ProviderOAuthFlowStore {
 
       for (const existing of Object.values(data)) {
         if (!ownsProvider(existing, input.providerID)) continue
-        if (existing.state === "pending" && (existing.exchangeLeaseExpiresAt ?? 0) <= now) {
+        if (existing.state === "pending" && ownerLeaseExpiresAt(existing) <= now) {
           existing.state = "failed"
           existing.timeSettled = now
           existing.error = "Provider OAuth executor owner expired before callback"
@@ -283,7 +296,7 @@ export namespace ProviderOAuthFlowStore {
         providerID: input.providerID,
         scope: result.flow.scope,
         flowID: result.flow.id,
-        leaseExpiresAt: result.flow.exchangeLeaseExpiresAt!,
+        leaseExpiresAt: ownerLeaseExpiresAt(result.flow),
       })
     }
     if (result.type === "uncertain") {
@@ -341,7 +354,7 @@ export namespace ProviderOAuthFlowStore {
       !!flow &&
       states.includes(flow.state as "exchanging" | "credential_ready") &&
       flow.exchangeOwnerID === ownerID &&
-      (flow.exchangeLeaseExpiresAt ?? 0) > now
+      ownerLeaseExpiresAt(flow) > now
     )
   }
 
@@ -354,7 +367,7 @@ export namespace ProviderOAuthFlowStore {
         !flow ||
         flow.state !== "pending" ||
         flow.exchangeOwnerID !== input.ownerID ||
-        (flow.exchangeLeaseExpiresAt ?? 0) <= now
+        ownerLeaseExpiresAt(flow) <= now
       ) {
         return undefined
       }
@@ -364,12 +377,12 @@ export namespace ProviderOAuthFlowStore {
       for (const existing of Object.values(data)) {
         if (existing.id === flow.id || providerIDs.every((providerID) => !ownsProvider(existing, providerID))) continue
         if (existing.state !== "exchanging" && existing.state !== "credential_ready") continue
-        if ((existing.exchangeLeaseExpiresAt ?? 0) > now) {
+        if (ownerLeaseExpiresAt(existing) > now) {
           throw new ExchangeActiveError({
             providerID: flow.providerID,
             scope: existing.scope,
             flowID: existing.id,
-            leaseExpiresAt: existing.exchangeLeaseExpiresAt!,
+            leaseExpiresAt: ownerLeaseExpiresAt(existing),
           })
         }
         await settleExpired(existing, now)
@@ -393,11 +406,11 @@ export namespace ProviderOAuthFlowStore {
         !flow ||
         flow.state !== "pending" ||
         flow.exchangeOwnerID !== input.ownerID ||
-        (flow.exchangeLeaseExpiresAt ?? 0) <= now
+        ownerLeaseExpiresAt(flow) <= now
       ) {
         return undefined
       }
-      flow.exchangeLeaseExpiresAt = now + EXCHANGE_LEASE_MS
+      flow.exchangeLeaseExpiresAt = Math.min(now + EXCHANGE_LEASE_MS, pendingAuthorizationExpiresAt(flow))
       await write(data)
       return flow
     })
@@ -418,7 +431,7 @@ export namespace ProviderOAuthFlowStore {
         !flow ||
         flow.state !== "pending" ||
         flow.exchangeOwnerID !== input.ownerID ||
-        (flow.exchangeLeaseExpiresAt ?? 0) <= now
+        ownerLeaseExpiresAt(flow) <= now
       ) {
         return undefined
       }
@@ -444,7 +457,7 @@ export namespace ProviderOAuthFlowStore {
         !flow ||
         flow.state !== "pending" ||
         flow.exchangeOwnerID !== input.ownerID ||
-        (flow.exchangeLeaseExpiresAt ?? 0) > now
+        ownerLeaseExpiresAt(flow) > now
       ) {
         return undefined
       }
@@ -590,7 +603,7 @@ export namespace ProviderOAuthFlowStore {
       if (
         !flow ||
         (flow.state !== "exchanging" && flow.state !== "credential_ready") ||
-        (flow.exchangeLeaseExpiresAt ?? 0) > now
+        ownerLeaseExpiresAt(flow) > now
       ) {
         return undefined
       }
@@ -608,7 +621,7 @@ export namespace ProviderOAuthFlowStore {
         if (
           !ownsProvider(flow, providerID) ||
           (flow.state !== "exchanging" && flow.state !== "credential_ready") ||
-          (flow.exchangeLeaseExpiresAt ?? 0) > now
+          ownerLeaseExpiresAt(flow) > now
         ) {
           continue
         }
@@ -639,6 +652,18 @@ export namespace ProviderOAuthFlowStore {
   )
 
   export namespace TestHooks {
+    /** Expire the absolute deadline while preserving a live process lease. */
+    export async function expirePendingAuthorization(id: string): Promise<Flow | undefined> {
+      return mutate(async () => {
+        const data = await read()
+        const flow = data[id]
+        if (!flow || flow.state !== "pending") return undefined
+        flow.timeCreated = Date.now() - PENDING_AUTHORIZATION_TIMEOUT_MS - 1
+        flow.exchangeLeaseExpiresAt = Date.now() + EXCHANGE_LEASE_MS
+        await write(data)
+        return flow
+      })
+    }
     export let beforeRenewPending: ((input: { id: string; ownerID: string }) => Promise<void>) | undefined
     export let beforeFailPending: ((input: { id: string; ownerID: string }) => Promise<void>) | undefined
     export let beforeRenewExchange: ((input: { id: string; ownerID: string }) => Promise<void>) | undefined

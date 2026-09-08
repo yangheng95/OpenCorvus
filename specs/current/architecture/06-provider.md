@@ -309,6 +309,11 @@ Auth generation，并由 `ProviderOAuthFlowStore` 在任何 loopback server、br
 exact flow occurrence。pending executor 自身持有 Provider-wide renewable owner；同 source 或 target 的另一授权/refresh
 在其存活期间得到 typed 409，不能替换 executor 或让其资源失去结算路径。plugin executor 创建成功后才以 `flowID`
 绑定；callback 必须携带该 exact `flowID` 和 owner，不存在按 provider/scope 查找 current flow 的后备路径。
+`pending` authorization 的有效 lease 为进程 lease 与 `timeCreated + PENDING_AUTHORIZATION_TIMEOUT_MS` 的较早者；
+总期限为五分钟，续租只能维持存活证明，不能延长该期限。所有 admission、claim、renewal 和 recovery 使用同一
+`ownerLeaseExpiresAt` 定义。后台 renewal observer 或后续 admission/callback 将到期 occurrence 结算为 `failed`，
+同 scope 新授权先回收已到期 executor；迟到的 preparation result 必须重新验证 owner 并在失效时释放。
+此期限只约束 pending 阶段；已 claim 的 exchange/credential_ready 和 runtime refresh 保持各自的可续租事务契约。
 method/scope mismatch、settled、generation replacement 和 executor 丢失均使用 typed refusal。
 Project `Instance` 释放时，Provider auth state 先停止 owner renewal，再把仍属该 exact owner 的 pending occurrence 结算为
 `failed` 并释放 plugin executor；loopback listener 等 process-local 资源由 OAuth result 的 `dispose` 生命周期统一回收。
@@ -326,7 +331,7 @@ Overlay authorize/callback 请求仍使用现有有限请求超时；观察端�
 timeout、supersession 和 disposal 以原错误中止同一 AbortSignal。OpenAI、xAI、Snowflake 的浏览器 token exchange
 使用 claimed owner 的 signal；GitLab 保持在 ProviderAuth claim 后交换 token，使用 callback lease 的 signal。
 DigitalOcean 路由发现同时受 lease signal 与原有十秒请求期限约束。callback 返回 credential 前检查 signal。
-此契约不覆盖尚未返回 executor 的 preparation、未调用 callback 的 durable pending flow、runtime refresh 或任意外部插件。
+插件网络取消契约不覆盖尚未返回 executor 的 preparation、runtime refresh 或任意外部插件；durable pending 总期限仍然适用。
 
 callback 在调用 token endpoint 前核对 authorize 时绑定的 `expectedCredentialGeneration`。远端调用前 occurrence 从
 `pending` 进入 `exchanging`，返回 credential 后先写 `credential_ready`、credential digest 和预铸的 output generation，

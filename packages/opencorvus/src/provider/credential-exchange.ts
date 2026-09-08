@@ -220,7 +220,7 @@ export namespace ProviderCredentialExchange {
       if (
         current?.state === "pending" &&
         current.exchangeOwnerID === ownerID &&
-        (current.exchangeLeaseExpiresAt ?? 0) <= Date.now()
+        ProviderOAuthFlowStore.ownerLeaseExpiresAt(current) <= Date.now()
       ) {
         await ProviderOAuthFlowStore.settleExpiredPending({ id: input.flowID, ownerID })
         await input.claimed?.("expired")
@@ -304,7 +304,7 @@ export namespace ProviderCredentialExchange {
       }
       if (
         (flow.state === "exchanging" || flow.state === "credential_ready") &&
-        (flow.exchangeLeaseExpiresAt ?? 0) <= Date.now()
+        ProviderOAuthFlowStore.ownerLeaseExpiresAt(flow) <= Date.now()
       ) {
         const settled = await ProviderOAuthFlowStore.settleExpiredExchange(flow.id)
         if (settled?.state === "consumed") {

@@ -41,11 +41,12 @@ export namespace ProviderAuth {
         executor.stopRenewal()
         let settlementFailure: unknown
         try {
-          await ProviderOAuthFlowStore.failPending({
+          const failed = await ProviderOAuthFlowStore.failPending({
             id: flowID,
             ownerID: executor.ownerID,
             error: "Provider OAuth executor owner ended with its Project Instance",
           })
+          if (!failed) await ProviderOAuthFlowStore.settleExpiredPending({ id: flowID, ownerID: executor.ownerID })
         } catch (error) {
           settlementFailure = error
         }
@@ -81,7 +82,12 @@ export namespace ProviderAuth {
    */
   async function disposeSettledExecutors(executors: Map<string, OAuthExecutor>) {
     for (const id of [...executors.keys()]) {
-      const record = await ProviderOAuthFlowStore.get(id)
+      let record = await ProviderOAuthFlowStore.get(id)
+      const executor = executors.get(id)
+      if (record?.state === "pending" && executor && ProviderOAuthFlowStore.ownerLeaseExpiresAt(record) <= Date.now()) {
+        await ProviderOAuthFlowStore.settleExpiredPending({ id, ownerID: executor.ownerID })
+        record = await ProviderOAuthFlowStore.get(id)
+      }
       if (!record || !["pending", "exchanging", "credential_ready"].includes(record.state)) {
         const settled = executors.get(id)
         settled?.stopRenewal()
@@ -228,7 +234,8 @@ export namespace ProviderAuth {
       const stopRenewal = renewPendingOwner(flow.id, ownerID, async () => {
         const current = await ProviderOAuthFlowStore.get(flow.id)
         if (current?.state === "pending") {
-          if (current.exchangeOwnerID !== ownerID || (current.exchangeLeaseExpiresAt ?? 0) > Date.now()) return
+          if (current.exchangeOwnerID !== ownerID || ProviderOAuthFlowStore.ownerLeaseExpiresAt(current) > Date.now())
+            return
           await ProviderOAuthFlowStore.settleExpiredPending({ id: flow.id, ownerID })
         }
         if (currentState.executors.get(flow.id) !== executor) return
@@ -238,17 +245,23 @@ export namespace ProviderAuth {
       let result: AuthOAuthResult | undefined
       try {
         result = await method.authorize(input.inputs)
+        if (ProviderOAuthFlowStore.pendingAuthorizationExpiresAt(flow) <= Date.now()) {
+          throw new Error("Provider OAuth authorization occurrence lost its executor owner")
+        }
         const renewed = await ProviderOAuthFlowStore.renewPending({ id: flow.id, ownerID }).catch(() => "transient")
-        if (!renewed) throw new Error("Provider OAuth authorization occurrence lost its executor owner")
+        if (!renewed || ProviderOAuthFlowStore.pendingAuthorizationExpiresAt(flow) <= Date.now()) {
+          throw new Error("Provider OAuth authorization occurrence lost its executor owner")
+        }
       } catch (error) {
         stopRenewal()
         const cleanupFailures: unknown[] = []
         try {
-          await ProviderOAuthFlowStore.failPending({
+          const failed = await ProviderOAuthFlowStore.failPending({
             id: flow.id,
             ownerID,
             error: "Provider OAuth authorization preparation failed",
           })
+          if (!failed) await ProviderOAuthFlowStore.settleExpiredPending({ id: flow.id, ownerID })
         } catch (failure) {
           cleanupFailures.push(failure)
         }
