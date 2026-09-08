@@ -16,7 +16,7 @@ import {
   EngineBrowserPreviewTargetIdentityTable,
   EngineTaskRootIngressTable,
 } from "@/engine/engine.sql"
-import { persistProcessShutdownRecoveryHandoffs } from "@/engine/task-root-ingress-delivery"
+import { dispatchTaskLoop, persistProcessShutdownRecoveryHandoffs } from "@/engine/task-root-ingress-delivery"
 import { persistBrowserPreviewTarget, promoteBrowserPreviewTarget } from "@/browser-preview/persist"
 import { appendTaskOpenedInTransaction } from "@/engine/task-lifecycle"
 import { recordEngineArtifact, updateEngineArtifact } from "@/engine/artifact"
@@ -188,6 +188,7 @@ try {
           "state",
           "completion",
           "shutdown",
+          "ingress",
           ...mailboxModes,
           ...fileModes,
         ].includes(mode)
@@ -211,6 +212,44 @@ try {
         await Bun.sleep(10)
       }
       const receipts: Array<{ reason: string; count: number }> = []
+      if (mode === "ingress") {
+        const task = completionTasks?.[Number(label)]
+        if (!task) throw new Error("Ingress writer requires its seeded Task")
+        const accepted = []
+        for (let replay = 0; replay < 2; replay++) {
+          for (let index = 0; index < 25; index++) {
+            const boundary = new Error("Accepted ingress boundary")
+            try {
+              await dispatchTaskLoop({
+                taskID: task.taskID,
+                event: { note: `ingress-${label}-${index}` },
+                beforeAcceptedWake(wake) {
+                  accepted.push(wake)
+                  throw boundary
+                },
+              })
+              throw new Error("Expected the accepted boundary")
+            } catch (error) {
+              if (error !== boundary) throw error
+            }
+          }
+        }
+        const persisted = Database.use((db) =>
+          db
+            .select({
+              taskID: EngineTaskRootIngressTable.task_id,
+              epoch: EngineTaskRootIngressTable.execution_epoch,
+              payload: EngineTaskRootIngressTable.inline_payload,
+            })
+            .from(EngineTaskRootIngressTable)
+            .where(
+              and(eq(EngineTaskRootIngressTable.task_id, task.taskID), eq(EngineTaskRootIngressTable.source, "inline")),
+            )
+            .all(),
+        )
+        console.log(JSON.stringify({ taskID: task.taskID, accepted, persisted, previews: [] }))
+        return
+      }
       if (mode === "shutdown") {
         const task = completionTasks?.[Number(label)]
         if (!task) throw new Error("Shutdown writer requires its seeded Task")

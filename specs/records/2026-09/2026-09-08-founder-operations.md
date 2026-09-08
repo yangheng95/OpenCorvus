@@ -1,5 +1,15 @@
 # OpenCorvus founder operations
 
+## Ordinary Task ingress writer — 2026-09-09
+
+Recall: continue shared admission audit after 1c1e56615. Read dispatchTaskLoop, transaction-local ingress lifecycle/source/identity acceptance, all production callers, beforeAcceptedWake/admitInTransaction uses, retry-budget and native-wait tests. Independent pre-edit feedback: 无. Preserve the lifecycle/epoch, source identity, budget suppression and post-commit wake contracts; do not operate user processes or use Provider credentials.
+
+Analysis: callers with an admission callback already reserve an immediate writer, but ordinary input uses a deferred transaction while the same reducer reads lifecycle before writes. Four processes assigned distinct Tasks called public dispatchTaskLoop 50 times each: 58/200 reached the accepted callback, 142 failed with SQLite database-is-locked (ingress-writer-4b15478a388b4e8aa6e7091a32a8b29b). The probe deliberately throws its exact sentinel from the existing post-commit beforeAcceptedWake callback to isolate admission from execution; it does not prove model execution or completed dispatchTaskLoop returns. No generic retry or new configuration is needed.
+
+Plan: use the existing immediate transaction for all admission paths, preserving callback ordering, ignored/suppressed outcomes and reconciliation. Extend real-process fixture with ordinary admission plus identical replay, verifying exact accepted receipts and persisted inline notes/epoch/identity cardinality. Stop only at the existing accepted boundary, explicitly excluding model consumption. Run the full infrastructure budget and native-wait files for broader production-path contracts, package/docs checks and independent review before scoped commit/push. Concurrent full recovery/model execution and cross-project recovery remain open.
+
+Validation: the unchanged public-admission probe reached its committed boundary 200/200 times after the fix (ingress-writer-fixed-0aa5837bfe20483980b610f279a37a90). Expanded shared writer test passed 1 test/94 assertions in 73.87 seconds, including 200 exact accepted callback receipts and 100 persisted inline records after replay. Infrastructure budget file passed 2 tests/2 assertions in 6.16 seconds; full native-wait file passed 12 tests/28 assertions in 26.67 seconds, including actual Wait Tool and due/ordinary-input admission contracts. Combined runner exited 0. Package typecheck, docs check (339 operations/25 groups) and diff checks passed. Independent read-only review passed without findings, confirming callback ordering, ignored/budget results, exact replay persistence, shared-fixture compatibility and evidence limits.
+
 ## Process shutdown handoff writer — 2026-09-09
 
 Recall: continue the shared recovery audit after 10cf7eb19. Read task-root ingress admission and shutdown handoff, writer shutdown owner, dispatch settlement callers, durable activity readers, architecture 03-control and process-shutdown-task-lifecycle tests. Independent pre-edit feedback: 无. Preserve unrelated dirty files and existing occurrence, cancellation and project authority. No Provider, UI or user-process operations.

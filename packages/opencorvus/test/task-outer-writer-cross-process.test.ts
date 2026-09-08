@@ -53,6 +53,7 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       "file-replace",
       "completion",
       "shutdown",
+      "ingress",
     ]) {
       const workers = Array.from({ length: 4 }, (_, index) => spawn(mode, String(index)))
       const deadline = Date.now() + 30_000
@@ -76,6 +77,24 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       }
       await fs.writeFile(path.join(directory, `${mode}.start`), "start")
       const results = await Promise.all(workers.map(read))
+      if (mode === "ingress") {
+        for (const [worker, result] of results.entries()) {
+          expect(result.accepted).toEqual(
+            Array.from({ length: 50 }, () => ({ taskID: result.taskID, result: "accepted" })),
+          )
+          expect(
+            result.persisted.sort((a: { payload: { note: string } }, b: { payload: { note: string } }) =>
+              a.payload.note.localeCompare(b.payload.note),
+            ),
+          ).toEqual(
+            Array.from({ length: 25 }, (_, index) => ({
+              taskID: result.taskID,
+              epoch: 1,
+              payload: { note: `ingress-${worker}-${index}` },
+            })).sort((a, b) => a.payload.note.localeCompare(b.payload.note)),
+          )
+        }
+      }
       if (mode === "shutdown") {
         for (const [worker, result] of results.entries()) {
           expect(result.handoffs.map((handoff: { reason: string }) => handoff.reason)).toEqual(

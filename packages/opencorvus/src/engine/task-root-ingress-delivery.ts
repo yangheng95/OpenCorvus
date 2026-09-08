@@ -2056,9 +2056,7 @@ export async function dispatchTaskLoop(input: DispatchTaskLoopInput): Promise<Di
     persistTaskRootIngressInTransaction(db, task, event, identity)
     return "accepted"
   }
-  const accepted = input.admitInTransaction
-    ? Database.immediateTransaction(accept)
-    : Database.transaction(accept)
+  const accepted = Database.immediateTransaction(accept)
   if (accepted !== "accepted") return accepted
   await input.beforeAcceptedWake?.({ taskID: task.id, result: "accepted" })
   await reconcileTaskControlPlane(task.id)
