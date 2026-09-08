@@ -4,7 +4,8 @@ import { Database, asc, eq } from "@/storage/db"
 import { Instance } from "@/project/instance"
 import { Session } from "@/session"
 import { Identifier } from "@/id/id"
-import { EngineTaskTable, EngineArtifactTable } from "@/engine/engine.sql"
+import { EngineTaskTable, EngineArtifactTable, EngineBrowserPreviewTargetIdentityTable } from "@/engine/engine.sql"
+import { persistBrowserPreviewTarget, promoteBrowserPreviewTarget } from "@/browser-preview/persist"
 import { appendTaskOpenedInTransaction } from "@/engine/task-lifecycle"
 import { recordEngineArtifact, updateEngineArtifact } from "@/engine/artifact"
 import { rewindTask, clearRewindCursor, taskRewindCursor } from "@/engine/rewind"
@@ -64,15 +65,40 @@ try {
         )
         const rows = Database.use((db) =>
           db
-            .select({ label: EngineArtifactTable.label, revision: EngineArtifactTable.catalog_revision })
+            .select({
+              id: EngineArtifactTable.id,
+              label: EngineArtifactTable.label,
+              revision: EngineArtifactTable.catalog_revision,
+              payload: EngineArtifactTable.payload,
+              updated: EngineArtifactTable.time_updated,
+            })
             .from(EngineArtifactTable)
             .where(eq(EngineArtifactTable.task_id, taskID))
             .all(),
         )
-        console.log(JSON.stringify({ events, artifacts: rows, cursor: taskRewindCursor(taskID) }))
+        const targets = Database.use((db) =>
+          db
+            .select()
+            .from(EngineBrowserPreviewTargetIdentityTable)
+            .where(eq(EngineBrowserPreviewTargetIdentityTable.task_id, taskID))
+            .all(),
+        )
+        console.log(JSON.stringify({ events, artifacts: rows, targets, cursor: taskRewindCursor(taskID) }))
         return
       }
-      if (!label || !["rewind", "artifact", "clear"].includes(mode)) throw new Error("Invalid Task writer mode")
+      if (!label || !["rewind", "artifact", "clear", "preview", "promote"].includes(mode))
+        throw new Error("Invalid Task writer mode")
+      const targetID =
+        mode === "promote"
+          ? Database.use(
+              (db) =>
+                db
+                  .select()
+                  .from(EngineBrowserPreviewTargetIdentityTable)
+                  .where(eq(EngineBrowserPreviewTargetIdentityTable.task_id, taskID))
+                  .get()!.artifact_id,
+            )
+          : undefined
       fs.writeFileSync(path.join(directory, `${mode}-${label}.ready`), "ready")
       const deadline = Date.now() + 30_000
       while (!fs.existsSync(path.join(directory, `${mode}.start`))) {
@@ -80,6 +106,7 @@ try {
         await Bun.sleep(10)
       }
       const receipts: Array<{ reason: string; count: number }> = []
+      const previews: Array<{ id: string; updated: number }> = []
       if (mode === "clear") await clearRewindCursor(taskID)
       else
         for (let index = 0; index < 25; index++) {
@@ -91,9 +118,21 @@ try {
               reason,
             })
             receipts.push({ reason, count: result.rewindCount })
+          } else if (mode === "preview") {
+            const target = await persistBrowserPreviewTarget({
+              taskID,
+              url: "http://localhost:49999/Preview",
+              now: 1000,
+              viewports: [{ id: "desktop", labelKey: "desktop", width: 1280 + index, height: 800 }],
+            })
+            previews.push({ id: target.id, updated: target.timeUpdated })
+          } else if (mode === "promote") {
+            const target = await promoteBrowserPreviewTarget({ taskID, targetID: targetID!, now: 1000 })
+            if (!target) throw new Error("Persisted target was not found during promotion")
+            previews.push({ id: target.id, updated: target.timeUpdated })
           } else updateEngineArtifact({ id: artifacts[Number(label)]!, label: `worker-${label}-${index}` })
         }
-      console.log(JSON.stringify({ label, receipts }))
+      console.log(JSON.stringify({ label, receipts, previews }))
     },
   })
 } finally {

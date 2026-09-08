@@ -423,7 +423,7 @@ export function persistBrowserPreviewTarget(input: {
   const canonicalUrl = canonicalBrowserPreviewUrl(input.url)
   if (!canonicalUrl) throw new Error(`Invalid Browser Preview URL: ${input.url}`)
   const viewports = normalizeBrowserPreviewViewports(input.viewports)
-  const persisted = Database.transaction((db) => {
+  const persisted = Database.immediateTransaction((db) => {
     const existing = db
       .select({ artifact: EngineArtifactTable })
       .from(EngineBrowserPreviewTargetIdentityTable)
@@ -490,7 +490,7 @@ export function promoteBrowserPreviewTarget(input: {
   now?: number
 }): Promise<PersistedBrowserPreviewTarget | undefined> {
   return Promise.resolve(
-    Database.transaction((db) => {
+    Database.immediateTransaction((db) => {
       const row = db
         .select()
         .from(EngineArtifactTable)

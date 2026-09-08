@@ -35,9 +35,10 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
     return stdout.trim() ? JSON.parse(stdout) : undefined
   }
   const receipts: Array<{ reason: string; count: number }> = []
+  const previews: Array<{ id: string; updated: number }> = []
   try {
     await read(spawn("init"))
-    for (const mode of ["rewind", "artifact", "clear"]) {
+    for (const mode of ["rewind", "artifact", "clear", "preview", "promote"]) {
       const workers = Array.from({ length: 4 }, (_, index) => spawn(mode, String(index)))
       const deadline = Date.now() + 30_000
       while (
@@ -61,28 +62,47 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       await fs.writeFile(path.join(directory, `${mode}.start`), "start")
       const results = await Promise.all(workers.map(read))
       if (mode === "rewind") receipts.push(...results.flatMap((result) => result.receipts))
+      previews.push(...results.flatMap((result) => result.previews))
     }
     const result = await read(spawn("inspect"))
     const rewinds = result.events.filter((event: { type: string }) => event.type === "task.rewound")
     expect(receipts.sort((a, b) => a.count - b.count)).toEqual(
-      rewinds
-        .slice(0, 100)
-        .map((event: { payload: { reason: string } }, index: number) => ({
-          reason: event.payload.reason,
-          count: index + 1,
-        })),
+      rewinds.slice(0, 100).map((event: { payload: { reason: string } }, index: number) => ({
+        reason: event.payload.reason,
+        count: index + 1,
+      })),
     )
     expect(rewinds.length).toBe(101)
     expect(rewinds[100].payload).toEqual({ cursorTime: 0, reason: "cursor cleared", anchorKind: "cursorTime" })
     expect(result.cursor).toBeNull()
-    expect(result.artifacts.map((row: { label: string }) => row.label).sort()).toEqual(
-      Array.from({ length: 4 }, (_, index) => `worker-${index}-24`),
+    expect(result.artifacts.map((row: { label: string }) => row.label).sort()).toEqual([
+      "BrowserPreviewTarget",
+      ...Array.from({ length: 4 }, (_, index) => `worker-${index}-24`),
+    ])
+    expect(result.targets.length).toBe(1)
+    expect(result.targets[0].canonical_url).toBe("http://localhost:49999/Preview")
+    expect(result.artifacts.find((row: { id: string }) => row.id === result.targets[0].artifact_id)).toEqual({
+      id: result.targets[0].artifact_id,
+      label: "BrowserPreviewTarget",
+      revision: 304,
+      updated: 1199,
+      payload: {
+        url: "http://localhost:49999/Preview",
+        source: "engine-artifact",
+        viewports: [{ id: "desktop", labelKey: "desktop", width: 1304, height: 800 }],
+      },
+    })
+    expect(previews.sort((a, b) => a.updated - b.updated)).toEqual(
+      Array.from({ length: 200 }, (_, index) => ({
+        id: result.targets[0].artifact_id,
+        updated: 1000 + index,
+      })),
     )
     const artifactEvents = result.events.filter((event: { type: string }) => event.type === "artifact.persisted")
-    expect(artifactEvents.length).toBe(104)
+    expect(artifactEvents.length).toBe(304)
     expect(
       artifactEvents.map((event: { payload: { catalogRevision: number } }) => event.payload.catalogRevision),
-    ).toEqual(Array.from({ length: 104 }, (_, index) => index + 1))
+    ).toEqual(Array.from({ length: 304 }, (_, index) => index + 1))
   } finally {
     for (const { child } of children) {
       if (child.exitCode === null) child.kill()
