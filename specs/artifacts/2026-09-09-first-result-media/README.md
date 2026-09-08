@@ -10,8 +10,9 @@ These cards show expected outputs, not an application screenshot or model-run ev
 - [Builder](build.mjs), the single source for text and layout.
 
 Both images are 1600 × 900 pixels. Use each image with its matching draft below;
-the post supplies the exact source link and prerequisites. No channel or account
-has been selected, and neither draft has been posted.
+the post supplies the exact source link and prerequisites. Neither social-post
+draft has been posted. A separate proposed GitHub pilot issue below awaits
+authorization for its named destination and account.
 
 ## Source and limits
 
@@ -78,6 +79,67 @@ OpenCorvus 和已配置的模型，费用取决于你的 Provider。
 
 **替代文字：** OpenCorvus 首次交付练习。解释输入为 125、250、375 克的源码，预期
 总重为 750 克；将第三个重量改成 425 克，预期总重为 800 克；核对代码、测试与说明。
+
+## Proposed GitHub pilot issue — authorization pending
+
+Destination: `yangheng95/opencorvus` GitHub issue tracker.
+Proposed posting account: `yangheng95`.
+Scope: one text-only issue with the exact title and body below; no labels,
+assignments, comments on other issues, direct messages or attached uploads.
+This proposal has not been published. It seeks early validation, not endorsement
+of a completed onboarding path. The two social-post drafts above remain separate
+and unsent.
+
+**Title:** `[Pilot] Help validate the first task / 首次任务试用`
+
+**Body begins**
+
+We are looking for up to five volunteers who are comfortable running a small
+Node.js project and already have, or independently choose to set up, OpenCorvus
+with an available model. The first-task path is still being validated. A blocked
+attempt is useful feedback; we are not assuming it will work on every setup.
+
+Use the [pinned Parcel Notes guide and three-file sample](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples).
+Copy the sample into a disposable directory. First run its program and test with
+Node.js 22 or newer: the expected total is `750 g`. Then follow the guide to ask
+OpenCorvus for a source-backed explanation, inspect the resulting file, and—if
+that first result is acceptable—continue the same task with the prescribed
+weight change. The follow-up's expected total is `800 g`.
+
+These numbers are sample expectations, not observed model results. A completed
+task status alone does not count as acceptance. Published builds and source
+checkouts may differ, so please record the exact version you used. Model access
+and any provider charges are your choice; no paid run is required to report a
+setup blocker.
+
+If you choose to share, leave a short report in this issue:
+
+- OpenCorvus version, operating system, and provider/model identifier.
+- First task: accepted, needs correction, blocked, or not attempted; name the
+  guide's check that determined the result.
+- Same-task follow-up: accepted, needs correction, blocked, or not attempted.
+- Elapsed time and provider-reported cost if measured; otherwise write unknown.
+- A minimal reproduction or redacted error for any blocker.
+
+Participation and reporting are optional. Reports here are public: omit keys,
+login codes, private paths and private project content. This exercise collects
+no telemetry and makes no benchmark or model-success-rate claim.
+
+中文：我们希望邀请最多五位熟悉基本命令行操作的志愿者，验证一次可以亲自核对的
+首次任务。这个流程仍在验证中，遇到阻塞也是有效反馈，不要求得到预设的成功结果。
+
+请使用上面的固定版本双语指南，把三个样例文件复制到临时目录。用 Node.js 22 或
+更新版本运行程序和测试，预期为 `750 g`；再按指南请求 OpenCorvus 生成有源码引用的
+说明，检查实际文件。首次结果可接受后，在同一任务里完成指南规定的修改，预期为
+`800 g`。这些是样例预期，不是模型已成功运行的证据。
+
+如愿意分享，请在此 issue 留下版本、系统和模型标识，首次请求与同一任务续作各自的结果及具体
+核对依据，以及已测量的耗时、费用或脱敏阻塞信息；未测量就写“未知”。已发布版本
+与源码可能不同，请记录准确版本。是否配置模型和承担 Provider 费用由你决定，报告
+配置阻塞无需付费运行。参与和反馈完全自愿，内容会公开，请勿粘贴密钥、登录码、
+私人路径或私人项目内容。样例没有遥测，也不用于宣称基准成绩或模型成功率。
+
+**Body ends**
 
 ## Rebuild
 

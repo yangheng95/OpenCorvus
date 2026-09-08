@@ -1,5 +1,13 @@
 # OpenCorvus founder operations
 
+## Concrete early-pilot issue proposal — 2026-09-09
+
+Recall: the operating goal includes voluntary user feedback and public-relations preparation. The existing cards/posts have no approved destination, while the first real model result is still unaccepted. Public repository feedback has no ordinary issues; ten open requests are dependency bots. The user invited requests for support, but repository rules require specific authorization before external writing. Independent pre-authoring feedback: 无.
+
+Analysis and plan: prepare one bounded, text-only invitation for up to five technically comfortable volunteers in the existing yangheng95/opencorvus issue tracker, under the proposed owner account yangheng95. This is explicitly early validation and accepts blocked/failed outcomes; it is not the previously planned accepted-case launch. Keep first-use acceptance and flagship provenance requirements open. Reuse the pinned sample and existing report fields rather than create a second guide, tracking system or public backlog. Put exact proposed title/body in the existing first-result media README, distinguish it from the unsent social posts, verify source ancestry and copy consistency, then obtain independent review and commit/push. After that, request authorization for this exact issue/account only. No issue, comments, labels, assignments, paid service or credential use occur in preparation.
+
+Verification: `bun run docs:check` passed (339 operations, 25 groups), `git diff --check` passed, and the pinned sample commit is an ancestor of HEAD. Copy was checked against the local pinned sample; no fresh network retrieval is claimed. Independent read-only review found one ambiguous Chinese reference to two tasks; it was corrected to first request and same-task follow-up. Final full-diff re-review passed with no unresolved findings. Only prose changed; image assets and UI were not modified. Publication authorization remains pending and no issue has been posted.
+
 ## Operating queue reconciliation — 2026-09-09
 
 Recall: the autonomous product, communication and adoption objective remains intact. Current source delivery is 2153d61afddee3a17926e4b1e0d8d4f6e25b8334, equal to upstream at this check. The three unrelated working files remain excluded. Read the original queue, contributor verification, communication-card and case-brief READMEs, sample inventory and current Git history. Independent pre-edit feedback: 无.
