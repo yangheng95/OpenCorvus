@@ -202,7 +202,7 @@ export function patchEngineArtifact(db: Database.TxOrDb, input: EngineArtifactUp
 }
 
 export function updateEngineArtifact(input: EngineArtifactUpdateInput): void {
-  Database.transaction((db) => patchEngineArtifact(db, input))
+  Database.immediateTransaction((db) => patchEngineArtifact(db, input))
 }
 
 export function updateEngineArtifactsWhere(db: Database.TxOrDb, input: EngineArtifactWhereUpdateInput): void {

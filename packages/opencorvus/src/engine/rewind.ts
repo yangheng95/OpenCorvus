@@ -66,64 +66,70 @@ function ensureAnchorBelongsToTask(taskID: string, sessionID: string) {
 
 export async function rewindTask(raw: RewindTaskInput): Promise<RewindTaskResult> {
   const input = RewindTaskInput.parse(raw)
-  const task = findTask(input.taskID)
-  if (!task) {
-    throw new NotFoundError({ message: `Task not found: ${input.taskID}` })
-  }
+  const result = Database.immediateTransaction(() => {
+    const task = findTask(input.taskID)
+    if (!task) {
+      throw new NotFoundError({ message: `Task not found: ${input.taskID}` })
+    }
 
-  const cursorTime = (() => {
-    if (input.anchor.kind === "cursorTime") return input.anchor.cursorTime
-    ensureAnchorBelongsToTask(input.taskID, input.anchor.sessionID)
-    return requireMessageAnchor(input.anchor).time_created
-  })()
+    const cursorTime = (() => {
+      if (input.anchor.kind === "cursorTime") return input.anchor.cursorTime
+      ensureAnchorBelongsToTask(input.taskID, input.anchor.sessionID)
+      return requireMessageAnchor(input.anchor).time_created
+    })()
 
-  const now = Date.now()
-  const nextCount = Database.use((db) =>
-    db.select({ count: sql<number>`count(*)` }).from(ProtocolEventTable)
-      .where(and(protocolEventBelongsToTask(input.taskID), eq(ProtocolEventTable.type, Event.TaskRewound.type))).get()!.count + 1,
-  )
-  const anchorEventID = input.anchor.kind === "cursorTime" ? input.anchor.anchorEventID : input.anchor.messageID
+    const now = Date.now()
+    const nextCount = Database.use(
+      (db) =>
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(ProtocolEventTable)
+          .where(and(protocolEventBelongsToTask(input.taskID), eq(ProtocolEventTable.type, Event.TaskRewound.type)))
+          .get()!.count + 1,
+    )
+    const anchorEventID = input.anchor.kind === "cursorTime" ? input.anchor.anchorEventID : input.anchor.messageID
 
-  log.info("task rewound", {
-    taskID: input.taskID,
-    cursorTime,
-    anchorEventID,
-    anchorKind: input.anchor.kind,
-    reason: input.reason,
-    rewindCount: nextCount,
-  })
+    EngineProtocol.emitInTransaction(
+      Event.TaskRewound,
+      {
+        taskID: input.taskID,
+        cursorTime,
+        anchorEventID,
+        reason: input.reason,
+        anchorKind: input.anchor.kind,
+      },
+      { source: "engine.rewindTask", emittedAt: now },
+    )
 
-  Database.transaction(() => EngineProtocol.emitInTransaction(
-    Event.TaskRewound,
-    {
+    return {
       taskID: input.taskID,
       cursorTime,
-      anchorEventID,
-      reason: input.reason,
+      rewindCount: nextCount,
       anchorKind: input.anchor.kind,
-    },
-    { source: "engine.rewindTask", emittedAt: now },
-  ))
-
-  return {
-    taskID: input.taskID,
-    cursorTime,
-    rewindCount: nextCount,
-    anchorKind: input.anchor.kind,
-  }
+    }
+  })
+  log.info("task rewound", {
+    ...result,
+    anchorEventID: input.anchor.kind === "cursorTime" ? input.anchor.anchorEventID : input.anchor.messageID,
+    reason: input.reason,
+  })
+  return result
 }
 
 /**
  * Clear a task's rewind cursor. This restores visibility only.
  */
 export async function clearRewindCursor(taskID: string): Promise<void> {
-  const task = findTask(taskID)
-  if (!task) throw new NotFoundError({ message: `Task not found: ${taskID}` })
-  if (taskRewindCursor(taskID) == null) return
+  const cleared = Database.immediateTransaction(() => {
+    const task = findTask(taskID)
+    if (!task) throw new NotFoundError({ message: `Task not found: ${taskID}` })
+    if (taskRewindCursor(taskID) == null) return false
 
-  const now = Date.now()
-  log.info("task rewind cursor cleared", { taskID })
-  Database.transaction(() => appendTaskRewindClearedInTransaction(taskID, now, "engine.clearRewindCursor"))
+    const now = Date.now()
+    appendTaskRewindClearedInTransaction(taskID, now, "engine.clearRewindCursor")
+    return true
+  })
+  if (cleared) log.info("task rewind cursor cleared", { taskID })
 }
 
 export function appendTaskRewindClearedInTransaction(taskID: string, now: number, source: string): void {
