@@ -10,6 +10,7 @@ import { createServer } from "http"
 import { escapeHtml } from "@/util/html"
 import {
   ManagedOAuthDeviceAuthorization,
+  OAUTH_AUTHORIZATION_TIMEOUT_MS,
   ManagedOAuthCallbackOwner,
   ManagedOAuthListenerOwner,
   type OAuthCallbackLease,
@@ -549,6 +550,7 @@ export async function CodexAuthPlugin(
           type: "oauth",
           authorize: async () => {
             const deviceResponse = await fetch(`${ISSUER}/api/accounts/deviceauth/usercode`, {
+              signal: AbortSignal.timeout(OAUTH_AUTHORIZATION_TIMEOUT_MS),
               method: "POST",
               headers: {
                 "Content-Type": "application/json",

@@ -5,7 +5,7 @@ import type { PhysicalProviderHooks } from "@/plugin"
 import type { Model } from "@opencorvus-ai/sdk"
 import { Installation } from "../../installation"
 import { iife } from "@/util/iife"
-import { ManagedOAuthDeviceAuthorization } from "../oauth-lifecycle"
+import { ManagedOAuthDeviceAuthorization, OAUTH_AUTHORIZATION_TIMEOUT_MS } from "../oauth-lifecycle"
 import { CopilotModels } from "./models"
 
 const CLIENT_ID = "Ov23li8tweQw6odWQebz"
@@ -226,6 +226,7 @@ export async function CopilotAuthPlugin(input: PluginInput): Promise<Hooks & Phy
             const urls = getUrls(domain)
 
             const deviceResponse = await fetch(urls.DEVICE_CODE_URL, {
+              signal: AbortSignal.timeout(OAUTH_AUTHORIZATION_TIMEOUT_MS),
               method: "POST",
               headers: {
                 Accept: "application/json",

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { ManagedOAuthDeviceAuthorization } from "@/plugin/oauth-lifecycle"
+import { ManagedOAuthDeviceAuthorization, OAUTH_AUTHORIZATION_TIMEOUT_MS } from "@/plugin/oauth-lifecycle"
 import { CodexAuthPlugin } from "@/plugin/openai/codex"
 import { CopilotAuthPlugin } from "@/plugin/github-copilot/copilot"
 import { XaiAuthPlugin } from "@/plugin/xai"
@@ -9,6 +9,99 @@ import { ProviderCredentialExchange } from "@/provider/credential-exchange"
 import { ProviderOAuthFlowStore } from "@/provider/oauth-flow-store"
 
 describe.serial("Device authorization lifetime", () => {
+  test.each(["openai", "copilot", "xai"])(
+    "%s preparation expires while its local HTTP body stalls",
+    async (provider) => {
+      const originalFetch = globalThis.fetch
+      const originalTimeout = AbortSignal.timeout
+      const timeouts: number[] = []
+      const signals: AbortSignal[] = []
+      const server = Bun.serve({
+        hostname: "127.0.0.1",
+        port: 0,
+        fetch: () =>
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('{"device_code":'))
+              },
+            }),
+            { headers: { "Content-Type": "application/json" } },
+          ),
+      })
+      AbortSignal.timeout = (duration) => {
+        timeouts.push(duration)
+        return originalTimeout(50)
+      }
+      globalThis.fetch = ((_: unknown, init?: RequestInit) => {
+        signals.push(init!.signal!)
+        return originalFetch(server.url, init)
+      }) as typeof fetch
+      try {
+        const input = {} as PluginInput
+        const plugin =
+          provider === "openai"
+            ? await CodexAuthPlugin(input)
+            : provider === "copilot"
+              ? await CopilotAuthPlugin(input)
+              : await XaiAuthPlugin(input)
+        const method = plugin.auth!.methods[provider === "copilot" ? 0 : 1]
+        if (method.type !== "oauth") throw new Error("Expected device OAuth method")
+        const result = await method.authorize({ deploymentType: "github.com" }).catch((error: Error) => error)
+        expect(result).toBeInstanceOf(Error)
+        expect(timeouts).toEqual([OAUTH_AUTHORIZATION_TIMEOUT_MS])
+        expect(signals[0]!.reason).toMatchObject({ name: "TimeoutError" })
+      } finally {
+        globalThis.fetch = originalFetch
+        AbortSignal.timeout = originalTimeout
+        await server.stop(true)
+      }
+    },
+  )
+
+  test("preparation expiry reaches the failed flow and admits another device grant", async () => {
+    const originalFetch = globalThis.fetch
+    const originalTimeout = AbortSignal.timeout
+    let attempts = 0
+    const server = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      fetch: () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode('{"device_code":'))
+            },
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        ),
+    })
+    AbortSignal.timeout = () => originalTimeout(50)
+    globalThis.fetch = ((_: unknown, init?: RequestInit) => {
+      attempts++
+      return originalFetch(server.url, init)
+    }) as typeof fetch
+    using hooks = ProviderAuth.TestHooks.installGlobalAuthHooksForTest([await CodexAuthPlugin({} as PluginInput)])
+    try {
+      const flowIDs = new Set<string>()
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const result = await ProviderAuth.authorize({ providerID: "openai", method: 1, scope: "global" }).catch(
+          (error: Error) => error,
+        )
+        expect(result).toBeInstanceOf(Error)
+        const flow = await ProviderOAuthFlowStore.TestHooks.latestFor("openai", "authorization")
+        expect(flow).toMatchObject({ state: "failed", error: "Provider OAuth authorization preparation failed" })
+        flowIDs.add(flow!.id)
+      }
+      expect(flowIDs.size).toBe(2)
+      expect(attempts).toBe(2)
+    } finally {
+      globalThis.fetch = originalFetch
+      AbortSignal.timeout = originalTimeout
+      await server.stop(true)
+    }
+  })
+
   test("device expiry reaches the production failed occurrence and releases admission", async () => {
     const provider = "device-lifetime-test"
     using hooks = ProviderAuth.TestHooks.installGlobalAuthHooksForTest([
@@ -119,8 +212,9 @@ describe.serial("Device authorization lifetime", () => {
         began = resolve
       })
       const events: string[] = []
+      let requests = 0
       globalThis.fetch = (async (_input: unknown, init?: RequestInit) => {
-        if (!init?.signal)
+        if (++requests === 1)
           return Response.json({
             device_auth_id: "test-device",
             device_code: "test-device",
@@ -129,7 +223,7 @@ describe.serial("Device authorization lifetime", () => {
             interval: 5,
             expires_in: 300,
           })
-        const signal = init.signal
+        const signal = init!.signal!
         events.push("polling")
         began()
         return new Promise<Response>((_resolve, reject) => {

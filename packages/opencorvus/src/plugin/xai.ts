@@ -6,6 +6,7 @@ import { Installation } from "../installation"
 import { escapeHtml } from "@/util/html"
 import {
   ManagedOAuthDeviceAuthorization,
+  OAUTH_AUTHORIZATION_TIMEOUT_MS,
   ManagedOAuthCallbackOwner,
   ManagedOAuthListenerOwner,
   type OAuthCallbackLease,
@@ -205,6 +206,7 @@ interface DeviceTokenErrorBody {
 
 export async function requestDeviceCode(options: XaiAuthPluginOptions = {}): Promise<DeviceCodeResponse> {
   const response = await fetch(options.deviceAuthorizationUrl ?? DEVICE_AUTHORIZATION_URL, {
+    signal: AbortSignal.timeout(OAUTH_AUTHORIZATION_TIMEOUT_MS),
     method: "POST",
     headers: authHeaders(),
     body: new URLSearchParams({

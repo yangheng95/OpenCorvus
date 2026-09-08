@@ -331,7 +331,9 @@ Overlay authorize/callback 请求仍使用现有有限请求超时；观察端�
 timeout、supersession 和 disposal 以原错误中止同一 AbortSignal。OpenAI、xAI、Snowflake 的浏览器 token exchange
 使用 claimed owner 的 signal；GitLab 保持在 ProviderAuth claim 后交换 token，使用 callback lease 的 signal。
 DigitalOcean 路由发现同时受 lease signal 与原有十秒请求期限约束。callback 返回 credential 前检查 signal。
-插件网络取消契约不覆盖尚未返回 executor 的 preparation、runtime refresh 或任意外部插件；durable pending 总期限仍然适用。
+上述三个内置 device 方法的初始授权码请求使用同一五分钟策略的 AbortSignal.timeout，覆盖 fetch 和响应体读取；
+准备失败进入现有 pending failure 结算。该请求期限与返回 executor 后的 callback 期限分别计时，durable pending 总期限仍然适用。
+插件网络取消契约仍不覆盖任意 preparation 的主动取消、其他 preparation、runtime refresh 或任意外部插件。
 
 callback 在调用 token endpoint 前核对 authorize 时绑定的 `expectedCredentialGeneration`。远端调用前 occurrence 从
 `pending` 进入 `exchanging`，返回 credential 后先写 `credential_ready`、credential digest 和预铸的 output generation，
