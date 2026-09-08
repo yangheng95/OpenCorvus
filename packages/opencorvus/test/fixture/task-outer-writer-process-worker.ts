@@ -18,6 +18,13 @@ import { rewindTask, clearRewindCursor, taskRewindCursor } from "@/engine/rewind
 import { ProtocolEventTable } from "@/protocol/protocol.sql"
 import { updateTask } from "@/engine/state"
 import { requireTask } from "@/engine/store"
+import { AttachmentStore } from "@/storage/attachment-store"
+import {
+  appendTaskAttachment,
+  appendTaskSystemArtifact,
+  replaceTaskSystemArtifactByIntent,
+  type TaskFileRef,
+} from "@/engine/task-file-reference"
 
 const [mode, directory, label] = process.argv.slice(2)
 if (!mode || !directory) throw new Error("Task writer worker requires mode and directory")
@@ -58,10 +65,27 @@ try {
         fs.writeFileSync(inputPath, JSON.stringify({ taskID, sessionID: session.id, artifacts }))
         return
       }
-      const { taskID, sessionID, artifacts } = JSON.parse(fs.readFileSync(inputPath, "utf8")) as {
+      const { taskID, sessionID, artifacts, files } = JSON.parse(fs.readFileSync(inputPath, "utf8")) as {
         taskID: string
         sessionID: string
         artifacts: string[]
+        files?: TaskFileRef[]
+      }
+      if (mode === "file-seed") {
+        const files: TaskFileRef[] = []
+        for (let index = 0; index < 100; index++) {
+          files.push(
+            await AttachmentStore.write(
+              Instance.project.id,
+              Buffer.from(`Task file ${index}`),
+              "text/plain",
+              `file-${index}.txt`,
+            ),
+          )
+        }
+        fs.writeFileSync(inputPath, JSON.stringify({ taskID, sessionID, artifacts, files }))
+        console.log(JSON.stringify(files))
+        return
       }
       if (mode === "inspect") {
         const events = Database.use((db) =>
@@ -98,6 +122,8 @@ try {
             artifacts: rows,
             targets,
             title: requireTask(taskID).title,
+            attachments: requireTask(taskID).attachments,
+            systemArtifacts: requireTask(taskID).system_artifacts,
             cursor: taskRewindCursor(taskID),
           }),
         )
@@ -111,7 +137,11 @@ try {
         "mailbox-restore",
         "mailbox-delete",
       ]
-      if (!label || !["rewind", "artifact", "clear", "preview", "promote", "state", ...mailboxModes].includes(mode))
+      const fileModes = ["file-append", "file-replay", "file-artifact", "file-replace"]
+      if (
+        !label ||
+        !["rewind", "artifact", "clear", "preview", "promote", "state", ...mailboxModes, ...fileModes].includes(mode)
+      )
         throw new Error("Invalid Task writer mode")
       const targetID =
         mode === "promote"
@@ -131,6 +161,27 @@ try {
         await Bun.sleep(10)
       }
       const receipts: Array<{ reason: string; count: number }> = []
+      if (fileModes.includes(mode)) {
+        if (!files || files.length !== 100) throw new Error("File writers require seeded canonical files")
+        const references = []
+        for (let index = 0; index < 25; index++) {
+          const slot = Number(label) * 25 + index
+          const file = files[mode === "file-replace" ? (slot + 1) % files.length : slot]
+          if (mode === "file-append" || mode === "file-replay") {
+            const updated = await appendTaskAttachment(taskID, { ...file, intent: "task_input", source: "user-upload" })
+            references.push(updated.find((item) => item.sha === file.sha))
+          } else {
+            const artifact = { ...file, intent: `slot-${slot}`, source: "material" }
+            const updated =
+              mode === "file-replace"
+                ? await replaceTaskSystemArtifactByIntent(taskID, artifact.intent, artifact)
+                : await appendTaskSystemArtifact(taskID, artifact)
+            references.push(updated.find((item) => item.intent === artifact.intent))
+          }
+        }
+        console.log(JSON.stringify({ references, previews: [] }))
+        return
+      }
       if (mailboxModes.includes(mode)) {
         if (mode === "mailbox-record") {
           const messages = Array.from({ length: 25 }, (_, index) =>

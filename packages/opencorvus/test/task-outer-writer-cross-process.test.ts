@@ -3,7 +3,7 @@ import fs from "node:fs/promises"
 import path from "node:path"
 import { createManagedTemporaryDirectory, removeManagedDirectoryTree } from "@opencorvus-ai/util/runtime-directories"
 
-test("concurrent Task writers return committed rewind counts and preserve artifact updates", async () => {
+test("concurrent Task writers return committed rewind counts and preserve artifact and file references", async () => {
   const root = process.env.OPENCORVUS_TEST_PROCESS_ROOT
   if (!root) throw new Error("Task writer test requires repository runtime")
   const directory = await createManagedTemporaryDirectory(root, "task-outer-writer-")
@@ -38,7 +38,19 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
   const previews: Array<{ id: string; updated: number }> = []
   try {
     await read(spawn("init"))
-    for (const mode of ["rewind", "artifact", "clear", "preview", "promote", "state"]) {
+    const files = await read(spawn("file-seed"))
+    for (const mode of [
+      "rewind",
+      "artifact",
+      "clear",
+      "preview",
+      "promote",
+      "state",
+      "file-append",
+      "file-replay",
+      "file-artifact",
+      "file-replace",
+    ]) {
       const workers = Array.from({ length: 4 }, (_, index) => spawn(mode, String(index)))
       const deadline = Date.now() + 30_000
       while (
@@ -61,6 +73,19 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       }
       await fs.writeFile(path.join(directory, `${mode}.start`), "start")
       const results = await Promise.all(workers.map(read))
+      if (mode.startsWith("file-")) {
+        expect(results.flatMap((result) => result.references)).toEqual(
+          files.map((file: object, slot: number) =>
+            mode === "file-append" || mode === "file-replay"
+              ? { ...file, intent: "task_input", source: "user-upload" }
+              : {
+                  ...(mode === "file-replace" ? files[(slot + 1) % files.length] : file),
+                  intent: `slot-${slot}`,
+                  source: "material",
+                },
+          ),
+        )
+      }
       if (mode === "rewind") receipts.push(...results.flatMap((result) => result.receipts))
       previews.push(...results.flatMap((result) => result.previews))
       if (mode === "state") {
@@ -72,6 +97,19 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       }
     }
     const result = await read(spawn("inspect"))
+    const bySha = (rows: Array<{ sha: string }>) => rows.sort((a, b) => a.sha.localeCompare(b.sha))
+    expect(bySha(result.attachments)).toEqual(
+      bySha(files.map((file: object) => ({ ...file, intent: "task_input", source: "user-upload" }))),
+    )
+    expect(bySha(result.systemArtifacts)).toEqual(
+      bySha(
+        files.map((_: object, slot: number) => ({
+          ...files[(slot + 1) % files.length],
+          intent: `slot-${slot}`,
+          source: "material",
+        })),
+      ),
+    )
     expect(Array.from({ length: 4 }, (_, worker) => `state-${worker}-24`)).toContain(result.title)
     const rewinds = result.events.filter((event: { type: string }) => event.type === "task.rewound")
     expect(receipts.sort((a, b) => a.count - b.count)).toEqual(

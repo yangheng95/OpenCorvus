@@ -1,5 +1,13 @@
 # OpenCorvus founder operations
 
+## Task file-reference cross-process acceptance — 2026-09-09
+
+Recall: previous attachment merge fix a1ff21fce has single-process asynchronous evidence but explicitly leaves cross-process acceptance open. Read the current canonical file-reference owner, existing Task writer process harness and parent assertions. Independent pre-edit feedback: 无. Live hosted #828 failed on the known pre-134739a6c operation-name assertion; #829-833 are running, so current hosted acceptance remains open.
+
+Plan and scope: extend the existing Task writer harness with an explicit file seed phase, leaving other harness consumers' initialization unchanged. Persist 100 real canonical files, then use four independent processes per phase for attachment append, same-reference replay, system-artifact append and distinct-intent replacement. Compare each returned canonical reference plus the complete persisted attachment and system-artifact sets after fresh-process phases. Retain existing state/rewind/artifact assertions and worker cleanup. No production, UI, model or credentials changes; this targets the prior stale-array defect across process boundaries and does not prove mixed-project/terminal recovery. Run the expanded harness and original file-reference owner, docs/diff checks and independent review, then scoped commit/push.
+
+Validation: expanded Task writer test passed 1 test/62 assertions in 51.00 seconds; original canonical file-reference test passed 1 test/6 assertions in 2.24 seconds. The mailbox consumer of the shared worker passed 1 test/84 assertions in 24.14 seconds. The overall repository command exited 0. New phases compare all 400 returned references and both complete final 100-reference sets, while existing rewind/state/artifact checks remain active. Docs and diff checks passed. Independent read-only review of all three files passed without findings, confirming exact canonical comparisons, unchanged shared consumers and cleanup order. This closes the stated cross-process append/replay/distinct-intent replacement evidence gap only; cross-project isolation and terminal/recovery combinations remain open.
+
 ## Scheduler enqueue outer writer — 2026-09-09
 
 Recall: continue shared writer audit after d87bf3341. Read public sendSchedulerMessage, transaction-local enqueue authority/body/occurrence/deduplication checks, delivery writers and scheduler Task-root tests; existing Mission closure/materialization writers already reserve immediate transactions. Independent pre-edit feedback: 无.
