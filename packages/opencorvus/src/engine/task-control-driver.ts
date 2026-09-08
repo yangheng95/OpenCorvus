@@ -148,14 +148,6 @@ type Entry = {
   inputRevision: string | undefined
 }
 
-/** The earlier of two optional instants. A scan pass that reports no wake does
- * not cancel an earlier pass's obligation, so wakes accumulate by minimum. */
-function minDefined(left: number | undefined, right: number | undefined): number | undefined {
-  if (left === undefined) return right
-  if (right === undefined) return left
-  return Math.min(left, right)
-}
-
 function defaultTimer(fn: () => void, delayMilliseconds: number): { cancel(): void } {
   const handle = setTimeout(fn, delayMilliseconds)
   ;(handle as { unref?: () => void }).unref?.()
@@ -492,7 +484,9 @@ export class TaskControlDriver {
     runWithActivationOwner: (<T>(run: () => Promise<T>) => Promise<T>) | undefined,
   ): Promise<number> {
     let activated = 0
-    let wakeAt: number | undefined
+    // One reported instant per pass, bounded by maxPasses. A scalar minimum
+    // loses later obligations when that minimum expires before a later fault.
+    const wakeInstants: number[] = []
     let failure: unknown
     let failed = false
     try {
@@ -504,7 +498,7 @@ export class TaskControlDriver {
           entry.inputRevision = this.readInputRevision(taskID, entry)
           result = await this.scan(taskID, { pass, ...(runWithActivationOwner ? { runWithActivationOwner } : {}) })
         } catch (error) {
-          wakeAt = minDefined(wakeAt, this.penalize(entry))
+          const retryAt = this.penalize(entry, wakeInstants)
           log.error("Task-control scan faulted; re-armed under backoff", {
             taskID,
             pass,
@@ -517,16 +511,16 @@ export class TaskControlDriver {
           }
           if (pass + 1 < this.maxPasses && this.inputChangedAfterScan(taskID, entry)) {
             entry.retryNotBefore = undefined
-            wakeAt = undefined
             continue
           }
+          wakeInstants.push(retryAt)
           break
         }
         activated += result.activated
-        wakeAt = minDefined(wakeAt, result.wakeAt)
+        if (result.wakeAt !== undefined) wakeInstants.push(result.wakeAt)
         if (result.noProgress) {
           if (pass + 1 < this.maxPasses && this.inputChangedAfterScan(taskID, entry)) continue
-          wakeAt = minDefined(wakeAt, this.penalize(entry, result.wakeAt))
+          wakeInstants.push(this.penalize(entry, wakeInstants))
           log.warn("Task-control scan made no reducible progress; paced under backoff", {
             taskID,
             pass,
@@ -539,7 +533,7 @@ export class TaskControlDriver {
           // A fixpoint that will not settle is a non-decreasing measure, which
           // is the same liveness fault as a scan that cannot reduce. Pacing it
           // at the minimum delay would run `maxPasses` full scans every 25ms.
-          wakeAt = minDefined(wakeAt, this.penalize(entry, result.wakeAt))
+          wakeInstants.push(this.penalize(entry, wakeInstants))
           log.warn("Task-control fixpoint did not settle; paced under backoff", {
             taskID,
             passes: this.maxPasses,
@@ -550,7 +544,7 @@ export class TaskControlDriver {
       }
     } finally {
       entry.running = false
-      this.arm(taskID, entry, wakeAt)
+      this.arm(taskID, entry, wakeInstants.length ? Math.min(...wakeInstants) : undefined)
       if (this.retireSettledEntries && !entry.timer) this.entries.delete(taskID)
     }
     if (failed) throw failure
@@ -561,7 +555,7 @@ export class TaskControlDriver {
    * next be scanned. A reducer-proven time transition remains an independent
    * liveness obligation: fault pacing may not postpone a lease expiry or
    * other instant at which the durable projection can change. */
-  private penalize(entry: Entry, semanticWakeAt?: number): number {
+  private penalize(entry: Entry, semanticWakeInstants: readonly number[] = []): number {
     entry.failures += 1
     const now = this.now()
     entry.lastFaultAt = now
@@ -571,8 +565,13 @@ export class TaskControlDriver {
     // still be observed on time. A transition at or before this scan is the
     // readiness that just failed to reduce, so letting it bypass backoff would
     // turn the same unresolved fact into a hot loop.
-    entry.retryNotBefore =
-      semanticWakeAt !== undefined && semanticWakeAt > now ? Math.min(backoffWakeAt, semanticWakeAt) : backoffWakeAt
+    // A later pass does not cancel an earlier future obligation. Retain all
+    // reported instants until this clock read: an expired minimum must not hide
+    // a still-future transition reported before the current pass.
+    entry.retryNotBefore = semanticWakeInstants.reduce<number>(
+      (deadline, instant) => (instant > now ? Math.min(deadline, instant) : deadline),
+      backoffWakeAt,
+    )
     return entry.retryNotBefore
   }
 

@@ -46,6 +46,8 @@
 | TD-06 | Cross-process Prompt ownership, wait/automation identity, Mission closure and deletion are safety-critical and were repeatedly revised. | Original focused audit was not exhaustive: the later S1-S10/D1 audit found additional defects and was implemented in 05605e697. Retain the canonical owners, but use that correction record for decision rollback, recurrence, bounded discovery and backoff evidence. September 8 source inspection confirms those repairs remain; historical tests are not a current full-matrix guarantee. |
 | TD-07 | `specs/README.md` still describes 0.0.61 as unpublished although the final release record says published. | Pointer corrected in Cut 1; historical artifacts unchanged. |
 | TD-08 | Explicit per-test zero budgets bypass the existing finite test-runner ownership window and can trigger Bun's subprocess auto-killer. | GC correction delivered in 8e2b7f3a3. The remaining 85 calls now inherit the same finite runner budget; all 30 affected files pass (177 tests, 1416 assertions), with no budget exception. Independent review of the shared correction passed with zero findings; hosted Windows confirmation remains outstanding. |
+| TD-09 | A later failed/non-reducing fixpoint pass postpones an earlier still-future semantic wake because penalty admission only sees the current pass. | Repaired in the single driver; final liveness 37/37 and razor primitives 12/12 pass, package typecheck/docs pass, and independent review has zero findings. Real persisted ingress/lease settlement is covered; no real Provider performance claim. |
+| TD-10 | Hosted macOS unit job 101911619182 fails log-lifecycle.test.ts:41 after close/reinit/flush: the read returns no lines instead of the new record. | Exact hosted failure observed on run 34178169017; root cause remains unconfirmed. Keep separate from the finite test-budget and Task driver corrections; no log implementation changes in this cut. |
 
 ## Cut 1: early publication admission using the existing owner
 
@@ -461,3 +463,84 @@ summaries and the exact AST-only edits. Slowest case: 16900.76 ms; summed
 per-file test-host duration: 515.68 seconds. The excluded Session source has
 the same syntax tree as HEAD after ignoring formatting/comments; its working
 changes remain uncommitted and outside this delivery.
+
+### TD-09: accumulated semantic wake versus fault admission
+
+Recall: continue the same goal from `8ca89252e`, preserving the three excluded
+working paths. Release commit `63b52453f` contains a real driver correction,
+not merely version metadata: a current future semantic wake may shorten fault
+backoff. This direction is justified, but its coverage is incomplete. Source,
+existing driver tests, release evidence and current control-plane architecture
+were read before changing code. No independent implementation delegation.
+
+Observable repro: the first driver pass reports wake 50 and receives another
+request; a second pass with no-progress/no wake arms 1000, no-progress/wake 75
+arms 75, and a second-pass throw arms 1000. All violate the still-future 50
+obligation. `own` retains the minimum wake but `penalize` sets retry admission
+from only `result.wakeAt` (or none on throw); `arm` then takes the maximum with
+that admission bound. Earlier fixes tested accumulation and no-progress in
+isolation, not their intersection. This affects latency, not permission to
+commit an effect before its lease/occurrence checks.
+
+Horizontal scope: the only production driver factories are Task ingress
+delivery and per-Project Mission recovery. Task scans return real ingress lease,
+interaction/absolute, Task-wait and dispatch-recovery times and can throw on a
+later pass before rereading those facts. Mission scans currently return no
+semantic wake, so their ordinary fault pacing remains unchanged. Direct hints,
+deadline callbacks, bootstrap/heartbeat, capacity admission and sibling Project
+isolation share the same driver; no alternate Session or Automation driver
+factory was found. Restart reconstructs deadlines from existing durable facts.
+
+Selected correction: retain each reported wake within the current ownership
+invocation (bounded by its existing pass limit), and let the existing penalty
+calculation consider all instants strictly after its clock read. Do not add a
+timer, durable state, callback binding or config. Remove the lossy scalar-minimum
+helper, whose only consumer is this loop. Past-due readiness alone retains
+exponential backoff.
+Apply the same calculation to scan throws, no-progress and pass exhaustion;
+leave initial revision/re-entry faults without a proven wake unchanged.
+
+Positive validation: table-driven exact driver timers across all three exits,
+expiry versus a newer future transition, repeated past-due backoff and sibling
+progress; a real persisted Task ingress lease through the production scan,
+an injected second-pass infrastructure fault, its original deadline callback
+and eventual exact decision settlement. Existing liveness, abandoned-dispatch,
+reconciliation and Mission recovery coverage will be rerun proportionately.
+No real Provider, UI action, schema/version change, reset or release is involved.
+Update the one current architecture contract, verify, independently review the
+complete scoped delivery, then commit/fetch/merge/normal push.
+
+The initial two-pass correction passed 31 liveness tests and the related six-file
+Task/Mission matrix (35 tests, 187 assertions). Independent review nevertheless
+proved one P2: passes at clock 0 report 10 then 100, and a third pass at clock 20
+throws, reports no-progress or exhausts the pass budget without another wake.
+A scalar minimum loses 100 while both instants are still future; the initial
+correction then incorrectly arms 1020. Preserve the successful evidence and add
+these three exact counterexamples. The bounded per-invocation collection above
+replaces, rather than supplements, that lossy accumulator. No durable schema,
+owner or external effect authority changes.
+
+The bounded-collection correction passed the seven-file matrix (69 tests,
+230 assertions). Review confirmed the original three-pass repair and found the
+same loss in the catch/new-input branch: revision a-to-b permits another pass,
+but clearing observed timestamps before that pass discards an earlier 50 even
+when the retry faults again. Preserve semantic timestamps across that branch;
+append the fault retry timestamp only when the catch actually exits, so an
+abandoned retry bound cannot pollute a successful new-input pass. Cover both
+renewed failure retaining 50 and success retaining its own exact 2000 wake.
+
+Final affected rerun completed naturally: the complete liveness file passed
+37/37 with 46 assertions (24.47 seconds), and existing scheduling razor
+primitive contracts passed 12/12 with 41 assertions (2.95 seconds). Package
+typecheck exited 0; docs check passed 339 operations/25 groups; both diff checks
+passed. The earlier seven-file 69/69 result predates the final catch-branch
+correction; it is not represented as a final-tree full rerun.
+
+Independent read-only review of implementation/test tree
+`8a7188be975a49b80d6483ad0f37bf06716d7007` returned FINAL PASS, P0-P3 zero.
+The reviewer independently passed seven exact actual-driver deadline checks,
+including new-input retry success/failure with and without a prior obligation.
+The correction keeps one existing driver/timer and no durable shadow state.
+This final evidence/ledger update changes documentation only. Remote macOS
+logging failure TD-10 and blocked real Light acceptance remain open; this cut
+does not claim the overall goal or hosted unit matrix complete.

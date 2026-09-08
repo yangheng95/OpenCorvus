@@ -6,7 +6,13 @@ import {
   readTaskRootIngressEvidence,
   TestHooks as TaskControlTestHooks,
 } from "@/engine/task-root-ingress-delivery"
-import { acceptTaskRootIngressInTransaction, projectTaskRootIngress } from "@/engine/task-root-fact-store"
+import {
+  acceptTaskRootIngressInTransaction,
+  acquireTaskRootIngressLease,
+  projectTaskRootIngress,
+} from "@/engine/task-root-fact-store"
+import { joinProcessLivenessLease } from "@/engine/process-liveness"
+import { currentRuntimeOccurrenceID } from "@/runtime/process-occurrence"
 import { appendTaskOpenedInTransaction } from "@/engine/task-lifecycle"
 import { taskRootIngressWakeInstant } from "@/engine/task-root-ingress-reducer"
 import { restartTaskControlProjectFrontier } from "@/engine/task-root-ingress-disposition"
@@ -113,6 +119,114 @@ async function commitDecision(input: {
 }
 
 describe("Task-control liveness", () => {
+  test("settles a real ingress at its retained lease deadline after a later scan fault", async () => {
+    await using project = await memoryProject()
+    await Instance.provide({
+      directory: project.path,
+      fn: async () => {
+        const taskID = Identifier.ascending("task")
+        const root = await Session.create({ kind: "root", title: "Retained deadline root" })
+        const orchestrator = await Session.create({ kind: "orchestrator", parentID: root.id })
+        const now = Date.now()
+        const ingress = Database.immediateTransaction((db) => {
+          db.insert(EngineTaskTable)
+            .values({
+              id: taskID,
+              project_id: Instance.project.id,
+              session_id: root.id,
+              source: "test",
+              product_pillar: "code",
+              title: "Retained lease deadline",
+              request: "Observe the original deadline after a transient scan fault",
+              time_created: now,
+            })
+            .run()
+          appendTaskOpenedInTransaction({ db, taskID, sessionID: root.id, now, source: "test.deadline" })
+          return acceptTaskRootIngressInTransaction(db, {
+            taskID,
+            executionEpoch: 1,
+            source: "inline",
+            sourceID: "retained-deadline",
+            inlinePayload: { note: "Resume at the exact lease deadline" },
+            semanticTurnLimit: 3,
+            activationLimit: 4,
+            now,
+          })
+        })
+        const owner = currentRuntimeOccurrenceID()
+        const liveness = joinProcessLivenessLease(owner)
+        let driver: TaskControlDriver | undefined
+        try {
+          const leaseNow = Date.now()
+          const lease = acquireTaskRootIngressLease({
+            ingressID: ingress.id,
+            ownerOccurrenceID: owner,
+            now: leaseNow,
+            leaseMilliseconds: 1_500,
+            assertControlOwnerInTransaction: (db) => liveness.assertOwnedInTransaction(db, owner, leaseNow),
+          })
+          if (!lease.acquired) throw new Error("Expected the real ingress lease")
+          let clock = leaseNow
+          let calls = 0
+          let fired: (() => void) | undefined
+          const activated: string[] = []
+          using _fault = TaskControlTestHooks.replaceAfterSourceReconciliation(({ pass }) => {
+            if (pass === 1) throw new Error("Injected second-pass source read failure")
+          })
+          using _runner = TaskControlTestHooks.replaceTaskIngressRunner({
+            runner: async ({ wakeID, activationID, predecessorID }) => {
+              if (!wakeID || !activationID || !predecessorID) throw new Error("Expected canonical activation")
+              activated.push(wakeID)
+              return commitDecision({
+                projectPath: project.path,
+                orchestratorSessionID: orchestrator.id,
+                taskID,
+                wakeID,
+                activationID,
+                predecessorID,
+              })
+            },
+          })
+          driver = new TaskControlDriver({
+            scan: async (id, context) => {
+              calls += 1
+              const result = await TaskControlTestHooks.scanTaskControlPlane(id, context)
+              if (calls === 1) void driver!.request(id)
+              return result
+            },
+            now: () => clock,
+            initialBackoffMilliseconds: 10_000,
+            setTimer: (fn) => {
+              fired = fn
+              return { cancel() {} }
+            },
+          })
+          await driver.request(taskID)
+          expect({
+            calls,
+            wakeAt: driver.snapshot()[0]?.wakeAt,
+            state: projectTaskRootIngress(ingress.id, Date.now(), readTaskRootIngressEvidence).state,
+          }).toEqual({ calls: 2, wakeAt: lease.expiresAt, state: "leased" })
+          if (!fired) throw new Error("Expected the original deadline callback")
+          await Bun.sleep(Math.max(0, lease.expiresAt - Date.now()) + 5)
+          clock = Date.now()
+          fired()
+          await waitUntil(
+            () => driver!.snapshot()[0]?.running === false && activated.length === 1,
+            "deadline-owned production Task scan settlement",
+          )
+          expect({
+            activated,
+            state: projectTaskRootIngress(ingress.id, Date.now(), readTaskRootIngressEvidence).state,
+          }).toEqual({ activated: [ingress.id], state: "resolved" })
+        } finally {
+          driver?.dispose()
+          liveness.release()
+        }
+      },
+    })
+  })
+
   test("activates an ingress accepted while the FIFO head held a live activation", async () => {
     await using project = await memoryProject()
     await Instance.provide({
@@ -632,6 +746,203 @@ describe("Task-control driver", () => {
     driver.dispose()
   })
 
+  test.each(["no-progress", "later-wake", "fault", "pass-exhaustion"] as const)(
+    "honors an earlier future wake across %s while a sibling progresses",
+    async (exit) => {
+      const timers: number[] = []
+      let calls = 0
+      const driver = new TaskControlDriver({
+        scan: async (taskID) => {
+          if (taskID === "sibling") return { activated: 1 }
+          calls += 1
+          if (calls === 1) {
+            void driver.request(taskID)
+            return { activated: 0, wakeAt: 50 }
+          }
+          if (exit === "fault") throw new Error("Injected later pass fault")
+          if (exit === "pass-exhaustion") void driver.request(taskID)
+          return {
+            activated: 0,
+            noProgress: exit !== "pass-exhaustion",
+            ...(exit === "later-wake" ? { wakeAt: 75 } : {}),
+          }
+        },
+        maxPasses: 2,
+        initialBackoffMilliseconds: 1_000,
+        now: () => 0,
+        setTimer: (_fn, delay) => {
+          timers.push(delay)
+          return { cancel() {} }
+        },
+      })
+      try {
+        await driver.request("retained-deadline")
+        expect({
+          calls,
+          timers,
+          wakeAt: driver.snapshot()[0]?.wakeAt,
+          sibling: await driver.request("sibling"),
+        }).toEqual({ calls: 2, timers: [50], wakeAt: 50, sibling: 1 })
+      } finally {
+        driver.dispose()
+      }
+    },
+  )
+
+  test("keeps a newer future transition after the accumulated minimum expires", async () => {
+    let clock = 0
+    let calls = 0
+    const driver = new TaskControlDriver({
+      scan: async (taskID) => {
+        calls += 1
+        if (calls === 1) {
+          void driver.request(taskID)
+          return { activated: 0, wakeAt: 10 }
+        }
+        clock = 20
+        return { activated: 0, noProgress: true, wakeAt: 100 }
+      },
+      now: () => clock,
+      setTimer: () => ({ cancel() {} }),
+    })
+    try {
+      await driver.request("newer-transition")
+      expect(driver.snapshot()[0]?.wakeAt).toBe(100)
+    } finally {
+      driver.dispose()
+    }
+  })
+
+  test.each(["fault", "no-progress", "pass-exhaustion"] as const)(
+    "retains the second pass future transition through third pass %s after the first expires",
+    async (exit) => {
+      let clock = 0
+      let calls = 0
+      const timers: number[] = []
+      const driver = new TaskControlDriver({
+        scan: async (taskID) => {
+          calls += 1
+          if (calls <= 2) {
+            void driver.request(taskID)
+            return { activated: 0, wakeAt: calls === 1 ? 10 : 100 }
+          }
+          clock = 20
+          if (exit === "fault") throw new Error("Injected third pass fault")
+          if (exit === "pass-exhaustion") void driver.request(taskID)
+          return { activated: 0, noProgress: exit === "no-progress" }
+        },
+        maxPasses: 3,
+        initialBackoffMilliseconds: 1_000,
+        now: () => clock,
+        setTimer: (_fn, delay) => {
+          timers.push(delay)
+          return { cancel() {} }
+        },
+      })
+      try {
+        await driver.request("three-pass-transition")
+        expect({ calls, timers, wakeAt: driver.snapshot()[0]?.wakeAt }).toEqual({
+          calls: 3,
+          timers: [80],
+          wakeAt: 100,
+        })
+      } finally {
+        driver.dispose()
+      }
+    },
+  )
+
+  test.each(["fault", "success"] as const)(
+    "preserves an earlier semantic deadline when changed input retries with %s",
+    async (outcome) => {
+      let revision = "a"
+      let calls = 0
+      const driver = new TaskControlDriver({
+        inputRevision: () => revision,
+        scan: async (taskID) => {
+          calls += 1
+          if (calls === 1) {
+            void driver.request(taskID)
+            return { activated: 0, wakeAt: 50 }
+          }
+          if (calls === 2) {
+            revision = "b"
+            throw new Error("Injected fault concurrent with new canonical input")
+          }
+          if (outcome === "fault") throw new Error("Injected new-input retry fault")
+          return { activated: 1, wakeAt: 2_000 }
+        },
+        maxPasses: 3,
+        initialBackoffMilliseconds: 1_000,
+        now: () => 0,
+        setTimer: () => ({ cancel() {} }),
+      })
+      try {
+        const activated = await driver.request("changed-input-deadline")
+        expect({ calls, activated, wakeAt: driver.snapshot()[0]?.wakeAt }).toEqual({
+          calls: 3,
+          activated: outcome === "success" ? 1 : 0,
+          wakeAt: 50,
+        })
+      } finally {
+        driver.dispose()
+      }
+    },
+  )
+
+  test("arms the successful new-input transition after its provisional fault retry is superseded", async () => {
+    let revision = "a"
+    let calls = 0
+    const driver = new TaskControlDriver({
+      inputRevision: () => revision,
+      scan: async () => {
+        calls += 1
+        if (calls === 1) {
+          revision = "b"
+          throw new Error("Injected fault concurrent with new canonical input")
+        }
+        return { activated: 1, wakeAt: 2_000 }
+      },
+      initialBackoffMilliseconds: 1_000,
+      now: () => 0,
+      setTimer: () => ({ cancel() {} }),
+    })
+    try {
+      const activated = await driver.request("successful-new-input")
+      expect({ calls, activated, wakeAt: driver.snapshot()[0]?.wakeAt }).toEqual({
+        calls: 2,
+        activated: 1,
+        wakeAt: 2_000,
+      })
+    } finally {
+      driver.dispose()
+    }
+  })
+
+  test("paces repeated past-due readiness with the existing exponential retry bound", async () => {
+    let clock = 0
+    const delays: number[] = []
+    const driver = new TaskControlDriver({
+      scan: async () => ({ activated: 0, noProgress: true, wakeAt: clock }),
+      initialBackoffMilliseconds: 100,
+      maximumBackoffMilliseconds: 400,
+      now: () => clock,
+      setTimer: (_fn, delay) => {
+        delays.push(delay)
+        return { cancel() {} }
+      },
+    })
+    try {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await driver.request("past-due")
+        clock += delays.at(-1)!
+      }
+      expect(delays).toEqual([100, 200, 400])
+    } finally {
+      driver.dispose()
+    }
+  })
+
   test("paces an unsettled fixpoint under backoff instead of re-arming at the minimum delay", async () => {
     const timers: number[] = []
     let clock = 0
@@ -789,10 +1100,7 @@ describe("Task-control driver", () => {
     const pending = driver.request("pending")
     const firstHeartbeat = timers.find((timer) => !timer.cancelled && timer.delay === 5_000)!
     firstHeartbeat.fire()
-    await waitUntil(
-      () => timers.some((timer) => !timer.cancelled && timer.delay === 25),
-      "rejected heartbeat retry",
-    )
+    await waitUntil(() => timers.some((timer) => !timer.cancelled && timer.delay === 25), "rejected heartbeat retry")
     expect({ commits, scanned }).toEqual({ commits: 0, scanned: ["active"] })
 
     releaseActive()
