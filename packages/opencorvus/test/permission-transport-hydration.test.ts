@@ -16,7 +16,11 @@ afterEach(async () => {
 })
 
 test("hydrates one durable pending request for ACP, CLI, and protocol projections after runtime release", async () => {
-  await using project = await tmpdir({ git: true })
+  await using project = await tmpdir({
+    git: true,
+    // Hydration initializes a second runtime; release it before removing its directory.
+    dispose: async () => Instance.disposeAll(),
+  })
   let sessionID = ""
   let requestID = ""
   let releasedExecution: Promise<unknown> | undefined
