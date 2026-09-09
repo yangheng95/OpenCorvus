@@ -298,9 +298,23 @@ describe("host-owned native Session MCP composition", () => {
         )
         unavailable.mockRestore()
 
+        const codingBase = [
+          "bash",
+          "capability_search",
+          "edit",
+          "glob",
+          "mission_state",
+          "publish_interactive_artifact",
+          "question",
+          "read",
+          "search_code",
+          "todoread",
+          "todowrite",
+          "write",
+        ]
         expect({
-          revisionZero: Object.keys(revisionZero.tools),
-          restartedRevisionZero: Object.keys(restartedRevisionZero.tools),
+          revisionZero: Object.keys(revisionZero.tools).sort(),
+          restartedRevisionZero: Object.keys(restartedRevisionZero.tools).sort(),
           browserActive: Object.keys(browserActive.tools).sort(),
           restoredBrowser: Object.keys(restoredBrowser.tools).sort(),
           twoBrowserLeaves: Object.keys(twoBrowserLeaves.tools).sort(),
@@ -310,12 +324,12 @@ describe("host-owned native Session MCP composition", () => {
           computer: JSON.stringify(result),
           stale,
         }).toEqual({
-          revisionZero: ["capability_search"],
-          restartedRevisionZero: ["capability_search"],
-          browserActive: ["browser_session_status", "capability_search"],
-          restoredBrowser: ["browser_session_status", "capability_search"],
-          twoBrowserLeaves: ["browser_session_status", "browser_tabs", "capability_search"],
-          bothActive: ["browser_session_status", "browser_tabs", "capability_search", "computer_session_destroy"],
+          revisionZero: codingBase,
+          restartedRevisionZero: codingBase,
+          browserActive: [...codingBase, "browser_session_status"].sort(),
+          restoredBrowser: [...codingBase, "browser_session_status"].sort(),
+          twoBrowserLeaves: [...codingBase, "browser_session_status", "browser_tabs"].sort(),
+          bothActive: [...codingBase, "browser_session_status", "browser_tabs", "computer_session_destroy"].sort(),
           ensureCalls: [
             [BrowserMCPBuiltin.ServerName],
             [BrowserMCPBuiltin.ServerName],
@@ -414,10 +428,25 @@ describe("host-owned native Session MCP composition", () => {
             resolved.map((entry) => entry.connectionIdentity).filter((entry): entry is string => Boolean(entry)).sort(),
           )
           expect(Object.keys(tools).sort()).toEqual([
+            "bash",
             "capability_search",
+            "edit",
+            "glob",
             "mission_state",
+            "panel_complete_mission",
+            "panel_create_task",
+            "panel_query_task",
+            "panel_query_task_artifacts",
+            "panel_read_task_artifact",
+            "publish_interactive_artifact",
+            "question",
+            "read",
             "scheduler_message",
+            "search_code",
+            "todoread",
+            "todowrite",
             "wait",
+            "write",
           ])
         } finally {
           native.mockRestore()
