@@ -266,4 +266,5 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
     }
     await removeManagedDirectoryTree(directory)
   }
-}, 90_000)
+  // Preparation, thirteen four-worker phases and inspection start 57 fresh processes.
+}, 180_000)
