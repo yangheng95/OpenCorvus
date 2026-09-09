@@ -11,8 +11,9 @@ These cards show expected outputs, not an application screenshot or model-run ev
 
 Both images are 1600 × 900 pixels. Use each image with its matching draft below;
 the post supplies the exact source link and prerequisites. Neither social-post
-draft has been posted. A separate proposed GitHub pilot issue below awaits
-authorization for its named destination and account.
+draft has been posted. The separate GitHub pilot is published as
+[issue #30](https://github.com/yangheng95/opencorvus/issues/30), with its initial
+publication text retained below.
 
 ## Source and limits
 
@@ -50,7 +51,7 @@ Running the sample needs Node.js 22+; running agent tasks also needs OpenCorvus
 and a configured model, whose costs depend on your provider.
 
 [Try the pinned sample and bilingual guide](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples).
-If you try it, optional feedback through the guide's support link is welcome:
+If you try it, optional feedback in the [first-task pilot issue](https://github.com/yangheng95/opencorvus/issues/30) is welcome:
 which check passed, needed correction or was blocked? Share only information you
 are comfortable making public.
 
@@ -72,7 +73,7 @@ expected total 800 grams. Verify the code, test and explanation.
 OpenCorvus 和已配置的模型，费用取决于你的 Provider。
 
 [查看固定版本的样例与双语指南](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples)。
-如愿意反馈，可通过指南中的支持入口告诉我们：哪项核对通过了、需要修改，或遇到了什么
+如愿意反馈，可在[首次任务试用 issue](https://github.com/yangheng95/opencorvus/issues/30) 告诉我们：哪项核对通过了、需要修改，或遇到了什么
 阻塞？只分享适合公开的信息。
 
 **配图：** `first-result-zh.png`
@@ -86,7 +87,9 @@ Destination: `yangheng95/opencorvus` GitHub issue tracker.
 Posting account: `yangheng95`.
 Published as [issue #30](https://github.com/yangheng95/opencorvus/issues/30) after
 the user's authorization for non-payment operations. The title and body were
-read back and checked against the text below.
+read back and checked against the initial text below. The live issue now also
+contains subsequent maintainer acceptance and website updates; use that issue
+for current progress and voluntary feedback.
 Scope: one text-only issue with the exact title and body below; no labels,
 assignments, comments on other issues, direct messages or attached uploads.
 The issue seeks early validation, not endorsement
