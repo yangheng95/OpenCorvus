@@ -20,7 +20,7 @@ import { discardEngineArtifactResources, publishEngineArtifactResources } from "
 import type { VisualReview } from "./schema"
 import { assertVisualQaEvidence, formatVisualQaArtifactLocator, visualQaArtifactLocatorKey } from "./evidence"
 
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 
 type VisualQaProblemDomRegion = VisualReview["problem_dom_regions"][number]
 

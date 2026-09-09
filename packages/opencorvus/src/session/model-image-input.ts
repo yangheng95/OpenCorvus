@@ -20,7 +20,7 @@ export {
   type ModelImagePixelSummary,
 } from "./model-image-pixel-summary"
 
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 
 const BLANK_MARGIN_CROP_THRESHOLD = 10
 

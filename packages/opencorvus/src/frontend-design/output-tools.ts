@@ -57,7 +57,7 @@ import { materializeExactTool } from "@/agent/exact-tool-factory"
 
 export type { FrontendDesignPayload } from "./schema"
 
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 type FrontendDesignDraft = z.infer<typeof FrontendDesignDraftSchema>
 type FrontendDesignDraftState = Partial<FrontendDesignDraft>
 type VisualEvidenceCaptureMode = VisualValidationEvidence["capture_mode"]

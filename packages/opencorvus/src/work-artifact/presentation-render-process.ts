@@ -16,7 +16,7 @@ const MAX_TEXT_RASTER_HEIGHT = 100_000
 const MAX_TEXT_RASTER_PIXELS = 40_000_000
 const MAX_OVERLAY_PIXELS = OUTPUT_WIDTH * OUTPUT_HEIGHT * 16
 const MAX_INTERMEDIATE_PNG_BYTES = 32 * 1024 * 1024
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 const chunks: Buffer[] = []
 let bytes = 0
 for await (const chunk of process.stdin) {

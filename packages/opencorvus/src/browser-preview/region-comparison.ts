@@ -30,7 +30,7 @@ import {
 import { throwAfterBrowserPreviewPublicationCleanup } from "./publication-cleanup"
 import { BrowserPreviewComparisonGuidance, BrowserPreviewComparisonGuidanceSchema } from "./comparison-guidance"
 
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 
 class BrowserPreviewRegionGeometryError extends Error {
   constructor(message: string) {

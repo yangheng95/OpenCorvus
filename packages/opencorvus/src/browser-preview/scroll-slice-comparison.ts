@@ -24,7 +24,7 @@ import { BrowserPreviewViewportID } from "./viewport"
 import { BrowserPreviewComparisonGuidance, BrowserPreviewComparisonGuidanceSchema } from "./comparison-guidance"
 import { readBrowserPreviewArtifactFile } from "./artifact-file"
 
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 const SCROLL_SLICE_CAPTURE_EXTRA_TIMEOUT_MS = 45_000
 const SCROLL_SLICE_ROUTE_NAVIGATION_INACTIVITY_MS = 30_000
 const SCROLL_SLICE_NETWORK_IDLE_INACTIVITY_MS = 5_000

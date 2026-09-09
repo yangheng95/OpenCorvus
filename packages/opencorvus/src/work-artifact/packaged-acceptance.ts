@@ -7,7 +7,7 @@ import { AttachmentStore } from "../storage/attachment-store"
 import { Tool } from "../tool/tool"
 import { createWorkArtifactTools } from "../tool/work-artifact"
 
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 
 export async function runPackagedWorkArtifactAcceptance(): Promise<{
   source_sha: string

@@ -58,7 +58,7 @@ async function readBoundedFile(filename: string, maxBytes: number, label: string
 const SLIDE_HEIGHT_CM = 19.05
 const MAX_IMAGE_DIMENSION = 10_000
 const MAX_IMAGE_PIXELS = 40_000_000
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 declare const OPENCORVUS_LIBC: string | undefined
 let windowsUserSid: Promise<string> | undefined
 

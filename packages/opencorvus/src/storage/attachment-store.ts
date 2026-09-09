@@ -33,7 +33,7 @@ import { Filesystem } from "@/util/filesystem"
 import { projectInteractionRowInTransaction } from "@/engine/store"
 import { ATTACHMENT_ROUTE_PREFIX, attachmentNameFromUrl } from "./attachment-reference"
 
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 
 // Map MIME types to the canonical file extension used when we lay attachments
 // down inside a project's .opencorvus/.r/project/attachments store. The list only

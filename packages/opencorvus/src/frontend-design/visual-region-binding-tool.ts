@@ -18,7 +18,7 @@ import {
   type VisualRegionBindingManifest,
 } from "./visual-region-binding-schema"
 
-const sharp = requireRuntimePackage<typeof import("sharp")>("sharp")
+const sharp = requireRuntimePackage<typeof import("sharp", { with: { "resolution-mode": "require" } })>("sharp")
 
 export interface FrontendVisualRegionBindingToolEvent {
   name: "create_visual_region_coordinate_atlas" | "create_visual_region_binding_package"
