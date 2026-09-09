@@ -84,12 +84,28 @@ describe("search-native Skill reveal", () => {
           messages: await Session.messages({ sessionID: session.id }),
         }
         const initial = await resolveTestCapabilityTools(common)
-        expect(Object.keys(initial.tools)).toEqual(["capability_search"])
+        const routineNames = [
+          "capability_search",
+          "bash",
+          "edit",
+          "glob",
+          "mission_state",
+          "panel_create_task",
+          "panel_query_task",
+          "panel_query_task_artifacts",
+          "publish_interactive_artifact",
+          "question",
+          "read",
+          "search_code",
+          "todoread",
+          "todowrite",
+          "write",
+        ]
+        expect(Object.keys(initial.tools)).toEqual(routineNames)
         const loaderRef = initial.occurrence.ref("skill")
         expect(
-          initial.occurrence.grants.grants.find(
-            (grant) => grant.ref.kind === "tool" && grant.ref.local_ref === "skill",
-          )?.access,
+          initial.occurrence.grants.grants.find((grant) => grant.ref.kind === "tool" && grant.ref.local_ref === "skill")
+            ?.access,
         ).toBe("execute")
         await expect(
           initial.tools.capability_search!.execute!(
@@ -103,7 +119,7 @@ describe("search-native Skill reveal", () => {
           messages: await Session.messages({ sessionID: session.id }),
           activeLocalRefs: ["work-artifacts"],
         })
-        expect(Object.keys(tools).sort()).toEqual(["capability_search", "skill"])
+        expect(Object.keys(tools).sort()).toEqual([...routineNames, "skill"].sort())
         const skill = tools.skill
         if (!skill?.execute) throw new Error("Exact Skill loader is unavailable after reveal")
         const loaded = (await skill.execute(
@@ -117,10 +133,10 @@ describe("search-native Skill reveal", () => {
           output: loaded,
         })
         const expanded = await resolveTestCapabilityTools({ ...common, activeLocalRefs: ["research-report"] })
-        const expandedList = await expanded.tools.skill!.execute!(
+        const expandedList = (await expanded.tools.skill!.execute!(
           {},
           { toolCallId: "call_list_expanded_skills", messages: [], abortSignal: new AbortController().signal },
-        ) as Parameters<typeof processor.completeRecoveredToolPart>[0]["output"] & { metadata: { names: string[] } }
+        )) as Parameters<typeof processor.completeRecoveredToolPart>[0]["output"] & { metadata: { names: string[] } }
         expect(expandedList.metadata.names.sort()).toEqual(["research-report", "work-artifacts"])
         await processor.completeRecoveredToolPart({
           toolCallID: "call_list_expanded_skills",
@@ -128,10 +144,10 @@ describe("search-native Skill reveal", () => {
           output: expandedList,
         })
         const reconstructed = await resolveTestCapabilityTools(common)
-        const report = await reconstructed.tools.skill!.execute!(
+        const report = (await reconstructed.tools.skill!.execute!(
           { name: "research-report" },
           { toolCallId: "call_load_reconstructed_report", messages: [], abortSignal: new AbortController().signal },
-        ) as Parameters<typeof processor.completeRecoveredToolPart>[0]["output"]
+        )) as Parameters<typeof processor.completeRecoveredToolPart>[0]["output"]
         expect(report.metadata.name).toBe("research-report")
         expect(report.output).toContain('<skill_content name="research-report">')
         await processor.completeRecoveredToolPart({

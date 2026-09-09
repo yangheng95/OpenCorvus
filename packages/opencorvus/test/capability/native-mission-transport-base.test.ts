@@ -27,6 +27,28 @@ import { MissionStateTool } from "../../src/tool/mission-state"
 import { Tool } from "../../src/tool/tool"
 import { ToolRegistry } from "../../src/tool/registry"
 
+const missionRoutineNames = [
+  "bash",
+  "capability_search",
+  "edit",
+  "glob",
+  "mission_state",
+  "panel_complete_mission",
+  "panel_create_task",
+  "panel_query_task",
+  "panel_query_task_artifacts",
+  "panel_read_task_artifact",
+  "publish_interactive_artifact",
+  "question",
+  "read",
+  "scheduler_message",
+  "search_code",
+  "todoread",
+  "todowrite",
+  "wait",
+  "write",
+].sort()
+
 const model = {
   id: "native-mission-transport-model",
   providerID: "openai",
@@ -113,7 +135,7 @@ async function runPermissionProcessWorker(
   mode:
     | "prepare"
     | "prepare-structured-reveal"
-    | "prepare-legacy-reveal"
+    | "prepare-old-base"
     | "prepare-catalog-v2"
     | "resume-same"
     | "resume-drift"
@@ -150,9 +172,7 @@ async function runPermissionProcessWorker(
 }
 
 function processWorkerResult(output: string) {
-  const line = output
-    .split(/\r?\n/u)
-    .find((candidate) => candidate.startsWith("NATIVE_MISSION_PERMISSION_RESULT="))
+  const line = output.split(/\r?\n/u).find((candidate) => candidate.startsWith("NATIVE_MISSION_PERMISSION_RESULT="))
   if (!line) throw new Error(`Native Mission permission worker returned no result: ${output}`)
   return JSON.parse(line.slice("NATIVE_MISSION_PERMISSION_RESULT=".length)) as {
     mode: string
@@ -250,11 +270,11 @@ describe("native Mission transport base", () => {
         expect(descriptor.behavior.name).toBe("general")
         const reconstructed = await resolveTestCapabilityTools(common)
         const toolInput = { name: descriptor.behavior.name }
-        const output = await reconstructed.tools.mission_skill!.execute!(toolInput, {
+        const output = (await reconstructed.tools.mission_skill!.execute!(toolInput, {
           toolCallId: "call_load_reconstructed_mission_skill",
           messages: [],
           abortSignal: new AbortController().signal,
-        }) as Parameters<typeof processor.completeRecoveredToolPart>[0]["output"]
+        })) as Parameters<typeof processor.completeRecoveredToolPart>[0]["output"]
         expect(output.metadata.name).toBe("general")
         expect(output.output).toContain("general")
         await processor.completeRecoveredToolPart({
@@ -276,7 +296,9 @@ describe("native Mission transport base", () => {
           ...occurrence.common,
           tools: { scheduler_message: false },
         })
-        expect(Object.keys(resolved.tools).sort()).toEqual(["capability_search", "mission_state"])
+        expect(Object.keys(resolved.tools).sort()).toEqual(
+          missionRoutineNames.filter((name) => name !== "scheduler_message"),
+        )
       },
     })
   }, 60_000)
@@ -286,7 +308,10 @@ describe("native Mission transport base", () => {
     await Instance.provide({
       directory: project.path,
       fn: async () => {
-        const occurrence = await createMissionOccurrence(project.path, "mission-native-transport-single-materialization")
+        const occurrence = await createMissionOccurrence(
+          project.path,
+          "mission-native-transport-single-materialization",
+        )
         const exactRuntimeTools = ToolRegistry.exactRuntimeTools
         const requestedNonemptySets: string[][] = []
         const registry = spyOn(ToolRegistry, "exactRuntimeTools").mockImplementation(async (...args) => {
@@ -302,11 +327,7 @@ describe("native Mission transport base", () => {
             firstStepCalls: 2,
             continuationCalls: 1,
           })
-          expect(requestedNonemptySets.at(-1)?.sort()).toEqual([
-            "capability_search",
-            "mission_state",
-            "scheduler_message",
-          ])
+          expect(requestedNonemptySets.at(-1)?.sort()).toEqual(missionRoutineNames)
         } finally {
           registry.mockRestore()
         }
@@ -328,7 +349,9 @@ describe("native Mission transport base", () => {
           ],
         })
         const resolved = await resolveTestCapabilityTools({ ...occurrence.common, agent })
-        expect(Object.keys(resolved.tools).sort()).toEqual(["capability_search", "scheduler_message"])
+        expect(Object.keys(resolved.tools).sort()).toEqual(
+          missionRoutineNames.filter((name) => name !== "mission_state"),
+        )
       },
     })
   }, 60_000)
@@ -340,36 +363,23 @@ describe("native Mission transport base", () => {
       fn: async () => {
         const occurrence = await createMissionOccurrence(project.path, "mission-native-transport-reveal")
         const initial = await resolveTestCapabilityTools(occurrence.common)
-        expect(Object.keys(initial.tools).sort()).toEqual([
-          "capability_search",
-          "mission_state",
-          "scheduler_message",
-        ])
+        expect(Object.keys(initial.tools).sort()).toEqual(missionRoutineNames)
 
-        const revealed = await resolveTestCapabilityTools({ ...occurrence.common, activeLocalRefs: ["wait"] })
-        expect(Object.keys(revealed.tools).sort()).toEqual([
-          "capability_search",
-          "mission_state",
-          "scheduler_message",
-          "wait",
-        ])
+        const revealed = await resolveTestCapabilityTools({ ...occurrence.common, activeLocalRefs: ["webfetch"] })
+        expect(Object.keys(revealed.tools).sort()).toEqual([...missionRoutineNames, "webfetch"].sort())
         const search = revealed.tools.capability_search
         if (!search?.execute) throw new Error("Native Mission transport occurrence has no capability_search Tool.")
         await search.execute(
-          { queries: [""], exact_refs: [], deactivate_refs: [revealed.occurrence.ref("wait")], limit: 5 },
+          { queries: [""], exact_refs: [], deactivate_refs: [revealed.occurrence.ref("webfetch")], limit: 5 },
           {
-            toolCallId: "call_deactivate_native_mission_wait",
+            toolCallId: "call_deactivate_native_mission_webfetch",
             messages: [],
             abortSignal: new AbortController().signal,
           },
         )
 
         const deactivated = await resolveTestCapabilityTools(occurrence.common)
-        expect(Object.keys(deactivated.tools).sort()).toEqual([
-          "capability_search",
-          "mission_state",
-          "scheduler_message",
-        ])
+        expect(Object.keys(deactivated.tools).sort()).toEqual(missionRoutineNames)
       },
     })
   }, 60_000)
@@ -469,8 +479,7 @@ describe("native Mission transport base", () => {
           emptySnapshot: emptySnapshot.files,
           committed: committed.files,
           snapshot: snapshot.files,
-          revisionChanged:
-            emptySnapshot.revision !== committed.revision && committed.revision === snapshot.revision,
+          revisionChanged: emptySnapshot.revision !== committed.revision && committed.revision === snapshot.revision,
           stateTitle: stateResult.title,
           schedulerTitle: schedulerResult.title,
           calls: persisted.parts
@@ -479,31 +488,31 @@ describe("native Mission transport base", () => {
             .sort((left, right) => left.callID.localeCompare(right.callID)),
         }).toEqual({
           emptySnapshot: [
-              { file: "frontier.md", exists: false, bytes: 0, content: "" },
-              { file: "tasks.md", exists: false, bytes: 0, content: "" },
-              { file: "handoff.md", exists: false, bytes: 0, content: "" },
-              { file: "notes.md", exists: false, bytes: 0, content: "" },
-            ],
+            { file: "frontier.md", exists: false, bytes: 0, content: "" },
+            { file: "tasks.md", exists: false, bytes: 0, content: "" },
+            { file: "handoff.md", exists: false, bytes: 0, content: "" },
+            { file: "notes.md", exists: false, bytes: 0, content: "" },
+          ],
           committed: [
-              { file: "frontier.md", bytes: 49 },
-              { file: "handoff.md", bytes: 41 },
-            ],
+            { file: "frontier.md", bytes: 49 },
+            { file: "handoff.md", bytes: 41 },
+          ],
           snapshot: [
-              {
-                file: "frontier.md",
-                exists: true,
-                bytes: 49,
-                content: "## Mission contract\nNative transport acceptance.\n",
-              },
-              { file: "tasks.md", exists: false, bytes: 0, content: "" },
-              {
-                file: "handoff.md",
-                exists: true,
-                bytes: 41,
-                content: "## Next wake\nRead the terminal evidence.\n",
-              },
-              { file: "notes.md", exists: false, bytes: 0, content: "" },
-            ],
+            {
+              file: "frontier.md",
+              exists: true,
+              bytes: 49,
+              content: "## Mission contract\nNative transport acceptance.\n",
+            },
+            { file: "tasks.md", exists: false, bytes: 0, content: "" },
+            {
+              file: "handoff.md",
+              exists: true,
+              bytes: 41,
+              content: "## Next wake\nRead the terminal evidence.\n",
+            },
+            { file: "notes.md", exists: false, bytes: 0, content: "" },
+          ],
           revisionChanged: true,
           stateTitle: expect.stringContaining("mission_state snapshot"),
           schedulerTitle: "scheduler_message notification",
@@ -524,10 +533,12 @@ describe("native Mission transport base", () => {
       directory: project.path,
       fn: async () => {
         const occurrence = await createMissionOccurrence(project.path, "mission-state-bounded-revision")
-        const initial = JSON.parse((await executeMissionState(occurrence.mission.id, { action: "snapshot" })).output) as {
+        const initial = JSON.parse(
+          (await executeMissionState(occurrence.mission.id, { action: "snapshot" })).output,
+        ) as {
           revision: string
         }
-        const content = `near-boundary:${"\"\\\n".repeat(8_000)}`
+        const content = `near-boundary:${'"\\\n'.repeat(8_000)}`
         const committed = JSON.parse(
           (
             await executeMissionState(occurrence.mission.id, {
@@ -706,7 +717,11 @@ describe("native Mission transport base", () => {
         const snapshot = JSON.parse(
           (await executeMissionState(occurrence.mission.id, { action: "snapshot" })).output,
         ) as { revision: string }
-        return { sessionID: occurrence.mission.id, missionID: occurrence.mission.missionID, revision: snapshot.revision }
+        return {
+          sessionID: occurrence.mission.id,
+          missionID: occurrence.mission.missionID,
+          revision: snapshot.revision,
+        }
       },
     })
     const barrier = path.join(project.path, "mission-state-process-barrier")
@@ -717,13 +732,16 @@ describe("native Mission transport base", () => {
       { id: "beta", content: "complete beta generation" },
     ].map(({ id, content }) => ({
       id,
-      child: Bun.spawn([process.execPath, fixture, project.path, prepared.sessionID, prepared.revision, barrier, id, content], {
-        cwd: path.join(import.meta.dir, "..", ".."),
-        env: process.env,
-        stdin: "ignore",
-        stdout: "pipe",
-        stderr: "pipe",
-      }),
+      child: Bun.spawn(
+        [process.execPath, fixture, project.path, prepared.sessionID, prepared.revision, barrier, id, content],
+        {
+          cwd: path.join(import.meta.dir, "..", ".."),
+          env: process.env,
+          stdin: "ignore",
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      ),
     }))
     await waitForFiles(children.map(({ id }) => path.join(barrier, `${id}.ready`)))
     await fs.writeFile(path.join(barrier, "go"), "go")
@@ -745,18 +763,14 @@ describe("native Mission transport base", () => {
     const document = JSON.parse(await fs.readFile(documentPath, "utf8")) as {
       files: Array<{ file: string; content: string }>
     }
-    expect(document.files).toEqual([
-      { file: "frontier.md", content: `complete ${winner} generation` },
-    ])
+    expect(document.files).toEqual([{ file: "frontier.md", content: `complete ${winner} generation` }])
   }, 120_000)
 
   test("recovers the exact approved scheduler transport authority after process death", async () => {
     await using project = await memoryProject()
     const statePath = path.join(project.path, "native-mission-permission-same.json")
     await runPermissionProcessWorker("prepare", project.path, statePath)
-    const result = processWorkerResult(
-      await runPermissionProcessWorker("resume-same", project.path, statePath),
-    )
+    const result = processWorkerResult(await runPermissionProcessWorker("resume-same", project.path, statePath))
     expect(result).toEqual({
       mode: "resume-same",
       staleName: null,
@@ -772,9 +786,7 @@ describe("native Mission transport base", () => {
     await using project = await memoryProject()
     const statePath = path.join(project.path, "native-mission-permission-drift.json")
     await runPermissionProcessWorker("prepare", project.path, statePath)
-    const result = processWorkerResult(
-      await runPermissionProcessWorker("resume-drift", project.path, statePath),
-    )
+    const result = processWorkerResult(await runPermissionProcessWorker("resume-drift", project.path, statePath))
     expect(result).toEqual({
       mode: "resume-drift",
       staleName: "StaleContinuationError",
@@ -802,17 +814,17 @@ describe("native Mission transport base", () => {
     })
   }, 120_000)
 
-  test("reconstructs a legacy revealed scheduler transport occurrence after base promotion", async () => {
+  test("retires an older input-bound routine base during permission continuation", async () => {
     await using project = await memoryProject()
-    const statePath = path.join(project.path, "native-mission-permission-legacy-reveal.json")
-    await runPermissionProcessWorker("prepare-legacy-reveal", project.path, statePath)
+    const statePath = path.join(project.path, "native-mission-permission-old-base.json")
+    await runPermissionProcessWorker("prepare-old-base", project.path, statePath)
     const result = processWorkerResult(await runPermissionProcessWorker("resume-same", project.path, statePath))
     expect(result).toEqual({
       mode: "resume-same",
-      staleName: null,
-      staleMessage: null,
-      schedulerEventCount: 1,
-      toolPartStatus: "completed",
+      staleName: "StaleContinuationError",
+      staleMessage: expect.any(String),
+      schedulerEventCount: 0,
+      toolPartStatus: "error",
       staleEventCount: 1,
       staleReasons: [expect.any(String)],
     })

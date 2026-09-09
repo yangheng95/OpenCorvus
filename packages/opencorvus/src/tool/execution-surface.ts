@@ -1,12 +1,12 @@
 import { CapabilityRules } from "@/capability/rules"
 import type { HarnessProjection } from "@/capability/harness-projection"
-import type { TurnCapabilityProjectionV2 } from "@/capability/reveal-receipt"
+import type { TurnCapabilityProjectionV3 } from "@/capability/reveal-receipt"
 
 export interface ToolExecutionSurface {
   toolIDs: readonly string[]
   permission: CapabilityRules.Ruleset
   harness_projection?: HarnessProjection
-  capability_projection?: TurnCapabilityProjectionV2
+  capability_projection?: TurnCapabilityProjectionV3
   permission_layers?: Readonly<{
     agent: CapabilityRules.Ruleset
     session: CapabilityRules.Ruleset
@@ -63,7 +63,7 @@ export function createToolExecutionSurface(input: {
     session?: CapabilityRules.Ruleset
   }
   harnessProjection?: HarnessProjection
-  capabilityProjection?: TurnCapabilityProjectionV2
+  capabilityProjection?: TurnCapabilityProjectionV3
 }): ToolExecutionSurface {
   const toolIDs = [...input.toolIDs]
   if (new Set(toolIDs).size !== toolIDs.length) {

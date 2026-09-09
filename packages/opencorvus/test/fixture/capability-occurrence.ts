@@ -13,19 +13,13 @@ import { SessionRuntimeContractStore } from "../../src/session/runtime-contract"
 import type { SessionAgentRuntime } from "../../src/agent/session-agent-runtime"
 import { RuntimeCapabilityCatalog } from "../../src/tool/capability-runtime-catalog"
 import { ToolRegistry } from "../../src/tool/registry"
-import { NATIVE_MISSION_TRANSPORT_TOOL_IDS } from "../../src/tool/tool-id-catalog"
+import { routineToolRefs } from "../../src/capability/routine-tools"
 import { CapabilityRules } from "../../src/capability/rules"
 import { visibleExecutionToolIDs } from "../../src/tool/execution-surface"
 import type { ProviderToolNameOwner } from "../../src/tool/provider-name-authority"
 import { jsonSchema, tool, type Tool as AITool } from "ai"
-import {
-  capabilityRevealOccurrenceParts,
-  normalizedProviderToolDefinition,
-} from "../../src/capability/reveal-owner"
-import {
-  capabilityRevealBaseDefinitions,
-  foldCapabilityRevealReceipts,
-} from "../../src/capability/reveal-receipt"
+import { capabilityRevealOccurrenceParts, normalizedProviderToolDefinition } from "../../src/capability/reveal-owner"
+import { capabilityRevealBaseDefinitions, foldCapabilityRevealReceipts } from "../../src/capability/reveal-receipt"
 
 export async function bindTestCapabilityOccurrence(input: {
   config: Config.Info
@@ -89,20 +83,21 @@ export async function bindTestCapabilityOccurrence(input: {
     payload = await CatalogOccurrenceBinding.read({ projectID: Instance.project.id, binding })
     await Session.beginAssistantReply(occurrenceAssistant)
   } else {
-    const nativeTransportIDs =
-      input.agentID === "mission" && input.session.kind === "mission"
-        ? visibleExecutionToolIDs({
-            toolIDs: [...NATIVE_MISSION_TRANSPORT_TOOL_IDS],
-            permission: CapabilityRules.merge(input.agent.permission, input.session.permission),
-            switches: input.tools,
-          })
-        : []
+    const permanentRefs = routineToolRefs({
+      harness: grants,
+      visibleToolIDs: visibleExecutionToolIDs({
+        toolIDs: executionToolIDs,
+        permission: CapabilityRules.merge(input.agent.permission, input.session.permission),
+        switches: input.tools,
+      }),
+    })
     const permanentProviderBaseDefinition = await SessionLoop.resolvePermanentProviderBaseDefinition({
       model: input.model,
       agent: input.agent,
       agentID: input.agentID,
       config: input.config,
-      registryToolIDs: ["capability_search", ...nativeTransportIDs],
+      toolRefs: permanentRefs,
+      runtimeContract: SessionRuntimeContractStore.get(input.session.id),
       reservedProviderTools: input.reservedProviderTools,
     })
     const catalog = await RuntimeCapabilityCatalog.snapshot({
@@ -194,15 +189,12 @@ export async function resolveTestCapabilityTools(input: {
   let tools = await resolve()
   const searchTool = tools.capability_search
   if (!searchTool) throw new Error("Test occurrence has no capability_search Tool.")
-  const baseProviderNames = [
-    "capability_search",
-    ...(input.agentID === "mission" && input.session.kind === "mission" ? NATIVE_MISSION_TRANSPORT_TOOL_IDS : []),
-  ].filter((name) => Object.hasOwn(tools, name))
+  const baseProviderNames = occurrence.payload.permanent_provider_base_definition.provider_names.filter(
+    (name) => !reservedProviderTools.some((reservation) => reservation.name === name),
+  )
   const baseDefinition = capabilityRevealBaseDefinitions([
     ...baseProviderNames.map((name) => normalizedProviderToolDefinition(name, tools[name]!)),
-    ...reservedProviderTools.map((reservation) =>
-      normalizedProviderToolDefinition(reservation.name, reservation.tool),
-    ),
+    ...reservedProviderTools.map((reservation) => normalizedProviderToolDefinition(reservation.name, reservation.tool)),
   ])
   const prior = foldCapabilityRevealReceipts({
     occurrenceID: input.assistant.parentID,
@@ -225,6 +217,7 @@ export async function resolveTestCapabilityTools(input: {
     }
   }
   const activeRefs = [...new Set(input.activeLocalRefs ?? [])]
+    .filter((localRef) => !baseProviderNames.includes(localRef))
     .map((localRef) => occurrence.ref(localRef))
     .filter((ref) => !prior.active.has(CapabilityRefCodec.encode(ref)))
   for (let offset = 0; offset < activeRefs.length; offset += 5) {

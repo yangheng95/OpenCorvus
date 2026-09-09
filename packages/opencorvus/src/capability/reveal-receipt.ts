@@ -162,8 +162,8 @@ export const CapabilityRevealReceiptV2 = z
     activated: z.array(ActivatedCapability).max(CAPABILITY_REVEAL_MAX_RESULTS),
     active_refs: z.array(CapabilityRef).max(CAPABILITY_REVEAL_MAX_ACTIVE_REFS),
     active_definition_digest: z.string().regex(SHA256),
-    active_payload_chars: z.number().int().min(0).max(CAPABILITY_REVEAL_MAX_ACTIVE_CHARS),
-    active_payload_tokens: z.number().int().min(0).max(CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS),
+    active_payload_chars: z.number().int().min(0),
+    active_payload_tokens: z.number().int().min(0),
   })
   .strict()
   .superRefine((receipt, context) => {
@@ -204,9 +204,7 @@ function persistedRevealReceiptEntries(parts: readonly Message.Part[]) {
     if (part.type !== "tool" || part.tool !== "capability_search" || part.state.status !== "completed") return []
     const raw = part.state.metadata[CAPABILITY_REVEAL_RECEIPT_METADATA_KEY]
     if (raw === undefined) {
-      throw new CorruptCapabilityRevealError(
-        `Completed capability_search ToolPart ${part.id} has no reveal receipt.`,
-      )
+      throw new CorruptCapabilityRevealError(`Completed capability_search ToolPart ${part.id} has no reveal receipt.`)
     }
     try {
       return [{ part, receipt: CapabilityRevealReceiptV2.parse(raw) }]
@@ -219,28 +217,6 @@ function persistedRevealReceiptEntries(parts: readonly Message.Part[]) {
   })
 }
 
-/**
- * A reveal receipt makes the Provider base immutable for its occurrence. When
- * a later binary promotes one of those exact leaves into the base for new
- * occurrences, the old occurrence must continue reducing against the base it
- * actually recorded instead of being reinterpreted as corrupt.
- */
-export function persistedCapabilityRevealProviderNames(input: {
-  occurrenceID: string
-  parts: readonly Message.Part[]
-}): readonly string[] {
-  const names = new Set<string>()
-  for (const { receipt } of persistedRevealReceiptEntries(input.parts)) {
-    if (receipt.occurrence_id !== input.occurrenceID) {
-      throw new CorruptCapabilityRevealError(
-        `Capability reveal revision ${receipt.revision} belongs to occurrence ${receipt.occurrence_id}, not ${input.occurrenceID}.`,
-      )
-    }
-    for (const activation of receipt.activated) names.add(activation.provider_name)
-  }
-  return Object.freeze([...names].sort(compareCanonicalStrings))
-}
-
 function canonicalRefs(refs: readonly CapabilityRef[]): CapabilityRef[] {
   const values = new Map<string, CapabilityRef>()
   for (const value of refs) {
@@ -249,15 +225,16 @@ function canonicalRefs(refs: readonly CapabilityRef[]): CapabilityRef[] {
     if (values.has(encoded)) throw new Error(`Capability reveal repeats reference ${encoded}.`)
     values.set(encoded, ref)
   }
-  return [...values.entries()]
-    .sort(([left], [right]) => compareCanonicalStrings(left, right))
-    .map(([, ref]) => ref)
+  return [...values.entries()].sort(([left], [right]) => compareCanonicalStrings(left, right)).map(([, ref]) => ref)
 }
 
 function canonicalActivations(values: readonly ActivatedCapability[]): ActivatedCapability[] {
   const parsed = values.map((value) => ActivatedCapability.parse(value))
   return parsed.sort((left, right) =>
-    compareCanonicalStrings(CapabilityRefCodec.encode(left.requested_ref), CapabilityRefCodec.encode(right.requested_ref)),
+    compareCanonicalStrings(
+      CapabilityRefCodec.encode(left.requested_ref),
+      CapabilityRefCodec.encode(right.requested_ref),
+    ),
   )
 }
 
@@ -323,18 +300,15 @@ function activeDefinitionState(
   )
   const payloadChars = definitions.reduce((total, activation) => total + activation.payload_chars, base.payloadChars)
   const payloadTokens = definitions.reduce((total, activation) => total + activation.payload_tokens, base.payloadTokens)
-  const digest = canonicalDigestSource(
-    "active-provider-tool-definitions-v2",
-    {
-      base_definition_digest: base.definitionDigest,
-      leaves: definitions.map((activation) => ({
-        provider_name: activation.provider_name,
-        executable_ref: activation.executable_ref,
-        definition_digest: activation.definition_digest,
-        materializer_binding_digest: activation.materializer_binding_digest,
-      })),
-    },
-  ).sha256
+  const digest = canonicalDigestSource("active-provider-tool-definitions-v2", {
+    base_definition_digest: base.definitionDigest,
+    leaves: definitions.map((activation) => ({
+      provider_name: activation.provider_name,
+      executable_ref: activation.executable_ref,
+      definition_digest: activation.definition_digest,
+      materializer_binding_digest: activation.materializer_binding_digest,
+    })),
+  }).sha256
   return { definitions, payloadChars, payloadTokens, digest }
 }
 
@@ -360,45 +334,49 @@ export type CapabilityRevealState = Readonly<{
   receipts: readonly CapabilityRevealReceiptV2[]
 }>
 
-export const TurnCapabilityProjectionV2 = z
+export const TurnCapabilityProjectionV3 = z
   .object({
-    schema_version: z.literal(2),
+    schema_version: z.literal(3),
     occurrence_id: z.string().min(1),
     revision: z.number().int().nonnegative(),
     harness_projection_hash: z.string().regex(SHA256),
     catalog_snapshot_ref: z.string().min(1),
     catalog_snapshot_hash: z.string().regex(SHA256),
-    active_refs: z.array(CapabilityRef).max(CAPABILITY_REVEAL_MAX_ACTIVE_REFS),
+    active_refs: z.array(CapabilityRef),
     active_definition_digest: z.string().regex(SHA256),
-    active_payload_chars: z.number().int().min(0).max(CAPABILITY_REVEAL_MAX_ACTIVE_CHARS),
-    active_payload_tokens: z.number().int().min(0).max(CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS),
+    active_payload_chars: z.number().int().min(0),
+    active_payload_tokens: z.number().int().min(0),
     projection_hash: z.string().regex(SHA256),
   })
   .strict()
-export type TurnCapabilityProjectionV2 = z.infer<typeof TurnCapabilityProjectionV2>
+export type TurnCapabilityProjectionV3 = z.infer<typeof TurnCapabilityProjectionV3>
 
 export function createTurnCapabilityProjection(input: {
   occurrenceID: string
   harnessProjectionHash: string
   catalogSnapshotRef: string
   catalogSnapshotHash: string
+  permanentRefs: readonly CapabilityRef[]
   state: CapabilityRevealState
-}): TurnCapabilityProjectionV2 {
+}): TurnCapabilityProjectionV3 {
   const value = {
-    schema_version: 2 as const,
+    schema_version: 3 as const,
     occurrence_id: input.occurrenceID,
     revision: input.state.revision,
     harness_projection_hash: input.harnessProjectionHash,
     catalog_snapshot_ref: input.catalogSnapshotRef,
     catalog_snapshot_hash: input.catalogSnapshotHash,
-    active_refs: canonicalRefs([...input.state.active.values()].map((activation) => activation.requested_ref)),
+    active_refs: canonicalRefs([
+      ...input.permanentRefs,
+      ...[...input.state.active.values()].map((activation) => activation.requested_ref),
+    ]),
     active_definition_digest: input.state.definitionDigest,
     active_payload_chars: input.state.payloadChars,
     active_payload_tokens: input.state.payloadTokens,
   }
-  return TurnCapabilityProjectionV2.parse({
+  return TurnCapabilityProjectionV3.parse({
     ...value,
-    projection_hash: canonicalDigestSource("turn-capability-projection-v2", value).sha256,
+    projection_hash: canonicalDigestSource("turn-capability-projection-v3", value).sha256,
   })
 }
 
@@ -451,13 +429,17 @@ export function foldCapabilityRevealReceipts(input: {
       active.set(CapabilityRefCodec.encode(activation.requested_ref), activation)
     }
     if (active.size > CAPABILITY_REVEAL_MAX_ACTIVE_REFS) {
-      throw new CorruptCapabilityRevealError(`Capability reveal revision ${receipt.revision} exceeds active-ref budget.`)
+      throw new CorruptCapabilityRevealError(
+        `Capability reveal revision ${receipt.revision} exceeds active-ref budget.`,
+      )
     }
     const expectedRefs = [...active.values()]
       .map((activation) => activation.requested_ref)
       .sort((left, right) => compareCanonicalStrings(CapabilityRefCodec.encode(left), CapabilityRefCodec.encode(right)))
     if (canonicalJSONValue(expectedRefs) !== canonicalJSONValue(receipt.active_refs)) {
-      throw new CorruptCapabilityRevealError(`Capability reveal revision ${receipt.revision} active refs do not reduce.`)
+      throw new CorruptCapabilityRevealError(
+        `Capability reveal revision ${receipt.revision} active refs do not reduce.`,
+      )
     }
     const definitions = activeDefinitionState(active, input.baseDefinition)
     if (
@@ -477,10 +459,7 @@ export function foldCapabilityRevealReceipts(input: {
       if (canonicalJSONValue(requestedRefs) !== canonicalJSONValue(activatedRefs)) {
         throw new Error("Activated refs do not match persisted exact_refs.")
       }
-      if (
-        canonicalJSONValue(canonicalRefs(params.deactivate_refs)) !==
-        canonicalJSONValue(receipt.deactivate_refs)
-      ) {
+      if (canonicalJSONValue(canonicalRefs(params.deactivate_refs)) !== canonicalJSONValue(receipt.deactivate_refs)) {
         throw new Error("Deactivated refs do not match persisted deactivate_refs.")
       }
       expectedFingerprint = capabilityRevealMaterializationFingerprint({
@@ -513,8 +492,8 @@ export function foldCapabilityRevealReceipts(input: {
   }
   const definitions = activeDefinitionState(active, input.baseDefinition)
   if (
-    definitions.payloadChars > CAPABILITY_REVEAL_MAX_ACTIVE_CHARS ||
-    definitions.payloadTokens > CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS
+    definitions.payloadChars - input.baseDefinition.payloadChars > CAPABILITY_REVEAL_MAX_ACTIVE_CHARS ||
+    definitions.payloadTokens - input.baseDefinition.payloadTokens > CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS
   ) {
     throw new CorruptCapabilityRevealError("Capability reveal active Provider Tool payload exceeds its budget.")
   }
@@ -547,17 +526,19 @@ export function reduceCapabilityRevealCandidate(input: {
     active.set(CapabilityRefCodec.encode(activation.requested_ref), activation)
   }
   if (active.size > CAPABILITY_REVEAL_MAX_ACTIVE_REFS) {
-    throw new Error(`Capability reveal would activate ${active.size} refs; maximum is ${CAPABILITY_REVEAL_MAX_ACTIVE_REFS}.`)
-  }
-  const definitions = activeDefinitionState(active, input.prior.baseDefinition)
-  if (definitions.payloadChars > CAPABILITY_REVEAL_MAX_ACTIVE_CHARS) {
     throw new Error(
-      `Capability reveal Tool payload would be ${definitions.payloadChars} chars; maximum is ${CAPABILITY_REVEAL_MAX_ACTIVE_CHARS}.`,
+      `Capability reveal would activate ${active.size} refs; maximum is ${CAPABILITY_REVEAL_MAX_ACTIVE_REFS}.`,
     )
   }
-  if (definitions.payloadTokens > CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS) {
+  const definitions = activeDefinitionState(active, input.prior.baseDefinition)
+  if (definitions.payloadChars - input.prior.baseDefinition.payloadChars > CAPABILITY_REVEAL_MAX_ACTIVE_CHARS) {
     throw new Error(
-      `Capability reveal Tool payload would be ${definitions.payloadTokens} estimated tokens; maximum is ${CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS}.`,
+      `Capability reveal extension Tool payload would be ${definitions.payloadChars - input.prior.baseDefinition.payloadChars} chars; maximum is ${CAPABILITY_REVEAL_MAX_ACTIVE_CHARS}.`,
+    )
+  }
+  if (definitions.payloadTokens - input.prior.baseDefinition.payloadTokens > CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS) {
+    throw new Error(
+      `Capability reveal extension Tool payload would be ${definitions.payloadTokens - input.prior.baseDefinition.payloadTokens} estimated tokens; maximum is ${CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS}.`,
     )
   }
   return {

@@ -1,4 +1,4 @@
-# Search-native capability runtime
+# Routine and on-demand capability runtime
 
 This chapter is the current authority for model-visible capability discovery,
 occurrence Harness projection, exact Tool reveal, and reconstruction. Tool,
@@ -16,10 +16,12 @@ universal executable interface.
 3. The authoritative input Message is atomically bound to a content-addressed
    `CatalogViewSnapshotPayloadV3`. `HarnessProjection` binds the same snapshot
    ref/hash and cannot expand it.
-4. `capability_search` is the permanent discovery Tool on revision zero. Native
-   Mission additionally receives only its fixed `mission_state` and
-   `scheduler_message` transport leaves; other runtimes receive no eager domain
-   Tool.
+4. Revision zero exposes authorized routine tools directly. One guidance map in
+   `capability/routine-tools.ts`, intersected with executable grants, model
+   projection, permissions and Message switches, determines the routine base
+   and its initial prompt instructions. Declared dispatch-stage interfaces also
+   belong to their worker's base. `capability_search` discovers and loads
+   specialist and extension capabilities that are not already callable.
    A caller-requested JSON-schema response can additionally use the existing
    reserved `StructuredOutput` response encoder; it is not a capability grant,
    effect, or permission occurrence, but its normalized Provider definition is
@@ -32,9 +34,11 @@ universal executable interface.
    still validate and execute each concrete call. Search is neither approval
    nor execution.
 
-`TurnCapabilityProjectionV2` is derived solely from persisted receipt Parts. It
-is not a Session cache or a mutable Harness table. A new authoritative input
-starts at revision zero.
+`TurnCapabilityProjectionV3` is a process-local derivation of the input-bound
+permanent refs and persisted extension receipts. Its active refs cover the exact
+currently callable capabilities. It is not a Session cache or a mutable Harness
+table. A new authoritative input starts at revision zero with its routine base;
+v2 search receipts continue to record only dynamically activated extensions.
 
 ## Search and reveal contract
 
@@ -50,7 +54,8 @@ and fuzzy ranking never activates a result.
 
 A complete exact ref supplied by current authored instructions can be submitted
 directly in `exact_refs`; a prior metadata-search result is not an admission
-prerequisite. Group leaves needed for the same current decision in one reveal.
+prerequisite. Already callable routine tools are used directly. Group additional
+leaves needed for the same current decision in one reveal.
 Unknown refs still require discovery. Instructions are locators, not grants:
 every exact ref passes the same frozen Catalog/Harness and materializer checks,
 and a new input still starts from its revision-zero surface.
@@ -82,31 +87,36 @@ conflict.
 
 ## Provider budgets
 
-- Revision zero's executable Harness contains the permanent
-  `capability_search` discovery Tool and, only for native Mission, the exact
-  `mission_state` and `scheduler_message` transport leaves. Search itself is at
-  most 4,000 normalized characters and 1,000 estimated tokens. The conditional
+- Revision zero's permanent surface contains the authorized routine tools and
+  `capability_search`. Search itself is at most 4,000 normalized characters and
+  1,000 estimated tokens. The conditional
   response encoder remains outside the Harness but is counted in the immutable
   Provider base and total payload budget.
 - One search activates at most five exact leaves.
-- At most ten leaf refs remain active.
-- The active Provider payload, including every permanent base definition, is at
-  most 32,000 normalized characters and 8,000 estimated tokens.
-- Any single leaf that cannot fit is rejected and must be split into canonical
+- At most ten dynamically revealed leaf refs remain active.
+- Revealed extension definitions have an allowance of 32,000 normalized
+  characters and 8,000 estimated tokens. The immutable routine base is included
+  in total accounting but does not consume the extension allowance.
+- SessionLoop's existing predictive budget counts the complete system prompt,
+  messages and all tool definitions against the selected model's input budget
+  before a Provider call. Routine tools are not silently removed to fit a fixed
+  search quota. An irreducibly oversized request returns the existing typed
+  prompt-budget error.
+- Any single extension leaf that cannot fit is rejected and must be split into canonical
   action leaves. `panel` is split into exact `panel_<action>` Tools; the old
   model-facing umbrella and the schema-enumerating `batch` Tool do not exist.
 
-The positive budget contract normalizes every projectable built-in leaf for
-the Provider ABI and measures `capability_search + that exact leaf`; measuring
-the leaf alone cannot prove that it is revealable. A large discriminated input
+The positive budget contract normalizes definitions for the Provider ABI,
+measures each complete routine role surface and validates extension accounting
+beside that immutable base. A large discriminated input
 may factor fields shared by every branch into one Provider-schema base, but the
 factored projection must be derived from and delegate validation to the one
 canonical domain schema. It cannot replace precise validation with an opaque
 JSON object or create another persistence contract.
 
 The reducer counts every real Provider-normalized permanent definition from
-revision zero, so neither search nor the native Mission transport leaves can sit
-outside the compare-and-swap budget. Base Provider names are immutable reducer
+revision zero in its total digest and size, while enforcing the extension
+allowance over extension definitions. Base Provider names are immutable reducer
 input; a reveal that tries to reuse one of those names is corrupt rather than a
 second definition owner.
 
@@ -119,12 +129,10 @@ second definition owner.
   exact ref against executable Harness grants and the current occurrence's
   active refs, in addition to persisted call and project/worker identity.
 - Tool Registry initializes only requested Tool IDs.
-- Native Mission re-materializes `mission_state` and `scheduler_message` from
-  the current frozen Catalog and Harness on every Provider step, applies the
-  ordinary permission and per-message Tool-switch narrowing, and exposes them
-  beside search without a persisted active set. These two fixed transport
-  identities are not a substitute for reveal-selected domain or terminal
-  Tools. The Catalog occurrence binds their exact normalized Provider names
+- Every role re-materializes its routine registry and runtime-factory tools from
+  the frozen Catalog and Harness on every Provider step, applies permission and
+  per-message Tool-switch narrowing, and exposes them without search receipts.
+  The Catalog occurrence binds their exact normalized Provider names
    and definition digest before the first Provider step. Continuation and
    permission resume compare that input-bound definition before exposure; a
    version-2 Catalog occurrence lacks this authority and retires through the
@@ -154,11 +162,10 @@ second definition owner.
   at most one commit; a scheduler Message that changes no authored state does
   neither. Per-file model operations, a second bundle, a Session cache, and a
   database mirror are not current authorities.
-- The Provider base is immutable per input occurrence. If an older occurrence
-  contains a valid reveal receipt for a Tool later promoted into a native base,
-  that occurrence continues reducing against its recorded pre-promotion base;
-  new occurrences use the current base. This is derived from the append-only
-  receipt chain, not a compatibility store or cross-occurrence cache.
+- The Provider base is immutable per input occurrence. An older occurrence
+  whose bound base differs from the current permitted routine definition retires
+  with `StaleCatalogOccurrenceError` before execution. A new authoritative input
+  binds the new base; old grants are never expanded from a replacement catalog.
 - Runtime-projected and dispatch-stage Tools live behind one
   `RuntimeToolOwner.leaves` binding list. The runtime contract contains no Tool
   record, `projectedTools`, `stageTools`, or parallel projected/stage ID arrays.

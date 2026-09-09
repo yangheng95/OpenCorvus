@@ -28,7 +28,7 @@ afterEach(async () => {
 })
 
 for (const projected of [true, false]) {
-  test(`publishes immutable snapshot bytes through the ${projected ? "projected" : "registry"} Core owner`, async () => {
+  test(`publishes immutable snapshot bytes on the first step through the ${projected ? "projected" : "registry"} Core owner`, async () => {
     await using project = await memoryProject()
     await Instance.provide({
       directory: project.path,
@@ -150,7 +150,6 @@ for (const projected of [true, false]) {
             agent: sessionRuntimeFromNativeAgent(await HostAgentRegistry.get("orchestrator", { config })),
             agentID: "orchestrator",
             messages: await Session.messages({ sessionID: session.id }),
-            activeLocalRefs: ["artifact_snapshot"],
           })
           expect(resolved.occurrence.ref("artifact_snapshot").owner_ref).toBe(
             projected ? "runtime-projection:orchestrator" : "tool-registry",
@@ -161,6 +160,12 @@ for (const projected of [true, false]) {
           )) as { output: string }
           const output = JSON.parse(result.output)
           expect(output.resource_count).toBe(1)
+          expect(
+            (await Session.messages({ sessionID: session.id }))
+              .flatMap((message) => message.parts)
+              .filter((part) => part.type === "tool")
+              .map((part) => part.tool),
+          ).toEqual(["artifact_snapshot"])
           const ref = output.locators.find((entry: { role: string }) => entry.role === "resource").locator.ref
           await fs.writeFile(path.join(project.path, "sample.txt"), "subsequent working file\n")
           expect(

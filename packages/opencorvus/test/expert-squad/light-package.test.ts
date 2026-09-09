@@ -194,7 +194,7 @@ describe("Light Expert Squad package", () => {
           })),
         )
         expect(skillProjection.projectedAgentIDs).toEqual(Object.keys(agentRoles).sort())
-        expect(scheduler.promptOverlay).toContain('reveal `read_agent_message` and `manage_task` together in one `capability_search` call')
+        expect(scheduler.promptOverlay).toContain('call `read_agent_message` and `manage_task` directly')
         expect(scheduler.promptOverlay).toContain("submit the ordered list in one `read_agent_message` call")
         expect(scheduler.promptOverlay).toContain('Preserve every user-required exact output line in the `complete_task` summary after verification')
 
@@ -510,17 +510,17 @@ describe("Light Expert Squad package", () => {
                       messages: await Session.messages({ sessionID: assistant.sessionID }),
                     }
                     const revealed = await resolveTestCapabilityTools(common)
-                    expect(Object.keys(revealed.tools)).toEqual(["capability_search"])
+                    expect(Object.keys(revealed.tools).sort()).toEqual(["artifact_publish", "artifact_read", "artifact_search", "artifact_select", "artifact_snapshot", "capability_search", "glob", "publish_interactive_artifact", "read", "search_code"])
                     const authoredWorker = await PromptProfileResolver.resolveWorkerCapability({
                       projectDirectory: project.path, config, packageRevision, agentID: streamInput.agentID,
                     })
                     // Use the exact installed prompt bytes, then validate them through
                     // the real frozen Catalog/Harness and materialization owner.
                     const revealInput = {
-                      queries: ["light/shared/method", "read"],
+                      queries: ["light/shared/method"],
                       deactivate_refs: [],
                       limit: 5,
-                      exact_refs: authoredRevealRefs(authoredWorker.promptOverlay),
+                      exact_refs: authoredRevealRefs(authoredWorker.promptOverlay).filter((ref) => ref.kind === "skill"),
                     }
                     const revealID = `call_reveal_light_method_and_read_${assistant.id}`
                     const revealContext = { toolCallId: revealID, messages: [], abortSignal: input.abort }
@@ -542,7 +542,7 @@ describe("Light Expert Squad package", () => {
                     }
                     expect(skill.behavior.name).toBe("light-advisory-method")
                     const reconstructed = await resolveTestCapabilityTools(common)
-                    expect(Object.keys(reconstructed.tools).sort()).toEqual(["capability_search", "read", "skill"])
+                    expect(Object.keys(reconstructed.tools).sort()).toEqual(["artifact_publish", "artifact_read", "artifact_search", "artifact_select", "artifact_snapshot", "capability_search", "glob", "publish_interactive_artifact", "read", "search_code", "skill"])
                     const loaded = await reconstructed.tools.skill!.execute!(
                       { name: skill.behavior.name },
                       { toolCallId: `call_load_light_method_${assistant.id}`, messages: [], abortSignal: input.abort },

@@ -151,22 +151,19 @@ import {
   type CapabilityRevealOwner,
 } from "@/capability/reveal-owner"
 import {
-  CAPABILITY_REVEAL_MAX_ACTIVE_CHARS,
-  CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS,
   CAPABILITY_SEARCH_INITIAL_MAX_CHARS,
   CAPABILITY_SEARCH_INITIAL_MAX_TOKENS,
   capabilityRevealBaseDefinitions,
   foldCapabilityRevealReceipts,
   createTurnCapabilityProjection,
-  persistedCapabilityRevealProviderNames,
   providerToolDefinitionChars,
   providerToolDefinitionDigest,
   providerToolDefinitionTokens,
   type CapabilityRevealBaseDefinition,
-  type TurnCapabilityProjectionV2,
+  type TurnCapabilityProjectionV3,
 } from "@/capability/reveal-receipt"
 import { CAPABILITY_SEARCH_TOOL_ID } from "@/tool/capability-search"
-import { NATIVE_MISSION_TRANSPORT_TOOL_IDS } from "@/tool/tool-id-catalog"
+import { routineToolPrompt, routineToolRefs } from "@/capability/routine-tools"
 import { canonicalDigestSource, canonicalJSONValue } from "@/util/canonical-digest"
 import { compareTimelineOrderKeys, timelineMessageOrderKey } from "@/timeline/order"
 import { PermissionAuthority } from "@/permission/authority"
@@ -1050,16 +1047,33 @@ export namespace SessionLoop {
     agent: SessionAgentRuntime
     agentID: string
     config: Config.Info
-    registryToolIDs: readonly string[]
+    toolRefs: readonly CapabilityRef[]
+    runtimeContract?: RuntimeContract
     artifactSnapshotSource?: "current_task_project" | "merged_primary_commit"
-    reservedProviderTools?: readonly { name: string; tool: AITool }[]
+    reservedProviderTools?: readonly { name: string; owner: ProviderToolNameOwner; tool: AITool }[]
   }): Promise<CapabilityRevealBaseDefinition> {
+    const names = new Map<string, ProviderToolNameOwner>()
+    for (const reservation of input.reservedProviderTools ?? []) {
+      admitProviderToolName(names, reservation.name, reservation.owner)
+    }
+    for (const ref of input.toolRefs) {
+      admitProviderToolName(
+        names,
+        ref.local_ref,
+        ref.owner_ref === "tool-registry"
+          ? { source: "registry", ref: ref.local_ref }
+          : {
+              source: ref.owner_ref.startsWith("dispatch-stage:") ? "stage" : "projected",
+              ref: `${input.agentID}:${ref.local_ref}`,
+            },
+      )
+    }
     const registryItems = await ToolRegistry.exactRuntimeTools(
       { modelID: input.model.api.id, providerID: input.model.providerID },
       input.agent,
       input.agentID,
       input.config,
-      input.registryToolIDs,
+      input.toolRefs.filter((ref) => ref.owner_ref === "tool-registry").map((ref) => ref.local_ref),
       { artifactSnapshotSource: input.artifactSnapshotSource },
     )
     const definitions = registryItems.map((item) => {
@@ -1077,6 +1091,21 @@ export namespace SessionLoop {
         }),
       )
     })
+    for (const ref of input.toolRefs.filter((ref) => ref.owner_ref !== "tool-registry")) {
+      const owned = await sessionRuntimeToolOwner(input.runtimeContract)?.exact(ref.local_ref)
+      if (!owned) throw new StaleCatalogOccurrenceError([`permanent_provider_tool.${ref.local_ref}`])
+      definitions.push(
+        normalizedProviderToolDefinition(
+          ref.local_ref,
+          prepareProviderTool({
+            name: ref.local_ref,
+            source: "extra",
+            model: input.model,
+            tool: owned,
+          }),
+        ),
+      )
+    }
     for (const reservation of input.reservedProviderTools ?? []) {
       definitions.push(
         normalizedProviderToolDefinition(
@@ -1961,18 +1990,14 @@ export namespace SessionLoop {
           `Open assistant ${assistantMessage.id} has no Catalog binding on input ${input.lastUser.id}.`,
         )
       }
-      const permanentRegistryToolIDs = [
-        CAPABILITY_SEARCH_TOOL_ID,
-        ...(agentID === "mission" && input.session.kind === "mission"
-          ? NATIVE_MISSION_TRANSPORT_TOOL_IDS.filter((toolID) => policyProviderToolIDs.includes(toolID))
-          : []),
-      ]
+      const permanentToolRefs = routineToolRefs({ harness: occurrenceGrants, visibleToolIDs: policyProviderToolIDs })
       const permanentProviderBaseDefinition = await resolvePermanentProviderBaseDefinition({
         model: input.model,
         agent,
         agentID,
         config,
-        registryToolIDs: permanentRegistryToolIDs,
+        toolRefs: permanentToolRefs,
+        runtimeContract,
         artifactSnapshotSource: runtimeContract
           ? artifactSnapshotSourceForRuntimeContract(runtimeContract)
           : "current_task_project",
@@ -2085,8 +2110,15 @@ export namespace SessionLoop {
       )
     }
     const messageProjectionSystem = messagePromptProjection?.system ?? []
+    const routineSystem = routineToolPrompt(
+      routineToolRefs({
+        harness: occurrenceHarness,
+        visibleToolIDs: Object.keys(tools),
+      }),
+    )
     const labeledSystem = [
       ...environmentSystem.map((text, index) => ({ label: `environment[${index}]`, text })),
+      ...(routineSystem ? [{ label: "routine-capabilities", text: routineSystem }] : []),
       ...(skillsSection ? [{ label: "skills", text: skillsSection }] : []),
       ...instructionSystem.map((text, index) => ({ label: `instructions[${index}]`, text })),
       ...(runtimeSystem ?? []).map((text, index) => ({
@@ -2570,7 +2602,8 @@ export namespace SessionLoop {
       const ingress = listTaskRootIngresses(taskID, request.payload.execution_epoch).find(
         (candidate) => candidate.source === "engine_artifact" && candidate.source_id === request.artifactID,
       )
-      if (!ingress) throw new Error(`Recovered coordination request ${request.artifactID} has no exact Task-root ingress`)
+      if (!ingress)
+        throw new Error(`Recovered coordination request ${request.artifactID} has no exact Task-root ingress`)
       terminalConversationAuthority = createTerminalConversationAuthority({
         taskID,
         ingressID: ingress.id,
@@ -3551,7 +3584,7 @@ export namespace SessionLoop {
       )
     }
     let capabilityRevealOwner: CapabilityRevealOwner | undefined
-    let turnCapabilityProjection: TurnCapabilityProjectionV2 | undefined
+    let turnCapabilityProjection: TurnCapabilityProjectionV3 | undefined
     const capabilityMaterializerBindingDigest = (binding: {
       executableRef: CapabilityRef
       source: ProviderToolSource
@@ -3612,9 +3645,7 @@ export namespace SessionLoop {
                 invocationAuthority: invocation.invocationAuthority,
               }
             : {}),
-          ...(capabilityRevealOwner
-            ? { [CAPABILITY_REVEAL_OWNER_EXTRA_KEY]: capabilityRevealOwner }
-            : {}),
+          ...(capabilityRevealOwner ? { [CAPABILITY_REVEAL_OWNER_EXTRA_KEY]: capabilityRevealOwner } : {}),
         },
         agent: input.agentID,
         messages: input.messages,
@@ -3812,9 +3843,7 @@ export namespace SessionLoop {
     const runtimeToolOwner = sessionRuntimeToolOwner(runtimeContract)
     const extras: Record<string, AITool> = {}
     let resolvedTaskCapability:
-      | Promise<
-          PromptProfileResolver.ResolvedSchedulerCapability | PromptProfileResolver.ResolvedWorkerCapability
-        >
+      | Promise<PromptProfileResolver.ResolvedSchedulerCapability | PromptProfileResolver.ResolvedWorkerCapability>
       | undefined
     const taskCapability = async () => {
       if (!runtimeContract) return undefined
@@ -3889,15 +3918,29 @@ export namespace SessionLoop {
     const artifactSnapshotSource = runtimeContract
       ? artifactSnapshotSourceForRuntimeContract(runtimeContract)
       : "current_task_project"
-    const nativeMissionTransportToolIDs =
-      input.agentID === "mission" && input.session.kind === "mission"
-        ? visibleExecutionToolIDs({
-            toolIDs: [...NATIVE_MISSION_TRANSPORT_TOOL_IDS],
-            permission: executionPermission,
-            switches: input.tools,
-          })
-        : []
-    const baseRegistryToolIDs = [CAPABILITY_SEARCH_TOOL_ID, ...nativeMissionTransportToolIDs]
+    const executableRefs = harnessGrantedRefs(executionHarnessProjection, "execute")
+    const projectableRegistryIDs = await ToolRegistry.projectableRuntimeToolIDs(
+      { modelID: input.model.api.id, providerID: input.model.providerID },
+      input.agent,
+      input.config,
+      executableRefs
+        .filter((ref) => ref.kind === "tool" && ref.owner_ref === "tool-registry")
+        .map((ref) => ref.local_ref),
+    )
+    const permanentRefs = routineToolRefs({
+      harness: executionHarnessProjection,
+      visibleToolIDs: visibleExecutionToolIDs({
+        toolIDs: [
+          ...projectableRegistryIDs,
+          ...executableRefs.filter((ref) => ref.owner_ref !== "tool-registry").map((ref) => ref.local_ref),
+        ],
+        permission: executionPermission,
+        switches: input.tools,
+      }),
+    })
+    const baseRegistryToolIDs = permanentRefs
+      .filter((ref) => ref.owner_ref === "tool-registry")
+      .map((ref) => ref.local_ref)
     const baseRegistryExecutionGrantIDs = new Set(
       harnessGrantedRefs(executionHarnessProjection, "execute")
         .filter((ref) => ref.kind === "tool" && ref.owner_ref === "tool-registry")
@@ -3925,11 +3968,13 @@ export namespace SessionLoop {
       throw new StaleCatalogOccurrenceError(["projected_runtime.capability_search"])
     }
     const preparedSearchTool = bindRegistryTool(searchRegistryTool)
-    const nativeMissionTransportTools = nativeMissionTransportToolIDs.map((toolID) => {
-      const item = baseRegistryToolsByID.get(toolID)
-      if (!item) throw new StaleCatalogOccurrenceError([`tool_registry.${toolID}`])
-      return { toolID, tool: bindRegistryTool(item) }
-    })
+    const routineRegistryTools = baseRegistryToolIDs
+      .filter((toolID) => toolID !== CAPABILITY_SEARCH_TOOL_ID)
+      .map((toolID) => {
+        const item = baseRegistryToolsByID.get(toolID)
+        if (!item) throw new StaleCatalogOccurrenceError([`tool_registry.${toolID}`])
+        return { toolID, tool: bindRegistryTool(item) }
+      })
     if (baseRegistryToolsByID.size !== baseRegistryToolIDs.length) {
       throw new StaleCatalogOccurrenceError(["tool_registry.permanent_provider_surface"])
     }
@@ -3948,20 +3993,27 @@ export namespace SessionLoop {
       sessionID: input.session.id,
       occurrenceID: input.occurrenceID,
     })
-    const historicallyRevealedProviderNames = new Set(
-      persistedCapabilityRevealProviderNames({
-        occurrenceID: input.occurrenceID,
-        parts: occurrenceRevealParts,
-      }),
-    )
-    const occurrenceNativeMissionTransportTools = nativeMissionTransportTools.filter(
-      ({ toolID }) => !historicallyRevealedProviderNames.has(toolID),
-    )
+    const routineProjectedDefinitions: ReturnType<typeof normalizedProviderToolDefinition>[] = []
+    for (const ref of permanentRefs.filter((ref) => ref.owner_ref !== "tool-registry")) {
+      const owned = await runtimeToolOwner?.exact(ref.local_ref)
+      if (!owned) throw new StaleCatalogOccurrenceError([`permanent_provider_tool.${ref.local_ref}`])
+      extras[ref.local_ref] = owned
+      routineProjectedDefinitions.push(
+        normalizedProviderToolDefinition(
+          ref.local_ref,
+          prepareProviderTool({
+            name: ref.local_ref,
+            source: "extra",
+            model: input.model,
+            tool: owned,
+          }),
+        ),
+      )
+    }
     const searchBaseDefinition = capabilityRevealBaseDefinitions([
       searchDefinition,
-      ...occurrenceNativeMissionTransportTools.map(({ toolID, tool }) =>
-        normalizedProviderToolDefinition(toolID, tool),
-      ),
+      ...routineRegistryTools.map(({ toolID, tool }) => normalizedProviderToolDefinition(toolID, tool)),
+      ...routineProjectedDefinitions,
       ...(input.reservedProviderTools ?? []).map((reservation) =>
         normalizedProviderToolDefinition(reservation.name, reservation.tool),
       ),
@@ -3973,14 +4025,6 @@ export namespace SessionLoop {
       }) !== canonicalJSONValue(occurrenceCatalogPayload.permanent_provider_base_definition)
     ) {
       throw new StaleCatalogOccurrenceError(["permanent_provider_base_definition"])
-    }
-    if (
-      searchBaseDefinition.payloadChars > CAPABILITY_REVEAL_MAX_ACTIVE_CHARS ||
-      searchBaseDefinition.payloadTokens > CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS
-    ) {
-      throw new Error(
-        `Permanent Provider Tool payload is ${searchBaseDefinition.payloadChars} chars/${searchBaseDefinition.payloadTokens} estimated tokens; maximum is ${CAPABILITY_REVEAL_MAX_ACTIVE_CHARS}/${CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS}.`,
-      )
     }
     const revealState = foldCapabilityRevealReceipts({
       occurrenceID: input.occurrenceID,
@@ -3996,6 +4040,7 @@ export namespace SessionLoop {
       catalogSnapshotRef: executionHarnessProjection.catalog_snapshot_ref,
       catalogSnapshotHash: executionHarnessProjection.catalog_snapshot_hash,
       state: revealState,
+      permanentRefs,
     })
     const activeProviderNames = new Set(revealState.definitions.map((activation) => activation.provider_name))
     for (const providerName of searchBaseDefinition.providerNames) activeProviderNames.add(providerName)
@@ -4044,7 +4089,8 @@ export namespace SessionLoop {
         : MCP.hostProcessAuthority(executionAuthority.directory)
     const materializeExactMcp = async (ref: CapabilityRef): Promise<AITool> => {
       if (ref.kind !== "mcp_tool") throw new Error(`Exact MCP materializer received ${ref.kind}.`)
-      if (!includeMcpTools) throw new Error(`MCP Tool ${CapabilityRefCodec.encode(ref)} is disabled for this occurrence.`)
+      if (!includeMcpTools)
+        throw new Error(`MCP Tool ${CapabilityRefCodec.encode(ref)} is disabled for this occurrence.`)
       if (ref.owner_ref.startsWith("host-session-mcp:")) {
         const encoded = CapabilityRefCodec.encode(ref)
         const parents = occurrenceCatalogPayload.mcp_tool_parent_bindings.filter(
@@ -4490,12 +4536,15 @@ export namespace SessionLoop {
           parameters: skillTool.parameters,
         }
         await Plugin.trigger("tool.definition", { toolID: SkillTool.id }, output)
-        bindRegistryTool({
-          id: SkillTool.id,
-          ...skillTool,
-          description: output.description,
-          parameters: output.parameters,
-        }, { declaredRuntimeFinalization: true })
+        bindRegistryTool(
+          {
+            id: SkillTool.id,
+            ...skillTool,
+            description: output.description,
+            parameters: output.parameters,
+          },
+          { declaredRuntimeFinalization: true },
+        )
       }
       return surface
     }

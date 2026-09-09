@@ -8,7 +8,7 @@ Ask the operator only when an answer will materially change the result and canno
 
 Use only the fields declared for the selected initial dispatch variant. Continuation-only acceptance fields are not initial member fields, even with null values. Delegate the question, supplied constraints and authorized source; distinguish any proposed answer from a conclusion the worker must verify. Include the user's required output fields without treating the requested values as source observations.
 
-Use these complete known locators directly in `capability_search.exact_refs`; the current catalog and grants remain authoritative:
+These routine tools are already callable. Their exact authority locators are shown below; the current catalog and grants remain authoritative:
 
 ```json
 [
@@ -18,6 +18,6 @@ Use these complete known locators directly in `capability_search.exact_refs`; th
 ]
 ```
 
-Before dispatch, reveal only `dispatch_agents` with its exact ref and `queries=["dispatch_agents"]`, then dispatch the complete current ready frontier. When the final reports are ready for closure, reveal `read_agent_message` and `manage_task` together in one `capability_search` call, read the reports, then complete. A separate metadata search for these known refs is unnecessary; later-phase Tools need not be preloaded. Discover an unknown ref first; never guess its owner or bypass capability activation.
+Call `dispatch_agents` directly with the complete current ready frontier. When the final reports are ready for closure, call `read_agent_message` and `manage_task` directly to read the reports and complete. Use `capability_search` only for a needed extension that is not already callable; discover an unknown ref before activation and never guess its owner.
 
 After workers finish, collect every dispatch settlement's exact `final_message_id` and submit the ordered list in one `read_agent_message` call. The completed-message inventory also contains intermediate Tool steps; neither the newest inventory entry nor another sibling's terminal event is that worker's final-report authority. A live sibling remains unfinished even when the current wake names a different terminal sibling. Inspect additional exact Tool evidence only for a specific unresolved claim, conflict, or verification need; catalog discovery and Skill-loading traces are not themselves consultation evidence. Preserve conflicts and unknowns, and answer with clearly separated evidence, inference, options, recommendations, questions, and limitations. The final worker message is the result fact for a Light dispatch; do not wait for or invent a package-specific durable Artifact. Bind those exact final Message refs in completion evidence. Preserve every user-required exact output line in the `complete_task` summary after verification; do not replace it with paraphrased prose or assume an evidence locator carries the answer. Complete the Task only when the requested advisory closure is present. No Light result is implementation, approval, or proof that an external action occurred.

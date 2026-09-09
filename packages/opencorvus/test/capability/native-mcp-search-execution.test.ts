@@ -22,6 +22,23 @@ import { memoryProject, resetMemoryDatabase } from "../fixture/memory"
 
 const SERVER_ID = "searchnative"
 const TOOL_ID = `${SERVER_ID}_echo`
+const workRoutineNames = [
+  "capability_search",
+  "bash",
+  "edit",
+  "glob",
+  "mission_state",
+  "panel_create_task",
+  "panel_query_task",
+  "panel_query_task_artifacts",
+  "publish_interactive_artifact",
+  "question",
+  "read",
+  "search_code",
+  "todoread",
+  "todowrite",
+  "write",
+]
 
 function model(): ProviderType.Model {
   return {
@@ -115,7 +132,7 @@ describe("native Session MCP search lifecycle", () => {
         const stream = spyOn(LLM, "stream").mockImplementation(async (input) => {
           providerStep += 1
           if (providerStep === 1) {
-            expect(Object.keys(input.tools)).toEqual(["capability_search"])
+            expect(Object.keys(input.tools)).toEqual(workRoutineNames)
             const params = {
               queries: ["echo"],
               exact_refs: [exactHostToolRef(session.id)],
@@ -125,19 +142,30 @@ describe("native Session MCP search lifecycle", () => {
             return {
               fullStream: (async function* () {
                 yield { type: "start" }
-                yield { type: "tool-call", toolCallId: "call_reveal_echo", toolName: "capability_search", input: params }
+                yield {
+                  type: "tool-call",
+                  toolCallId: "call_reveal_echo",
+                  toolName: "capability_search",
+                  input: params,
+                }
                 const output = await input.tools.capability_search!.execute!(params, {
                   toolCallId: "call_reveal_echo",
                   messages: input.messages,
                   abortSignal: input.abort,
                 })
-                yield { type: "tool-result", toolCallId: "call_reveal_echo", toolName: "capability_search", input: params, output }
+                yield {
+                  type: "tool-result",
+                  toolCallId: "call_reveal_echo",
+                  toolName: "capability_search",
+                  input: params,
+                  output,
+                }
                 for (const event of finish("tool-calls")) yield event
               })(),
             } as Awaited<ReturnType<typeof LLM.stream>>
           }
           if (providerStep === 2) {
-            expect(Object.keys(input.tools).sort()).toEqual(["capability_search", TOOL_ID].sort())
+            expect(Object.keys(input.tools).sort()).toEqual([...workRoutineNames, TOOL_ID].sort())
             const args = { value: "ping" }
             return {
               fullStream: (async function* () {
@@ -194,11 +222,15 @@ describe("native Session MCP search lifecycle", () => {
             finish: reply.info.role === "assistant" ? reply.info.finish : undefined,
             metadata: metadata.map((entry) => [entry.ref.kind, entry.ref.local_ref, entry.next_owner.kind]),
             events: calls.map((entry) =>
-              entry.event === "tools_call" ? [entry.event, entry.version, entry.params.name] : [entry.event, entry.version],
+              entry.event === "tools_call"
+                ? [entry.event, entry.version, entry.params.name]
+                : [entry.event, entry.version],
             ),
             hostParents: payload.mcp_tool_parent_bindings.map((binding) => binding.tool_ref.owner_ref),
             visibleProjectOwnedTools: payload.views
-              .filter((entry) => entry.descriptor_ref.kind === "mcp_tool" && entry.descriptor_ref.owner_ref === "mcp-config")
+              .filter(
+                (entry) => entry.descriptor_ref.kind === "mcp_tool" && entry.descriptor_ref.owner_ref === "mcp-config",
+              )
               .map((entry) => entry.descriptor_ref.local_ref),
             descendantScope: serverGrant?.grants.find(
               (grant) => grant.ref.kind === "mcp_server" && grant.ref.local_ref === SERVER_ID,
@@ -218,9 +250,7 @@ describe("native Session MCP search lifecycle", () => {
               ["tools_call", 1, "echo"],
               ["tools_list", 1],
             ],
-            hostParents: [
-              HostSessionMcpRuntime.catalogOwnerRef(`session:${session.id}:mcp:${SERVER_ID}`),
-            ],
+            hostParents: [HostSessionMcpRuntime.catalogOwnerRef(`session:${session.id}:mcp:${SERVER_ID}`)],
             visibleProjectOwnedTools: [],
             descendantScope: ["mcp_prompt", "mcp_resource", "mcp_tool"],
           })
@@ -348,7 +378,9 @@ describe("native Session MCP search lifecycle", () => {
                 if (!artifact || artifact.payload.renderer !== "mcp-app@1") {
                   throw new Error(`Expected one persisted MCP App artifact for ${part.artifactID}`)
                 }
-                return [{ type: part.type, artifactID: part.artifactID, status: artifact.payload.tool.lifecycle.status }]
+                return [
+                  { type: part.type, artifactID: part.artifactID, status: artifact.payload.tool.lifecycle.status },
+                ]
               }
               return []
             })
@@ -477,10 +509,8 @@ describe("native Session MCP search lifecycle", () => {
             switched: [...metadataViews].sort((left, right) =>
               JSON.stringify(left).localeCompare(JSON.stringify(right)),
             ),
-            denied: [...metadataViews].sort((left, right) =>
-              JSON.stringify(left).localeCompare(JSON.stringify(right)),
-            ),
-            initialDefinitions: [["capability_search"], ["capability_search"], ["capability_search"]],
+            denied: [...metadataViews].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+            initialDefinitions: [workRoutineNames, workRoutineNames, workRoutineNames],
           })
         } finally {
           stream.mockRestore()

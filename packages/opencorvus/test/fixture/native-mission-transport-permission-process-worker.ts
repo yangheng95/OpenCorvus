@@ -19,7 +19,8 @@ import { SessionLoop } from "@/session/loop"
 import { Database, eq } from "@/storage/db"
 import { AttachmentStore } from "@/storage/attachment-store"
 import { ToolRegistry } from "@/tool/registry"
-import { NATIVE_MISSION_TRANSPORT_TOOL_IDS } from "@/tool/tool-id-catalog"
+import { capabilityRevealBaseDefinitions } from "@/capability/reveal-receipt"
+import { normalizedProviderToolDefinition } from "@/capability/reveal-owner"
 import { installDefaultControlPlaneToolLoaders } from "@/tool/control-plane-tool-composition"
 import { persistEstablishedTask } from "./engine-task"
 import { resolveTestCapabilityTools } from "./capability-occurrence"
@@ -31,7 +32,7 @@ type ProcessState = {
   assistantMessageID: string
   taskID: string
   toolCallID: string
-  scenario: "plain" | "structured-reveal" | "legacy-reveal" | "catalog-v2"
+  scenario: "plain" | "structured-reveal" | "old-base" | "catalog-v2"
 }
 
 const [mode, projectPath, statePath] = process.argv.slice(2)
@@ -40,7 +41,7 @@ if (
     [
       "prepare",
       "prepare-structured-reveal",
-      "prepare-legacy-reveal",
+      "prepare-old-base",
       "prepare-catalog-v2",
       "resume-same",
       "resume-drift",
@@ -52,7 +53,7 @@ if (
   !statePath
 ) {
   throw new Error(
-    "usage: native-mission-transport-permission-process-worker <prepare|prepare-structured-reveal|prepare-legacy-reveal|prepare-catalog-v2|resume-same|resume-drift|resume-missing|resume-harness-drift> <project> <state>",
+    "usage: native-mission-transport-permission-process-worker <prepare|prepare-structured-reveal|prepare-old-base|prepare-catalog-v2|resume-same|resume-drift|resume-missing|resume-harness-drift> <project> <state>",
   )
 }
 
@@ -189,31 +190,35 @@ async function prepare(scenario: ProcessState["scenario"]) {
               }),
             }
           : undefined
-      const mutableNativeTransportIDs = NATIVE_MISSION_TRANSPORT_TOOL_IDS as unknown as string[]
-      const schedulerIndex = mutableNativeTransportIDs.indexOf("scheduler_message")
-      if (scenario === "legacy-reveal" && schedulerIndex >= 0) mutableNativeTransportIDs.splice(schedulerIndex, 1)
       const resolved = await resolveTestCapabilityTools({
-          config,
-          model,
-          session: mission,
-          assistant,
-          processor,
-          agent,
-          agentID: "mission",
-          messages: await Session.messages({ sessionID: mission.id }),
-          includeMcpTools: false,
-          ...(scenario === "structured-reveal" ? { activeLocalRefs: ["wait"] } : {}),
-          ...(scenario === "legacy-reveal" ? { activeLocalRefs: ["scheduler_message"] } : {}),
-          ...(structuredOutput ? { reservedProviderTools: [structuredOutput] } : {}),
-        })
+        config,
+        model,
+        session: mission,
+        assistant,
+        processor,
+        agent,
+        agentID: "mission",
+        messages: await Session.messages({ sessionID: mission.id }),
+        includeMcpTools: false,
+        ...(scenario === "structured-reveal" ? { activeLocalRefs: ["webfetch"] } : {}),
+        ...(structuredOutput ? { reservedProviderTools: [structuredOutput] } : {}),
+      })
       const tools = resolved.tools
-      if (scenario === "legacy-reveal" && schedulerIndex >= 0) {
-        mutableNativeTransportIDs.splice(schedulerIndex, 0, "scheduler_message")
-      }
-      if (scenario === "catalog-v2") {
+
+      if (scenario === "catalog-v2" || scenario === "old-base") {
         const legacyPayload = { ...resolved.occurrence.payload } as Record<string, unknown>
-        legacyPayload.schema_version = 2
-        delete legacyPayload.permanent_provider_base_definition
+        if (scenario === "catalog-v2") {
+          legacyPayload.schema_version = 2
+          delete legacyPayload.permanent_provider_base_definition
+        } else {
+          const oldBase = capabilityRevealBaseDefinitions([
+            normalizedProviderToolDefinition("capability_search", tools.capability_search!),
+          ])
+          legacyPayload.permanent_provider_base_definition = {
+            provider_names: oldBase.providerNames,
+            definition_digest: oldBase.definitionDigest,
+          }
+        }
         const reference = await AttachmentStore.write(
           Instance.project.id,
           Buffer.from(canonicalJSONValue(legacyPayload), "utf8"),
@@ -332,9 +337,7 @@ async function resume() {
         sessionID: state.missionSessionID,
         messageID: state.assistantMessageID,
       })
-      const toolPart = assistant.parts.find(
-        (part) => part.type === "tool" && part.callID === state.toolCallID,
-      )
+      const toolPart = assistant.parts.find((part) => part.type === "tool" && part.callID === state.toolCallID)
       const staleEvents = (await PermissionAuthority.history()).filter(
         (event) => event.request_id === state.requestID && event.event_type === "stale",
       )
@@ -355,6 +358,6 @@ async function resume() {
 
 if (mode === "prepare") await prepare("plain")
 else if (mode === "prepare-structured-reveal") await prepare("structured-reveal")
-else if (mode === "prepare-legacy-reveal") await prepare("legacy-reveal")
+else if (mode === "prepare-old-base") await prepare("old-base")
 else if (mode === "prepare-catalog-v2") await prepare("catalog-v2")
 else await resume()

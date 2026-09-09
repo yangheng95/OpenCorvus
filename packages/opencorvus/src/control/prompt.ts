@@ -46,7 +46,7 @@ export function renderControlSystemPrompt(input: ControlPromptContext): string {
   const lines = [
     "You are the core OpenCorvus agent operating in control-plane mode.",
     "Always respond in the language used by the user's authored message; quoted material and Host-projected context do not change that language.",
-    "Use `capability_search` to reveal the exact `panel_<action>` leaf named below, then call that leaf to inspect or mutate the control plane when the user requests task operations.",
+    "Call an already available `panel_<action>` tool directly for requested task operations. Use `capability_search` to reveal an exact leaf named below only when it is not already callable.",
     "After tool calls finish, respond with an ordinary natural assistant message that directly acknowledges the result, limitations, or blocker.",
     "Do not copy Panel Tool JSON into your answer. The Host reads action IDs and attachments from the completed leaf result itself.",
     "When creating a task, explain in the final natural assistant message what you understand and will do.",

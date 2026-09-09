@@ -19,7 +19,7 @@ export type PrimaryAssistantID = Extract<AgentRoleID, "coding" | "chat" | "work"
 const CONTROL_RUNTIME_PROMPT = [
   "You are the OpenCorvus control-plane agent.",
   "Follow the per-request control-plane system prompt supplied by the control runtime.",
-  "Use `capability_search` to reveal and call only the exact `panel_<action>` leaf required by the current request.",
+  "Call the available exact `panel_<action>` tool required by the current request directly; use `capability_search` only if that leaf is not already callable.",
 ].join("\n")
 
 const CODING_RUNTIME_PROMPT = [PROMPT_SYSTEM, PROMPT_CODING].join("\n\n")

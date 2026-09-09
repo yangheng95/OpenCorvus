@@ -89,10 +89,10 @@ function receiptPart(receipt: ReturnType<typeof createCapabilityRevealReceipt>, 
 function revealFingerprint(input: {
   callID: string
   priorRevision: number
-  resultRefs: readonly typeof requestedRef[]
-  activated: readonly typeof activation[]
-  deactivateRefs: readonly typeof requestedRef[]
-  activeRefs: readonly typeof requestedRef[]
+  resultRefs: readonly (typeof requestedRef)[]
+  activated: readonly (typeof activation)[]
+  deactivateRefs: readonly (typeof requestedRef)[]
+  activeRefs: readonly (typeof requestedRef)[]
   activeDefinitionDigest: string
   activePayloadChars: number
   activePayloadTokens: number
@@ -126,7 +126,11 @@ describe("occurrence capability reveal receipts", () => {
       chars: baseDefinition.payloadChars,
       tokens: baseDefinition.payloadTokens,
     })
-    const activatedState = reduceCapabilityRevealCandidate({ prior: initial, deactivateRefs: [], activated: [activation] })
+    const activatedState = reduceCapabilityRevealCandidate({
+      prior: initial,
+      deactivateRefs: [],
+      activated: [activation],
+    })
     const first = createCapabilityRevealReceipt({
       occurrence_id: occurrenceID,
       search_call_id: "call_search_1",
@@ -227,7 +231,7 @@ describe("occurrence capability reveal receipts", () => {
     })
   })
 
-  test("accounts for the permanent search definition in the active Provider payload budget", () => {
+  test("accounts for the permanent base while admitting an extension within its separate allowance", () => {
     const prior = foldCapabilityRevealReceipts({
       occurrenceID,
       parts: [],
@@ -241,9 +245,12 @@ describe("occurrence capability reveal receipts", () => {
         payloadTokens: 7_990,
       },
     })
-    expect(() =>
-      reduceCapabilityRevealCandidate({ prior, deactivateRefs: [], activated: [activation] }),
-    ).toThrow("maximum is 32000")
+    const candidate = reduceCapabilityRevealCandidate({ prior, deactivateRefs: [], activated: [activation] })
+    expect({ chars: candidate.payloadChars, tokens: candidate.payloadTokens, refs: candidate.activeRefs }).toEqual({
+      chars: 31_950 + activation.payload_chars,
+      tokens: 7_990 + activation.payload_tokens,
+      refs: [activation.requested_ref],
+    })
   })
 
   test("reports a typed conflict when a reveal reuses a permanent base Provider name", () => {
@@ -262,6 +269,28 @@ describe("occurrence capability reveal receipts", () => {
       revision: 0,
       activeRefs: [],
     })
+  })
+
+  test("reports the extension allowance when an exact definition exceeds it beside a routine base", () => {
+    const prior = foldCapabilityRevealReceipts({
+      occurrenceID,
+      parts: [],
+      harnessProjectionHash,
+      catalogSnapshotRef,
+      catalogSnapshotHash,
+      baseDefinition: { ...baseDefinition, payloadChars: 100_000, payloadTokens: 25_000 },
+    })
+    const largeDefinition = { ...definition, description: "x".repeat(32_001) }
+    const large = ActivatedCapability.parse({
+      ...activation,
+      definition: largeDefinition,
+      definition_digest: providerToolDefinitionDigest(largeDefinition),
+      payload_chars: providerToolDefinitionChars(largeDefinition),
+      payload_tokens: providerToolDefinitionTokens(largeDefinition),
+    })
+    expect(() => reduceCapabilityRevealCandidate({ prior, deactivateRefs: [], activated: [large] })).toThrow(
+      `Capability reveal extension Tool payload would be ${large.payload_chars} chars; maximum is 32000.`,
+    )
   })
 
   test("reports typed corruption when a completed search has no receipt", () => {
@@ -295,7 +324,11 @@ describe("occurrence capability reveal receipts", () => {
 
   test("binds each receipt to its ToolPart call identity and persisted input fingerprint", () => {
     const initial = emptyState()
-    const activatedState = reduceCapabilityRevealCandidate({ prior: initial, deactivateRefs: [], activated: [activation] })
+    const activatedState = reduceCapabilityRevealCandidate({
+      prior: initial,
+      deactivateRefs: [],
+      activated: [activation],
+    })
     const valid = createCapabilityRevealReceipt({
       occurrence_id: occurrenceID,
       search_call_id: "call_search_bound",
@@ -349,7 +382,11 @@ describe("occurrence capability reveal receipts", () => {
 
   test("reports a typed corrupt occurrence when the persisted revision chain skips", () => {
     const initial = emptyState()
-    const activatedState = reduceCapabilityRevealCandidate({ prior: initial, deactivateRefs: [], activated: [activation] })
+    const activatedState = reduceCapabilityRevealCandidate({
+      prior: initial,
+      deactivateRefs: [],
+      activated: [activation],
+    })
     const skipped = createCapabilityRevealReceipt({
       occurrence_id: occurrenceID,
       search_call_id: "call_search_2",
