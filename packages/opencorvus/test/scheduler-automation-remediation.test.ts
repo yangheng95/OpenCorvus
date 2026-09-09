@@ -33,14 +33,17 @@ test("the final finite scheduled Fire commits success and exposes an exhausted s
   await Instance.provide({
     directory: project.path,
     fn: async () => {
+      let now = Math.floor(Date.now() / 1_000) * 1_000
+      using _clock = spyOn(Date, "now").mockImplementation(() => now)
+      const due = now + 1_000
       const automation = await AutomationService.create({
         name: "finite success",
         target: { scope: "project", projectIds: [Instance.project.id] },
-        recurrence: `DTSTART:${stamp(Date.now() + 1_000)}\nRRULE:FREQ=DAILY;COUNT=1`,
+        recurrence: `DTSTART:${stamp(due)}\nRRULE:FREQ=DAILY;COUNT=1`,
         prompt: "finish once",
       })
-      const due = automation.nextRun!
-      await Bun.sleep(Math.max(0, due - Date.now() + 5))
+      expect(automation.nextRun).toBe(due)
+      now = due + 5
       using _wake = completedWake()
       await AutomationService.TestHooks.runDueWithSignal(new AbortController().signal)
       expect(AutomationService.list().find((entry) => entry.id === automation.id)).toMatchObject({
@@ -188,15 +191,17 @@ test("the final finite Fire records its fifth pre-reservation failure as termina
   await Instance.provide({
     directory: project.path,
     fn: async () => {
+      let now = Math.floor(Date.now() / 1_000) * 1_000
+      using _clock = spyOn(Date, "now").mockImplementation(() => now)
+      const due = now + 1_000
       const automation = await AutomationService.create({
         name: "finite failed admission",
         target: { scope: "project", projectIds: [Instance.project.id] },
-        recurrence: `DTSTART:${stamp(Date.now() + 1_000)}\nRRULE:FREQ=DAILY;COUNT=1`,
+        recurrence: `DTSTART:${stamp(due)}\nRRULE:FREQ=DAILY;COUNT=1`,
         prompt: "settle admission failure",
       })
-      await Bun.sleep(Math.max(0, automation.nextRun! - Date.now() + 5))
-      let now = Date.now()
-      using _clock = spyOn(Date, "now").mockImplementation(() => now)
+      expect(automation.nextRun).toBe(due)
+      now = due + 5
       using _failure = AutomationService.TestHooks.installBeforeRunReservation(() => {
         throw new Error("admission unavailable")
       })
@@ -276,13 +281,17 @@ test("the active poll admits a newly due Fire into its idle slot", async () => {
   await Instance.provide({
     directory: project.path,
     fn: async () => {
+      let now = Math.floor(Date.now() / 1_000) * 1_000
+      using _clock = spyOn(Date, "now").mockImplementation(() => now)
+      const due = now + 1_000
       const first = await AutomationService.create({
         name: "slow first",
         target: { scope: "project", projectIds: [Instance.project.id] },
-        recurrence: `DTSTART:${stamp(Date.now() + 1_000)}\nRRULE:FREQ=DAILY;COUNT=1`,
+        recurrence: `DTSTART:${stamp(due)}\nRRULE:FREQ=DAILY;COUNT=1`,
         prompt: "remain running",
       })
-      await Bun.sleep(Math.max(0, first.nextRun! - Date.now() + 5))
+      expect(first.nextRun).toBe(due)
+      now = due + 5
       const blocked = Promise.withResolvers<{ ok: true }>()
       const firstAdmitted = Promise.withResolvers<void>()
       const newlyAdmitted = Promise.withResolvers<void>()
@@ -302,13 +311,15 @@ test("the active poll admits a newly due Fire into its idle slot", async () => {
       const polling = AutomationService.TestHooks.runDueWithSignal(new AbortController().signal)
       try {
         await firstAdmitted.promise
+        const laterDue = due + 1_000
         const later = await AutomationService.create({
           name: "new future input",
           target: { scope: "project", projectIds: [Instance.project.id] },
-          recurrence: `DTSTART:${stamp(Date.now() + 1_000)}\nRRULE:FREQ=DAILY;COUNT=1`,
+          recurrence: `DTSTART:${stamp(laterDue)}\nRRULE:FREQ=DAILY;COUNT=1`,
           prompt: "use idle slot",
         })
-        await Bun.sleep(Math.max(0, later.nextRun! - Date.now() + 5))
+        expect(later.nextRun).toBe(laterDue)
+        now = laterDue + 5
         await AutomationService.TestHooks.runDueWithSignal(new AbortController().signal)
         await Promise.race([
           newlyAdmitted.promise,
