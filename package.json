@@ -156,6 +156,7 @@
     "postcss": "8.5.23",
     "seroval": "1.6.2",
     "sharp": "0.35.4",
+    "smol-toml": "1.7.1",
     "socket.io-parser": "4.2.7",
     "undici": "6.28.0"
   },
