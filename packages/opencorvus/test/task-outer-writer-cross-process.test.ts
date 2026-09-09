@@ -3,6 +3,72 @@ import fs from "node:fs/promises"
 import path from "node:path"
 import { createManagedTemporaryDirectory, removeManagedDirectoryTree } from "@opencorvus-ai/util/runtime-directories"
 
+type WriterReadiness = {
+  label: string
+  child: { exitCode: number | null }
+  stdout: Promise<string>
+  stderr: Promise<string>
+}
+
+async function waitForTaskWriters(directory: string, mode: string, workers: WriterReadiness[]) {
+  const deadline = Date.now() + 30_000
+  for (;;) {
+    for (const worker of workers) {
+      if (worker.child.exitCode === null) continue
+      const [stdout, stderr] = await Promise.all([worker.stdout, worker.stderr])
+      throw new Error(
+        `Task ${mode} writer ${worker.label} exited before start (exit=${worker.child.exitCode}); STDERR=${stderr.slice(-1200)}; STDOUT=${stdout.slice(-1200)}`,
+      )
+    }
+    const ready = await Promise.all(
+      workers.map((worker) =>
+        fs.stat(path.join(directory, `${mode}-${worker.label}.ready`)).then(
+          () => true,
+          (error: NodeJS.ErrnoException) => {
+            if (error.code === "ENOENT") return false
+            throw error
+          },
+        ),
+      ),
+    )
+    if (ready.every(Boolean)) return
+    if (Date.now() > deadline) {
+      const pending = workers.filter((_, index) => !ready[index]).map((worker) => worker.label)
+      throw new Error(`Task ${mode} writers did not initialize within 30000ms; pending=${pending.join(",")}`)
+    }
+    await Bun.sleep(10)
+  }
+}
+
+test.each([0, 7])("reports exact Task writer identity and output after early exit %d", async (exitCode) => {
+  const root = process.env.OPENCORVUS_TEST_PROCESS_ROOT
+  if (!root) throw new Error("Task writer test requires repository runtime")
+  const directory = await createManagedTemporaryDirectory(root, "task-writer-diagnostic-")
+  const child = Bun.spawn(
+    [
+      process.execPath,
+      "-e",
+      `process.stdout.write("startup".repeat(400) + "FINAL_OUT"); process.stderr.write("FINAL_ERR"); process.exit(${exitCode})`,
+    ],
+    { stdout: "pipe", stderr: "pipe" },
+  )
+  const worker = {
+    label: "diagnostic-worker",
+    child,
+    stdout: new Response(child.stdout).text(),
+    stderr: new Response(child.stderr).text(),
+  }
+  try {
+    await expect(waitForTaskWriters(directory, "diagnostic", [worker])).rejects.toThrow(
+      `Task diagnostic writer diagnostic-worker exited before start (exit=${exitCode}); STDERR=FINAL_ERR; STDOUT=p${"startup".repeat(170)}FINAL_OUT`,
+    )
+  } finally {
+    if (child.exitCode === null) child.kill()
+    await Promise.all([child.exited, worker.stdout, worker.stderr])
+    await removeManagedDirectoryTree(directory)
+  }
+})
+
 test("concurrent Task writers return committed rewind counts and preserve artifact and file references", async () => {
   const root = process.env.OPENCORVUS_TEST_PROCESS_ROOT
   if (!root) throw new Error("Task writer test requires repository runtime")
@@ -25,7 +91,7 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
         stderr: "pipe",
       },
     )
-    const entry = { child, stdout: new Response(child.stdout).text(), stderr: new Response(child.stderr).text() }
+    const entry = { label, child, stdout: new Response(child.stdout).text(), stderr: new Response(child.stderr).text() }
     children.push(entry)
     return entry
   }
@@ -60,25 +126,7 @@ test("concurrent Task writers return committed rewind counts and preserve artifa
       "ingress",
     ]) {
       const workers = Array.from({ length: 4 }, (_, index) => spawn(mode, String(index)))
-      const deadline = Date.now() + 30_000
-      while (
-        !(
-          await Promise.all(
-            workers.map((_, index) =>
-              fs.stat(path.join(directory, `${mode}-${index}.ready`)).then(
-                () => true,
-                (error: NodeJS.ErrnoException) => {
-                  if (error.code === "ENOENT") return false
-                  throw error
-                },
-              ),
-            ),
-          )
-        ).every(Boolean)
-      ) {
-        if (Date.now() > deadline) throw new Error("Task writers did not initialize")
-        await Bun.sleep(10)
-      }
+      await waitForTaskWriters(directory, mode, workers)
       await fs.writeFile(path.join(directory, `${mode}.start`), "start")
       const results = await Promise.all(workers.map(read))
       if (mode === "ingress") {
