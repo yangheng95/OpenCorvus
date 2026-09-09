@@ -298,7 +298,7 @@ Repeating the same interrupted request with cosmetic wording is not recovery. Id
 FINAL INTERACTIVE ARTIFACT
 ──────────────────────────────────────────────────────────────────────
 
-Mission does not finish with prose alone. After every `Done when` claim has accepted evidence, deactivate the small audit group, reveal only the canonical `{kind:"tool",source:"platform",owner_ref:"tool-registry",local_ref:"publish_interactive_artifact"}` exact ref, call `publish_interactive_artifact` in the final assistant turn, and display one self-contained Mission outcome Artifact. Do not combine this large publication leaf with another exact activation. After publication succeeds, deactivate it while activating only the canonical exact ref for `panel_complete_mission`; complete with the retained Host-minted read references for each unchanged current terminal Task in that same physical Turn.
+Mission does not finish with prose alone. After every `Done when` claim has accepted evidence, call the already-callable `publish_interactive_artifact` in the final assistant turn, and display one self-contained Mission outcome Artifact. After publication succeeds, call the already-callable `panel_complete_mission`; complete with the retained Host-minted read references for each unchanged current terminal Task in that same physical Turn.
 
 The Artifact contains:
 

@@ -138,7 +138,7 @@ describe("Light Expert Squad package", () => {
     expect(source.manifest).toMatchObject({
       namespace: "builtin",
       id: "light",
-      version: "2026.09.05.1",
+      version: "2026.09.09.1",
       product_pillars: ["code", "work"],
     })
     expect(Object.keys(source.manifest.capability_projection.agents).sort()).toEqual(Object.keys(agentRoles).sort())
@@ -163,7 +163,7 @@ describe("Light Expert Squad package", () => {
         })
         expect(receipt).toMatchObject({
           operation: "installed",
-          after: { installationScope: "project", namespace: "builtin", id: "light", version: "2026.09.05.1" },
+          after: { installationScope: "project", namespace: "builtin", id: "light", version: "2026.09.09.1" },
         })
 
         const config = Config.mergeOverlay(await EffectiveConfig.snapshotCurrent(), {
@@ -184,7 +184,7 @@ describe("Light Expert Squad package", () => {
           packageRevision: revision,
         })
 
-        expect(revision).toMatchObject({ namespace: "builtin", id: "light", version: "2026.09.05.1" })
+        expect(revision).toMatchObject({ namespace: "builtin", id: "light", version: "2026.09.09.1" })
         expect(scheduler.virtualWorkflows).toEqual({})
         expect(scheduler.builtInToolIDs).toEqual(schedulerTools)
         expect(scheduler.productionSkills.map((entry) => entry.ref)).toEqual([])

@@ -37,10 +37,10 @@ describe("scheduler message model harness", () => {
       "Mission state records only authored stage graph, ownership, acceptance judgment, dependency frontier, force-majeure blocker, next-wake action, and operator-visible outcome",
       "If none of those authored facts changes, do not call `mission_state`",
       "include every exact authored file thereby made stale in one `mission_state` commit",
-      "activate the canonical exact refs for `panel_query_task`, `panel_query_task_artifacts`, and `panel_read_task_artifact` together",
-      "deactivate the small audit group, reveal only `publish_interactive_artifact`",
-      "Do not combine this large publication leaf with another exact activation",
-      "activating only the canonical exact ref for `panel_complete_mission`",
+      "use the callable `panel_query_task`, `panel_query_task_artifacts`, and `panel_read_task_artifact` tools",
+      "call the already-callable `publish_interactive_artifact` in the final assistant turn",
+      "After publication succeeds, call the already-callable `panel_complete_mission`",
+      "complete with the retained Host-minted read references",
       "An unchanged accepted terminal Task is not queried or read again",
       "End the response only after that exact causal closure reaches its next durable stop",
     ]
@@ -67,12 +67,9 @@ describe("scheduler message model harness", () => {
       "scheduler Protocol event IDs are not coordination-request evidence",
       "the recipient scheduler independently owns the answer and its reply ingress owns the future wake",
       "do not schedule `wait` for that reply",
-      "owner_ref:\"runtime-projection:orchestrator\",local_ref:\"scheduler_message\"",
-      "owner_ref:\"runtime-projection:orchestrator\",local_ref:\"no_action\"",
-      "owner_ref:\"runtime-projection:orchestrator\",local_ref:\"manage_task\"",
-      "activate all required exact refs directly in the first `capability_search`",
-      "Activate `scheduler_message` and `no_action` together",
-      "activate `scheduler_message` and `manage_task` together",
+      "Each authoritative input starts with its authorized routine tools already callable",
+      "Use the callable `scheduler_message` and `no_action` tools",
+      "use the callable `scheduler_message` and `manage_task` tools",
     ]
 
     expect(requiredOrchestratorGuidance.map((clause) => ORCHESTRATOR_CORE.includes(clause))).toEqual(
