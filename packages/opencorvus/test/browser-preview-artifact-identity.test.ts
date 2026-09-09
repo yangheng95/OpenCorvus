@@ -1,8 +1,10 @@
-import { expect, spyOn, test } from "bun:test"
+import { expect, test } from "bun:test"
 import fs from "node:fs/promises"
 import path from "node:path"
 import { createManagedTemporaryDirectory, removeManagedDirectoryTree } from "@opencorvus-ai/util/runtime-directories"
 import { readBrowserPreviewArtifactFile } from "../src/browser-preview/artifact-file"
+
+import { withWideFileIdentityMismatch } from "./fixture/wide-file-identity"
 
 async function withArtifact(
   fn: (input: { filePath: string; authorityRoot: string; scopedRoot: string }) => Promise<void>,
@@ -27,44 +29,10 @@ test("reads exact artifact bytes through real path and descriptor observations",
 
 test("returns the identity-change error for distinct wide path and descriptor inodes", async () => {
   await withArtifact(async (input) => {
-    const lexicalInode = 14636698791557095n
-    const descriptorInode = 14636698791557096n
-    expect(Number(lexicalInode)).toBe(Number(descriptorInode))
-    const originalLstat = fs.lstat
-    const originalOpen = fs.open
-    const restorers: Array<() => void> = []
-    const lexical = spyOn(fs, "lstat").mockImplementation((async (...args) => {
-      const info = await originalLstat(...args)
-      if (args[0] === input.filePath) {
-        Object.defineProperty(info, "ino", {
-          value: typeof info.ino === "bigint" ? lexicalInode : Number(lexicalInode),
-        })
-      }
-      return info
-    }) as typeof fs.lstat)
-    const opened = spyOn(fs, "open").mockImplementation(async (...args) => {
-      const handle = await originalOpen(...args)
-      if (args[0] === input.filePath) {
-        const originalStat = handle.stat.bind(handle)
-        const observation = spyOn(handle, "stat").mockImplementation((async (...options) => {
-          const info = await originalStat(...options)
-          Object.defineProperty(info, "ino", {
-            value: typeof info.ino === "bigint" ? descriptorInode : Number(descriptorInode),
-          })
-          return info
-        }) as typeof handle.stat)
-        restorers.push(() => observation.mockRestore())
-      }
-      return handle
-    })
-    try {
+    await withWideFileIdentityMismatch(input.filePath, async () => {
       await expect(readBrowserPreviewArtifactFile(input)).rejects.toThrow(
         `Browser Preview artifact identity changed before it was opened: ${input.filePath}`,
       )
-    } finally {
-      for (const restore of restorers) restore()
-      opened.mockRestore()
-      lexical.mockRestore()
-    }
+    })
   })
 })

@@ -28,6 +28,7 @@ import { isTaskTerminal } from "../src/engine/task-status"
 import { Database } from "../src/storage/db"
 import { asSchema } from "ai"
 import { bindRuntimeToolFactory, createRuntimeToolOwner } from "../src/session/runtime-tool-owner"
+import { withWideFileIdentityMismatch } from "./fixture/wide-file-identity"
 
 const packageRevision = {
   scope: "built_in" as const,
@@ -235,6 +236,20 @@ describe("Task Artifact immutable Git commit publication", () => {
             owner_kind: "projected-scheduler",
             agent_id: "orchestrator",
           }),
+        })
+        const manifestPath = path.join(
+          ProjectRuntimePaths.taskArtifactSnapshotRoot(project.path, taskID, publication.manifest.snapshot_id),
+          "manifest.json",
+        )
+        await withWideFileIdentityMismatch(manifestPath, async () => {
+          await expect(
+            readTaskArtifactRef({
+              projectID: Instance.project.id,
+              projectDirectory: project.path,
+              taskID,
+              ref: publication.artifacts[0]!,
+            }),
+          ).rejects.toThrow("TaskArtifactStore manifest: opened file identity does not match its path")
         })
       },
     })
@@ -445,7 +460,7 @@ describe("Task Artifact immutable Git commit publication", () => {
                   toolID: "merge_back",
                   kind: "stage",
                   factoryInput: { source: "test-merge-back" },
-                  materialize: () => ({} as never),
+                  materialize: () => ({}) as never,
                 }),
               ],
             }),
@@ -458,14 +473,12 @@ describe("Task Artifact immutable Git commit publication", () => {
           contract: runtimeContract,
           messages,
         })
-        expect(() =>
-          assertMergedPrimaryCommitToolAuthorityFromFacts({
-            scope,
-            claimedSourceCommit: sourceCommit,
-            contract: runtimeContract,
-            messages,
-          }),
-        ).not.toThrow()
+        assertMergedPrimaryCommitToolAuthorityFromFacts({
+          scope,
+          claimedSourceCommit: sourceCommit,
+          contract: runtimeContract,
+          messages,
+        })
         const publication = await publishTaskArtifactProjectFiles({
           scope,
           source,

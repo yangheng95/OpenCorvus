@@ -23,6 +23,7 @@ import { ArtifactProducerSchema, type ArtifactProducer } from "@opencorvus-ai/pl
 import { ProjectRelativePathSchema } from "@opencorvus-ai/plugin/project-path"
 import { createHash, randomUUID } from "node:crypto"
 import fs from "node:fs/promises"
+import type { BigIntStats } from "node:fs"
 import path from "node:path"
 import { requireTask } from "@/engine/store"
 import { ProjectRuntimePaths } from "@/project/runtime-paths"
@@ -409,36 +410,36 @@ function exactStrings(actual: readonly string[], expected: readonly string[], co
 }
 
 function sameFileIdentity(
-  left: Readonly<{ dev: number | bigint; ino: number | bigint }>,
-  right: Readonly<{ dev: number | bigint; ino: number | bigint }>,
+  left: Readonly<Pick<BigIntStats, "dev" | "ino">>,
+  right: Readonly<Pick<BigIntStats, "dev" | "ino">>,
 ): boolean {
   return left.dev === right.dev && left.ino === right.ino
 }
 
 async function readRegularFile(file: string, context: string): Promise<Uint8Array> {
-  const lexical = await fs.lstat(file)
+  const lexical = await fs.lstat(file, { bigint: true })
   if (!lexical.isFile() || lexical.isSymbolicLink()) throw new Error(`${context}: only regular files are allowed`)
-  if (lexical.nlink !== 1) throw new Error(`${context}: hard links are not allowed`)
+  if (lexical.nlink !== 1n) throw new Error(`${context}: hard links are not allowed`)
   const handle = await fs.open(file, "r")
   let bytes: Uint8Array | undefined
   let primaryFailure: unknown
   try {
-    const before = await handle.stat()
-    if (!before.isFile() || before.nlink !== 1 || !sameFileIdentity(lexical, before)) {
+    const before = await handle.stat({ bigint: true })
+    if (!before.isFile() || before.nlink !== 1n || !sameFileIdentity(lexical, before)) {
       throw new Error(`${context}: opened file identity does not match its path`)
     }
     bytes = await handle.readFile()
-    const [after, lexicalAfter] = await Promise.all([handle.stat(), fs.lstat(file)])
+    const [after, lexicalAfter] = await Promise.all([handle.stat({ bigint: true }), fs.lstat(file, { bigint: true })])
     if (
       !after.isFile() ||
-      after.nlink !== 1 ||
+      after.nlink !== 1n ||
       !lexicalAfter.isFile() ||
       lexicalAfter.isSymbolicLink() ||
-      lexicalAfter.nlink !== 1 ||
+      lexicalAfter.nlink !== 1n ||
       !sameFileIdentity(before, after) ||
       !sameFileIdentity(after, lexicalAfter) ||
       before.size !== after.size ||
-      bytes.byteLength !== after.size
+      BigInt(bytes.byteLength) !== after.size
     ) {
       throw new Error(`${context}: file changed while it was read`)
     }
@@ -620,7 +621,7 @@ async function inventoryTree(root: string, context: string): Promise<readonly Sn
   const files: SnapshotFile[] = []
   const seen = new Map<string, string>()
   const walk = async (directory: string, prefix: string): Promise<number> => {
-    const before = await fs.lstat(directory)
+    const before = await fs.lstat(directory, { bigint: true })
     if (!before.isDirectory() || before.isSymbolicLink()) {
       throw new Error(`${context}: ${prefix || "tree root"} must be a real directory`)
     }
@@ -649,7 +650,7 @@ async function inventoryTree(root: string, context: string): Promise<readonly Sn
       files.push(Object.freeze({ path: relative, bytes: bytes.byteLength, sha256: sha256(bytes) }))
       descendantFiles += 1
     }
-    const after = await fs.lstat(directory)
+    const after = await fs.lstat(directory, { bigint: true })
     if (!after.isDirectory() || after.isSymbolicLink() || !sameFileIdentity(before, after)) {
       throw new Error(`${context}: directory changed while it was inventoried at ${prefix || "tree root"}`)
     }
@@ -667,7 +668,7 @@ async function inventoryTree(root: string, context: string): Promise<readonly Sn
 }
 
 async function assertSnapshotRootEntries(root: string, trees: readonly string[]): Promise<void> {
-  const before = await fs.lstat(root)
+  const before = await fs.lstat(root, { bigint: true })
   if (!before.isDirectory() || before.isSymbolicLink()) {
     throw new Error("TaskArtifactStore: snapshot root must be a real directory")
   }
@@ -686,7 +687,7 @@ async function assertSnapshotRootEntries(root: string, trees: readonly string[])
       throw new Error(`TaskArtifactStore: snapshot tree ${tree} must be a real directory`)
     }
   }
-  const after = await fs.lstat(root)
+  const after = await fs.lstat(root, { bigint: true })
   if (!after.isDirectory() || after.isSymbolicLink() || !sameFileIdentity(before, after)) {
     throw new Error("TaskArtifactStore: snapshot root changed while it was inventoried")
   }
@@ -929,7 +930,7 @@ export async function readTaskArtifactResourceSet(
 
 type VerifiedDirectory = Readonly<{
   path: string
-  identity: Awaited<ReturnType<typeof fs.lstat>>
+  identity: BigIntStats
 }>
 
 async function verifiedArtifactParentDirectories(root: string, tree: string, artifactPath: string) {
@@ -938,7 +939,7 @@ async function verifiedArtifactParentDirectories(root: string, tree: string, art
   let current = root
   for (const segment of relativeDirectories) {
     current = path.join(current, segment)
-    const identity = await fs.lstat(current)
+    const identity = await fs.lstat(current, { bigint: true })
     if (!identity.isDirectory() || identity.isSymbolicLink()) {
       throw new Error(`TaskArtifactStore: artifact parent must be a real directory at ${current}`)
     }
@@ -949,7 +950,7 @@ async function verifiedArtifactParentDirectories(root: string, tree: string, art
 
 async function revalidateArtifactParentDirectories(directories: readonly VerifiedDirectory[]) {
   for (const directory of directories) {
-    const current = await fs.lstat(directory.path)
+    const current = await fs.lstat(directory.path, { bigint: true })
     if (!current.isDirectory() || current.isSymbolicLink() || !sameFileIdentity(directory.identity, current)) {
       throw new Error(`TaskArtifactStore: artifact parent changed during read at ${directory.path}`)
     }
