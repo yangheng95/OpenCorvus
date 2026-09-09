@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import fs from "node:fs/promises"
 import path from "node:path"
 import os from "node:os"
@@ -446,6 +446,58 @@ describe.serial("Provider OAuth flow occurrence", () => {
       scope: "global",
     })
   })
+
+  for (const scope of ["global", "project"] as const) {
+    test(`${scope} pending observer preserves exchange during credential inspection`, async () => {
+      ProviderAuth.TestHooks.pendingRenewalIntervalMs = 5
+      const events: string[] = []
+      let disposed = false
+      const install =
+        scope === "global"
+          ? ProviderAuth.TestHooks.installGlobalAuthHooksForTest
+          : ProviderAuth.TestHooks.installProjectAuthHooksForTest
+      using hooks = install(
+        oauthHook({
+          onDispose: () => {
+            disposed = true
+            events.push("dispose")
+          },
+          onCallback: async () => {
+            if (disposed) throw new Error("Plugin executor was disposed before exchange")
+            events.push("exchange")
+            return { type: "success", key: "inspection-owner-key" }
+          },
+        }),
+      )
+      const authorization = await ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope })
+      const originalInspect = Auth.inspect
+      const inspect = spyOn(Auth, "inspect").mockImplementation(async (...args) => {
+        const result = await originalInspect(...args)
+        if ((await ProviderOAuthFlowStore.get(authorization.flowID))?.state === "exchanging") await Bun.sleep(100)
+        return result
+      })
+      try {
+        await ProviderAuth.callback({
+          providerID: PROVIDER,
+          method: 0,
+          code: "inspection",
+          flowID: authorization.flowID,
+          scope,
+        })
+        expect({
+          events,
+          credential: await Auth.get(PROVIDER),
+          flow: await ProviderOAuthFlowStore.get(authorization.flowID),
+        }).toEqual({
+          events: ["exchange", "dispose"],
+          credential: { type: "api", key: "inspection-owner-key" },
+          flow: expect.objectContaining({ id: authorization.flowID, scope, state: "consumed" }),
+        })
+      } finally {
+        inspect.mockRestore()
+      }
+    })
+  }
 
   test("concurrent expired-owner cleanup and replacement admission share one executor disposal", async () => {
     ProviderAuth.TestHooks.pendingRenewalIntervalMs = 5

@@ -233,6 +233,9 @@ export namespace ProviderAuth {
       let executor: OAuthExecutor | undefined
       const stopRenewal = renewPendingOwner(flow.id, ownerID, async () => {
         const current = await ProviderOAuthFlowStore.get(flow.id)
+        // Credential exchange owns these phases, including the interval before
+        // its claimed callback stops this pending observer.
+        if (current?.state === "exchanging" || current?.state === "credential_ready") return
         if (current?.state === "pending") {
           if (current.exchangeOwnerID !== ownerID || ProviderOAuthFlowStore.ownerLeaseExpiresAt(current) > Date.now())
             return
