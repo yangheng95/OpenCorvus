@@ -71,7 +71,7 @@
     "lightweight-charts": "5.2.0",
     "linkify-it": "6.1.0",
     "lucide-solid": "1.17.0",
-    "maplibre-gl": "^6.0.0",
+    "maplibre-gl": "6.4.1",
     "marked": "^17.0.1",
     "mermaid": "^11.16.1",
     "pdfjs-dist": "5.4.394",
