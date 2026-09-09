@@ -20,6 +20,16 @@ export namespace SessionEvents {
         resolvedRole: z.string().optional(),
         parentSessionID: z.string().optional(),
         error: z.lazy(() => Message.Assistant.shape.error.unwrap()),
+        streamRequest: z
+          .object({
+            requestID: z.string().min(1),
+            agentID: z.string().min(1),
+            providerID: z.string().min(1),
+            modelID: z.string().min(1),
+            apiModelID: z.string().min(1),
+          })
+          .strict()
+          .optional(),
         failureOccurrence: FailureOccurrenceAnchor.optional(),
         convergenceFailure: ToolPersistenceConvergenceFailure.optional(),
         observationFailures: z.array(ProcessorObservationFailure).optional(),

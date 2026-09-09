@@ -5094,6 +5094,39 @@
               "sessionID": {
                 "type": "string"
               },
+              "streamRequest": {
+                "additionalProperties": false,
+                "properties": {
+                  "agentID": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "apiModelID": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "modelID": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "providerID": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "requestID": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestID",
+                  "agentID",
+                  "providerID",
+                  "modelID",
+                  "apiModelID"
+                ],
+                "type": "object"
+              },
               "summary": {
                 "type": "string"
               }

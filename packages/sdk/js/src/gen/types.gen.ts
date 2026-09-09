@@ -1563,6 +1563,13 @@ export type EventSessionError = {
     parentSessionID?: string
     resolvedRole?: string
     sessionID: string
+    streamRequest?: {
+      agentID: string
+      apiModelID: string
+      modelID: string
+      providerID: string
+      requestID: string
+    }
     summary?: string
   }
   type: "session.error"

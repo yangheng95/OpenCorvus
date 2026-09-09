@@ -700,9 +700,11 @@ export namespace Orchestrator {
         // into the artifact and the next decision turn.
         const props = evt.properties as {
           sessionID: string
+          streamRequest?: { agentID: string }
           error: { name?: string; message?: string; data?: { message?: string } }
         }
         if (props.sessionID !== agentSession.id) return
+        if (props.streamRequest && props.streamRequest.agentID !== host.name) return
         const msg = props.error?.data?.message ?? props.error?.message ?? "unknown session error"
         streamErrors.push({ reason: msg, errorName: props.error?.name })
       })

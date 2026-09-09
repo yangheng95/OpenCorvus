@@ -1,4 +1,6 @@
 import { afterEach, expect, spyOn, test } from "bun:test"
+import { rejectLocalStream } from "./fixture/rejected-local-stream"
+import { listOrchestratorStreamErrorArtifacts } from "@/engine/store"
 import { Orchestrator } from "@/orchestrator/agent"
 import { Bus } from "@/bus"
 import {
@@ -73,8 +75,8 @@ afterEach(async () => {
   await resetMemoryDatabase()
 })
 
-test("a fresh typed Task ingress installs runtime authority before creator and control Messages", async () => {
-  using _durableDrain = Bus.TestHooks.suppressAutomaticDurableDrain()
+async function assertInitialTaskRender(streamCase: "normal" | "helper-and-primary") {
+  using _durableDrain = streamCase === "normal" ? Bus.TestHooks.suppressAutomaticDurableDrain() : undefined
   await using project = await memoryProject()
   await Instance.provide({
     directory: project.path,
@@ -144,6 +146,15 @@ test("a fresh typed Task ingress installs runtime authority before creator and c
             toolChoice?: "auto" | "required" | "none" | { type: "tool"; toolName: string }
           }) {
             providerSteps += 1
+            if (providerSteps === 1 && streamCase === "helper-and-primary") {
+              for (const agentID of ["memory", "orchestrator"])
+                await rejectLocalStream({
+                  sessionID: assistant.sessionID,
+                  agentID,
+                  requestID: agentID + "-occurrence",
+                  model: providerModel(),
+                })
+            }
             providerToolRequests.push({
               toolIDs: Object.keys(processInput.tools).sort(),
               toolChoice: processInput.toolChoice ?? "auto",
@@ -237,6 +248,10 @@ test("a fresh typed Task ingress installs runtime authority before creator and c
         )
         await waitForIngressDeliveryHooksForTest()
 
+        if (streamCase === "helper-and-primary")
+          expect(listOrchestratorStreamErrorArtifacts(taskID, 0, 10).map((artifact) => artifact.payload)).toEqual([
+            { reason: "APIError: orchestrator local rejection", errorName: "APIError", sessionID: expect.any(String) },
+          ])
         const task = requireTask(taskID)
         const child = (await Session.children(task.session_id!)).find((session) => session.kind === "orchestrator")
         expect(child).toBeDefined()
@@ -341,4 +356,10 @@ test("a fresh typed Task ingress installs runtime authority before creator and c
   await waitForIngressDeliveryHooksForTest()
   await Instance.disposeAll()
   await Database.awaitEffectIdle(30_000)
-}, 60_000)
+}
+
+test.each(["normal", "helper-and-primary"] as const)(
+  "a fresh typed Task ingress installs runtime authority before creator and control Messages (%s)",
+  assertInitialTaskRender,
+  60_000,
+)

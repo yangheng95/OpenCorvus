@@ -310,6 +310,13 @@ export namespace LLM {
           sessionID: input.sessionID,
           orderKey: sessionLifecycleOrderKey(input.sessionID),
           error,
+          streamRequest: {
+            requestID,
+            agentID: input.agentID,
+            providerID: input.model.providerID,
+            modelID: input.model.id,
+            apiModelID: input.model.api.id,
+          },
         })
         l.error("stream error", {
           error,

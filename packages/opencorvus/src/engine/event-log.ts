@@ -290,7 +290,16 @@ export namespace EngineEventLog {
       case "session.error": {
         const sessionID = String(p.sessionID ?? p.session_id ?? "")
         tl(ctx, `[${elapsed(ctx)}] SESSION ${sessionID} error  ${clip(summary)}`)
-        nd(ctx, { at: now, elapsed_ms: ms, type, taskID, sessionID, summary, error: p.error ?? null })
+        nd(ctx, {
+          at: now,
+          elapsed_ms: ms,
+          type,
+          taskID,
+          sessionID,
+          summary,
+          error: p.error ?? null,
+          streamRequest: p.streamRequest ?? null,
+        })
         break
       }
       case "session.bridge.persist_failed": {

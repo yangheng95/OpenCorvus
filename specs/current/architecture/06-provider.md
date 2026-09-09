@@ -445,3 +445,5 @@ CUSTOM_LOADERS["new-provider"] = {
 
 - [17-code-work-agent-platform.md](17-code-work-agent-platform.md) — 哪些 agent 消费 Provider
 - [04-extensions.md](04-extensions.md) — Provider 与 Expert Squad/Plugin/MCP/ACP 的独立关系
+
+Physical stream error provenance: session.error retains optional streamRequest containing the actual requestID, agentID, providerID, catalog modelID and apiModelID for LLM.stream errors. Session channel/agent routing remains derived from the persisted Session and is separate from the physical caller. Non-stream processor, command and preparation errors retain their existing failure-occurrence or Session authority and do not invent a stream request. Worker and Orchestrator collectors match the Session and, when physical provenance exists, the executing agent identity. Auxiliary errors remain persisted/replayable and cannot become another agent's stream-failure evidence merely because both use the same Session. This diagnostic contract does not itself provide a visible helper transcript or UI attribution acceptance.

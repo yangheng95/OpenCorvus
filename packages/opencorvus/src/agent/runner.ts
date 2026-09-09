@@ -1487,9 +1487,11 @@ async function runAgentSessionInner<C>(input: RunAgentSessionInput<C>): Promise<
       errorUnsub = Bus.subscribe(Session.Event.Error, (evt) => {
         const props = evt.properties as {
           sessionID: string
+          streamRequest?: { agentID: string }
           error: { name?: string; message?: string; data?: { message?: string } }
         }
         if (props.sessionID !== session.id) return
+        if (props.streamRequest && props.streamRequest.agentID !== capabilityIdentity.agentID) return
         const reason = props.error?.data?.message ?? props.error?.message ?? "unknown error"
         streamErrors.push({ reason, name: props.error?.name })
       })
