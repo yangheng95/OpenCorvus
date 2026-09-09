@@ -12,6 +12,15 @@ afterEach(async () => {
 })
 
 describe("frontmatter YAML engine", () => {
+  test("reports the typed frontmatter error when empty merges exceed the parser budget", () => {
+    const source =
+      "---\narr: &arr [" + Array(100).fill("{}").join(",") + "]\ntargets:\n" +
+      "  - <<: *arr\n".repeat(101) + "---\nBody\n"
+
+    expect(() => ConfigMarkdown.parseText(source, "merge-budget")).toThrow(ConfigMarkdown.FrontmatterError)
+    expect(() => ConfigMarkdown.parseText(source, "merge-budget")).toThrow("merge keys exceeded maxTotalMergeKeys (10000)")
+  })
+
   test("parses and stringifies YAML frontmatter through the shared parser", () => {
     const parsed = ConfigMarkdown.parseText("---\nname: demo\ndescription: Demo Skill\n---\nBody\n", "inline")
 
