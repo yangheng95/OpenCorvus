@@ -80,13 +80,16 @@ OpenCorvus 和已配置的模型，费用取决于你的 Provider。
 **替代文字：** OpenCorvus 首次交付练习。解释输入为 125、250、375 克的源码，预期
 总重为 750 克；将第三个重量改成 425 克，预期总重为 800 克；核对代码、测试与说明。
 
-## Proposed GitHub pilot issue — authorization pending
+## Published GitHub pilot issue
 
 Destination: `yangheng95/opencorvus` GitHub issue tracker.
-Proposed posting account: `yangheng95`.
+Posting account: `yangheng95`.
+Published as [issue #30](https://github.com/yangheng95/opencorvus/issues/30) after
+the user's authorization for non-payment operations. The title and body were
+read back and checked against the text below.
 Scope: one text-only issue with the exact title and body below; no labels,
 assignments, comments on other issues, direct messages or attached uploads.
-This proposal has not been published. It seeks early validation, not endorsement
+The issue seeks early validation, not endorsement
 of a completed onboarding path. The two social-post drafts above remain separate
 and unsent.
 
