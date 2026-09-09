@@ -23,6 +23,27 @@ import { memoryProject, resetMemoryDatabase } from "./fixture/memory"
 
 const model = { providerID: "test", modelID: "orchestrator-initial-render" }
 
+const expectedRoutineToolIDs = [
+  "artifact_read",
+  "artifact_search",
+  "artifact_select",
+  "artifact_snapshot",
+  "cancel_subagent",
+  "capability_search",
+  "dispatch_agent",
+  "manage_task",
+  "no_action",
+  "publish_interactive_artifact",
+  "question",
+  "read",
+  "read_agent_message",
+  "read_context",
+  "read_task_message",
+  "respond_agent_coordination",
+  "scheduler_message",
+  "wait",
+]
+
 function providerModel(): ProviderType.Model {
   return {
     id: model.modelID,
@@ -256,8 +277,8 @@ test("a fresh typed Task ingress installs runtime authority before creator and c
           retainedDecisionGaps: [true],
           decisionRepairPrompts: [false, true],
           providerToolRequests: [
-            { toolIDs: ["capability_search"], toolChoice: "auto" },
-            { toolIDs: ["capability_search"], toolChoice: "auto" },
+            { toolIDs: expectedRoutineToolIDs, toolChoice: "auto" },
+            { toolIDs: expectedRoutineToolIDs, toolChoice: "auto" },
           ],
           promptSystemAudits: [
             {

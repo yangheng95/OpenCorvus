@@ -132,10 +132,12 @@ describe("execution authority Tool surfaces", () => {
     })
   })
 
-  test("names exact searchable Panel leaves across Control and Mission handoff surfaces", () => {
+  test("directly calls available Control leaves and discovers the Mission handoff capability", () => {
     const control = renderControlSystemPrompt({ surface: "panel", allowCreate: true })
     expect(control).toContain("panel_create_task")
-    expect(PrimaryAssistantRegistry.nativeDefaultPrompt("control")).toContain("exact `panel_<action>` leaf")
+    expect(PrimaryAssistantRegistry.nativeDefaultPrompt("control")).toContain(
+      "Call the available exact `panel_<action>` tool required by the current request directly",
+    )
     expect(PrimaryAssistantRegistry.nativeDefaultPrompt("chat")).toContain("reveal and call `panel_wake_mission`")
     expect(WORK_RUNTIME_PROMPT).toContain("reveal and call `panel_wake_mission`")
   })
