@@ -541,8 +541,13 @@ async function completedManifestMatches(plan: SessionDeletionCleanupPlan, comple
 
 export async function cleanupCommittedSessionDeletion(
   plan: SessionDeletionCleanupPlan,
+  authority: SessionDeletionCleanupAuthority,
 ): Promise<SessionDeletionCleanupResidue[]> {
   validateManifest(plan.manifest, plan.manifestPath)
+  if (authority.operationID !== plan.manifest.operationID) {
+    throw new Error(`Session deletion cleanup authority does not match ${plan.manifest.operationID}`)
+  }
+  Database.use((db) => assertSessionDeletionAuthorityInTransaction(db, authority))
   const residue: SessionDeletionCleanupResidue[] = []
   for (const target of plan.manifest.targets) {
     try {
@@ -645,6 +650,7 @@ function assertCommittedDatabaseState(manifest: SessionDeletionCleanupManifest):
 async function reconcileManifest(
   manifestPath: string,
   observeProcessOccurrence: RuntimeProcessOccurrenceObserver = observeRuntimeProcessOccurrence,
+  authorize?: (manifest: SessionDeletionCleanupManifest) => void,
 ): Promise<SessionDeletionCleanupReconcileResult | undefined> {
   let serialized: string
   try {
@@ -655,6 +661,7 @@ async function reconcileManifest(
     throw error
   }
   const manifest = parseManifest(serialized, manifestPath)
+  authorize?.(manifest)
   if (manifest.databaseInstanceID !== Database.Identity()) {
     throw new Error(
       `Session deletion cleanup ${manifest.operationID} belongs to database ${manifest.databaseInstanceID}`,
@@ -684,13 +691,31 @@ async function reconcileManifest(
     }
   }
   if (state.rows.length === 0 && state.deleted.length === manifest.sessionIDs.length) {
-    const residue = await cleanupCommittedSessionDeletion({ manifest, manifestPath })
-    return {
-      status: "committed",
-      operationID: manifest.operationID,
-      projectID: manifest.projectID,
-      rootIdentity: manifest.rootIdentity,
-      residue,
+    const claim = claimSessionDeletionCleanup({ manifest, manifestPath }, Date.now(), observeProcessOccurrence)
+    if (!claim.acquired) {
+      return {
+        status: "in_progress",
+        operationID: manifest.operationID,
+        projectID: manifest.projectID,
+        rootIdentity: manifest.rootIdentity,
+        ownerOccurrenceID: claim.ownerOccurrenceID,
+      }
+    }
+    try {
+      const residue = await cleanupCommittedSessionDeletion({ manifest, manifestPath }, claim.authority)
+      return {
+        status: "committed",
+        operationID: manifest.operationID,
+        projectID: manifest.projectID,
+        rootIdentity: manifest.rootIdentity,
+        residue,
+      }
+    } finally {
+      try {
+        Database.immediateTransaction((db) => releaseSessionDeletionAuthorityInTransaction(db, claim.authority))
+      } finally {
+        closeSessionDeletionAuthority(claim.authority)
+      }
     }
   }
   throw new Error(`Session deletion cleanup ${manifest.operationID} has ambiguous database evidence`)
@@ -698,9 +723,10 @@ async function reconcileManifest(
 
 export async function resumeSessionDeletionCleanup(
   rootSessionID: string,
+  authorize: (manifest: SessionDeletionCleanupManifest) => void,
 ): Promise<SessionDeletionCleanupReconcileResult | undefined> {
   const name = `${operationID(rootSessionID)}.json`
-  const reconciled = await reconcileManifest(path.join(activeRoot(), name))
+  const reconciled = await reconcileManifest(path.join(activeRoot(), name), observeRuntimeProcessOccurrence, authorize)
   if (reconciled) return reconciled
   const completedPath = path.join(completedRoot(), name)
   try {
@@ -708,6 +734,7 @@ export async function resumeSessionDeletionCleanup(
     if (manifest.rootSessionID !== rootSessionID) {
       throw new Error(`Session deletion cleanup ${manifest.operationID} has conflicting root Session identity`)
     }
+    authorize(manifest)
     assertCommittedDatabaseState(manifest)
     return {
       status: "committed",

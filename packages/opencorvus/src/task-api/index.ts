@@ -3326,15 +3326,16 @@ export namespace EngineService {
     },
   ): Promise<SessionDeleteResult | undefined> {
     const current = Instance.current()
-    const resumedCleanup = await resumeSessionDeletionCleanup(sessionID)
-    if (resumedCleanup?.status === "in_progress") {
+    const resumedCleanup = await resumeSessionDeletionCleanup(sessionID, (manifest) => {
       if (
-        (input.projectID && input.projectID !== resumedCleanup.projectID) ||
-        (current && current.project.id !== resumedCleanup.projectID)
+        (input.projectID && input.projectID !== manifest.projectID) ||
+        (current && current.project.id !== manifest.projectID)
       ) {
         throw new NotFoundError({ message: `Session not found: ${sessionID}` })
       }
-      assertSessionDeletionReplayAuthority(sessionID, resumedCleanup.rootIdentity, input.authority)
+      assertSessionDeletionReplayAuthority(sessionID, manifest.rootIdentity, input.authority)
+    })
+    if (resumedCleanup?.status === "in_progress") {
       throw new SessionDeletionInProgressError({
         message: `Session deletion ${resumedCleanup.operationID} is owned by a live runtime occurrence`,
         sessionID,
@@ -3343,13 +3344,6 @@ export namespace EngineService {
       })
     }
     if (resumedCleanup?.status === "committed") {
-      if (
-        (input.projectID && input.projectID !== resumedCleanup.projectID) ||
-        (current && current.project.id !== resumedCleanup.projectID)
-      ) {
-        throw new NotFoundError({ message: `Session not found: ${sessionID}` })
-      }
-      assertSessionDeletionReplayAuthority(sessionID, resumedCleanup.rootIdentity, input.authority)
       return SessionDeleteResult.parse({
         ok: true,
         status: resumedCleanup.residue.length > 0 ? "physically_deleted_with_residue" : "physically_deleted",
@@ -3692,26 +3686,34 @@ export namespace EngineService {
         for (const boundary of deletionBoundaries) {
           ProtocolStore.appendPhysicalSessionDeletedInTransaction(boundary)
         }
-        releaseSessionDeletionAuthorityInTransaction(db, claim.authority)
         Database.effect(() => Database.incrementalVacuum())
       })
       committed = true
+      const residue = await cleanupCommittedSessionDeletion(cleanupPlan, claim.authority)
+      return SessionDeleteResult.parse({
+        ok: true,
+        status: residue.length > 0 ? "physically_deleted_with_residue" : "physically_deleted",
+        sessionID,
+        sessionHistoryRetained: false,
+        authorizationAuditRetained: true,
+        cleanupOperationID: cleanupPlan.manifest.operationID,
+        residue,
+      })
     } catch (error) {
       if (committed) throw error
       let winner: Awaited<ReturnType<typeof resumeSessionDeletionCleanup>>
       let reconciliationError: unknown
       try {
-        winner = await resumeSessionDeletionCleanup(sessionID)
+        winner = await resumeSessionDeletionCleanup(sessionID, (manifest) => {
+          if (manifest.projectID !== root.projectID) {
+            throw new NotFoundError({ message: `Session not found: ${sessionID}` })
+          }
+          assertSessionDeletionReplayAuthority(sessionID, manifest.rootIdentity, { surface: "internal" })
+        })
       } catch (failure) {
         reconciliationError = failure
       }
       if (winner?.status === "committed") {
-        if (
-          (input?.projectID && input.projectID !== winner.projectID) ||
-          (current && current.project.id !== winner.projectID)
-        ) {
-          throw new NotFoundError({ message: `Session not found: ${sessionID}` })
-        }
         return SessionDeleteResult.parse({
           ok: true,
           status: winner.residue.length > 0 ? "physically_deleted_with_residue" : "physically_deleted",
@@ -3733,18 +3735,14 @@ export namespace EngineService {
       }
       throw error
     } finally {
-      closeSessionDeletionAuthority(claim.authority)
+      try {
+        if (committed) {
+          Database.immediateTransaction((db) => releaseSessionDeletionAuthorityInTransaction(db, claim.authority))
+        }
+      } finally {
+        closeSessionDeletionAuthority(claim.authority)
+      }
     }
-    const residue = await cleanupCommittedSessionDeletion(cleanupPlan)
-    return SessionDeleteResult.parse({
-      ok: true,
-      status: residue.length > 0 ? "physically_deleted_with_residue" : "physically_deleted",
-      sessionID,
-      sessionHistoryRetained: false,
-      authorizationAuditRetained: true,
-      cleanupOperationID: cleanupPlan.manifest.operationID,
-      residue,
-    })
   }
 
   function missionTaskResumeReceipt(taskID: string, toolCallID: string) {

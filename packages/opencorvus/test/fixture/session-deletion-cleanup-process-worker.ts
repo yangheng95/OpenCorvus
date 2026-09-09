@@ -3,6 +3,7 @@ import path from "node:path"
 import { Instance } from "@/project/instance"
 import { ProjectRuntimePaths } from "@/project/runtime-paths"
 import { Session } from "@/session"
+import { EngineService } from "@/task-api"
 import {
   claimSessionDeletionCleanup,
   createSessionDeletionCleanupPlan,
@@ -18,11 +19,20 @@ if (!mode || !projectDirectory || !barrierDirectory) {
 }
 
 async function state(input: { source: string; quarantine: string }) {
-  const present = async (target: string) => fs.stat(target).then(() => true, () => false)
+  const present = async (target: string) =>
+    fs.stat(target).then(
+      () => true,
+      () => false,
+    )
   return {
     sourcePresent: await present(input.source),
     quarantinePresent: await present(input.quarantine),
-    sessionPresent: sessionID ? await Session.get(sessionID).then(() => true, () => false) : false,
+    sessionPresent: sessionID
+      ? await Session.get(sessionID).then(
+          () => true,
+          () => false,
+        )
+      : false,
     activeManifests: await fs.readdir(SessionDeletionCleanupTestHooks.activeRoot()).catch(() => []),
   }
 }
@@ -49,11 +59,20 @@ const result = await Instance.provide({
       const claim = claimSessionDeletionCleanup(plan)
       if (!claim.acquired) throw new Error(`Deletion occurrence is already owned by ${claim.ownerOccurrenceID}`)
       await stageSessionDeletionCleanup(plan)
-      await publishJSONBarrier(
-        path.join(barrierDirectory, "owner-ready.json"),
-        { source: plan.manifest.targets[0]!.source, quarantine: plan.manifest.targets[0]!.quarantine },
-      )
+      await publishJSONBarrier(path.join(barrierDirectory, "owner-ready.json"), {
+        source: plan.manifest.targets[0]!.source,
+        quarantine: plan.manifest.targets[0]!.quarantine,
+      })
       await new Promise(() => undefined)
+    }
+    if (mode === "hold-committed") {
+      const session = await Session.get(sessionID)
+      const source = ProjectRuntimePaths.rootSessionRuntimeRoot(session.directory, session.id)
+      using hook = SessionDeletionCleanupTestHooks.installBeforeCommittedTargetCleanup(async (quarantine) => {
+        await publishJSONBarrier(path.join(barrierDirectory, "owner-ready.json"), { source, quarantine })
+        await new Promise(() => undefined)
+      })
+      await EngineService.deleteSession(sessionID, { projectID: session.projectID })
     }
     if (mode === "recover") {
       const paths = JSON.parse(await fs.readFile(path.join(barrierDirectory, "owner-ready.json"), "utf8")) as {

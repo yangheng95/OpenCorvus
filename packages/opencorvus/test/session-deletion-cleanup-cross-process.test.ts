@@ -14,7 +14,7 @@ afterEach(async () => {
 })
 
 describe("cross-process standalone Session deletion cleanup", () => {
-  test("preserves a live owner's quarantine and rolls it back only after exact owner death", async () => {
+  test.each(["hold", "hold-committed"] as const)("recovers %s only after the exact cleanup owner dies", async (ownerMode) => {
     const processRoot = process.env.OPENCORVUS_TEST_PROCESS_ROOT
     if (!processRoot) throw new Error("Cross-process Session deletion test requires the repository test runtime")
     await using project = await memoryProject()
@@ -23,7 +23,7 @@ describe("cross-process standalone Session deletion cleanup", () => {
     const worker = path.join(import.meta.dir, "fixture", "session-deletion-cleanup-process-worker.ts")
     const environment = { ...process.env, OPENCORVUS_HOME: runtime }
     const children: ReturnType<typeof Bun.spawn>[] = []
-    const spawn = (mode: "init" | "hold" | "recover", sessionID = "-") => {
+    const spawn = (mode: "init" | "hold" | "hold-committed" | "recover", sessionID = "-") => {
       const child = Bun.spawn(
         [
           process.execPath,
@@ -68,14 +68,14 @@ describe("cross-process standalone Session deletion cleanup", () => {
     try {
       const initialized = await read(spawn("init"))
       const sessionID = initialized.sessionID!
-      owner = spawn("hold", sessionID)
+      owner = spawn(ownerMode, sessionID)
       await waitForReady()
 
       expect(await read(spawn("recover", sessionID))).toEqual({
         recovery: { unreconciled: [] },
         sourcePresent: false,
         quarantinePresent: true,
-        sessionPresent: true,
+        sessionPresent: ownerMode === "hold",
         activeManifests: [expect.stringMatching(/^cal_.*\.json$/)],
       })
 
@@ -85,9 +85,9 @@ describe("cross-process standalone Session deletion cleanup", () => {
 
       expect(await read(spawn("recover", sessionID))).toEqual({
         recovery: { unreconciled: [] },
-        sourcePresent: true,
+        sourcePresent: ownerMode === "hold",
         quarantinePresent: false,
-        sessionPresent: true,
+        sessionPresent: ownerMode === "hold",
         activeManifests: [],
       })
     } finally {

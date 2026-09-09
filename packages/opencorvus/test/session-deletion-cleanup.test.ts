@@ -25,7 +25,8 @@ import {
 } from "@/session/deletion-cleanup"
 import { SessionTable } from "@/session/session.sql"
 import { Database } from "@/storage/db"
-import { EngineService } from "@/task-api"
+import { EngineService, SessionDeletionInProgressError } from "@/task-api"
+import { currentControlLeaseInTransaction } from "@/engine/control-lease"
 import { observeRuntimeProcessOccurrence, replaceRuntimeOccurrenceIDForTest } from "@/runtime/process-occurrence"
 import { createRightSidebarConversationSession } from "@/chat/session"
 import { createPanelUIRequestToolContext, PanelTool } from "@/tool/panel"
@@ -1148,6 +1149,80 @@ describe("standalone Session deletion cleanup", () => {
     })
   }, 60_000)
 
+  test("authorizes pending cleanup before public replay claims its retained operation", async () => {
+    await using project = await memoryProject("cleanup-request-owner")
+    await using other = await memoryProject("cleanup-request-other")
+    const pending = await Instance.provide({ directory: project.path, fn: async () => {
+      const session = await createRightSidebarConversationSession("chat")
+      const source = ProjectRuntimePaths.rootSessionRuntimeRoot(session.directory, session.id)
+      await fs.mkdir(source, { recursive: true })
+      await fs.writeFile(path.join(source, "pending.txt"), "authorized recovery bytes")
+      using failure = SessionDeletionCleanupTestHooks.installBeforeCommittedTargetCleanup(() => {
+        throw new Error("retain cleanup for authorization inspection")
+      })
+      const deletion = await EngineService.deleteSession(session.id, { projectID: session.projectID })
+      expect(deletion.status).toBe("physically_deleted_with_residue")
+      return { session, deletion }
+    } })
+    const manifestPath = path.join(SessionDeletionCleanupTestHooks.activeRoot(), `${pending.deletion.cleanupOperationID}.json`)
+    const retainedState = async () => ({
+      bytes: await fs.readFile(path.join(pending.deletion.residue[0]!.path, "pending.txt"), "utf8"),
+      manifest: await fs.readFile(manifestPath, "utf8"),
+      lease: Database.use((db) => currentControlLeaseInTransaction(db, "session_deletion", pending.session.id)),
+    })
+    const expected = await retainedState()
+    for (const request of [
+      { route: `/session/${pending.session.id}`, directory: other.path },
+      { route: `/coding/work/session/${pending.session.id}`, directory: project.path },
+    ]) {
+      const response = await Server.App().request(request.route, {
+        method: "DELETE", headers: { "x-opencorvus-directory": request.directory },
+      })
+      expect({ status: response.status, retained: await retainedState() }).toEqual({ status: 404, retained: expected })
+    }
+    const response = await Server.App().request(`/coding/chat/session/${pending.session.id}`, {
+      method: "DELETE", headers: { "x-opencorvus-directory": project.path },
+    })
+    expect({ status: response.status, body: await response.json() }).toMatchObject({
+      status: 200, body: { status: "physically_deleted", sessionID: pending.session.id, residue: [] },
+    })
+  }, 30_000)
+  test("retains committed cleanup authority until physical completion and then replays the result", async () => {
+    await using project = await memoryProject("cleanup-owner")
+    await using independentProject = await memoryProject("cleanup-independent")
+    await Instance.provide({ directory: project.path, fn: async () => {
+      const session = await Session.create({ kind: "root", title: "Committed cleanup authority" })
+      const source = ProjectRuntimePaths.rootSessionRuntimeRoot(session.directory, session.id)
+      await fs.mkdir(source, { recursive: true })
+      await fs.writeFile(path.join(source, "owned.txt"), "one cleanup owner")
+      let entered!: () => void
+      let release!: () => void
+      const ready = new Promise<void>((resolve) => { entered = resolve })
+      const gate = new Promise<void>((resolve) => { release = resolve })
+      let ownedTarget: string | undefined
+      using hook = SessionDeletionCleanupTestHooks.installBeforeCommittedTargetCleanup(async (target) => {
+        if (ownedTarget && target !== ownedTarget) return
+        ownedTarget = target
+        entered()
+        await gate
+      })
+      const first = EngineService.deleteSession(session.id, { projectID: session.projectID })
+      const deadline = setTimeout(release, 10_000)
+      try {
+        await ready
+        await expect(EngineService.deleteSession(session.id, { projectID: session.projectID }))
+          .rejects.toBeInstanceOf(SessionDeletionInProgressError)
+        const independentResult = await Instance.provide({ directory: independentProject.path, fn: async () => {
+          const independent = await Session.create({ kind: "root", title: "Independent cleanup" })
+          return EngineService.deleteSession(independent.id, { projectID: independent.projectID })
+        } })
+        expect(independentResult).toMatchObject({ status: "physically_deleted", residue: [] })
+      } finally { clearTimeout(deadline); release() }
+      const completed = await first
+      expect(completed).toMatchObject({ status: "physically_deleted", sessionID: session.id, residue: [] })
+      expect(await EngineService.deleteSession(session.id, { projectID: session.projectID })).toEqual(completed)
+    } })
+  }, 30_000)
   test("returns one committed disposition to concurrent callers of the same physical deletion occurrence", async () => {
     await using project = await memoryProject()
     await Instance.provide({
