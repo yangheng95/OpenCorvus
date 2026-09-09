@@ -20,7 +20,7 @@
   <a href="https://opencorvus.com"><img alt="Documentation" src="https://img.shields.io/badge/docs-opencorvus.com-111310?style=for-the-badge&logo=readthedocs&logoColor=white" /></a>
   <a href="https://bun.sh"><img alt="Runtime: Bun" src="https://img.shields.io/badge/runtime-Bun%201.3-111310?style=for-the-badge&logo=bun&logoColor=white" /></a>
   <img alt="87 model providers" src="https://img.shields.io/badge/model%20providers-87-2946d3?style=for-the-badge" />
-  <img alt="119 expert squads" src="https://img.shields.io/badge/expert%20squads-119-2946d3?style=for-the-badge" />
+  <a href="https://opencorvus.com/market/"><img alt="Explore expert squads" src="https://img.shields.io/badge/expert%20squads-explore-2946d3?style=for-the-badge" /></a>
   <img alt="13 chat channels" src="https://img.shields.io/badge/chat%20channels-13-2946d3?style=for-the-badge" />
 </p>
 
@@ -48,7 +48,7 @@ inside a harness that loses task state still stops short.
 OpenCorvus is that harness, already assembled, and aimed at work that runs long. It ships
 a streaming agent loop across five primary roles, 43 built-in tools, a catalog of 87 model
 providers, orchestration that survives a restart, a durable permission authority, project
-and session memory, automatic context compaction, and 119 inspectable Expert Squads.
+and session memory, automatic context compaction, and [inspectable Expert Squads](https://opencorvus.com/market/).
 Before an Agent can run, you explicitly select a model and configure a reachable provider;
 the catalog is capability metadata, not a hidden default credential or model fallback.
 
@@ -188,7 +188,7 @@ and returns the target to a revision that receipt itself witnessed. See
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Model providers** | A bundled catalog resolves 87 providers and 2,579 models, including local runtimes; running an Agent requires an explicitly selected model and configured reachable provider. |
 | **Tools**           | 43 built-in tools, with Browser and Computer control available as default capability blocks.                                                                                  |
-| **Expert Squads**   | 119 in the public catalog — 4 embedded and ready immediately, 115 importable.                                                                                                 |
+| **Expert Squads**   | Browse the [public catalog](https://opencorvus.com/market/) for ready-to-use embedded squads and importable packages.                                                                                                 |
 | **Agent roles**     | Five primary roles: `coding`, `chat`, `work`, `control`, and `mission`.                                                                                                       |
 | **Chat channels**   | Slack, Discord, Telegram, Feishu, DingTalk, WeCom, WhatsApp, Line, Signal, Matrix, Mattermost, Microsoft Teams, and Google Chat.                                              |
 | **Surfaces**        | Desktop application, HTTP API with Server-Sent Events (SSE), and scheduled automation.                                                                                        |
@@ -205,7 +205,7 @@ Every layer ships as part of the harness and is a configuration surface. Actual 
 | **Context**           | Automatic compaction and per-turn context budgeting keep long runs inside the window.                | model and budget configuration         |
 | **Memory**            | Project and session memory with search, organization, and explicit injection.                        | `instructions`, memory configuration   |
 | **Permission**        | Every side effect passes one durable allow / ask / deny authority before it runs.                    | `permission` rules, shell scope        |
-| **Expert Squads**     | 119 inspectable squads; a Task pins one exact revision and cannot silently switch it.                | `expert_squads`, author your own       |
+| **Expert Squads**     | Inspectable squads in the [public catalog](https://opencorvus.com/market/); a Task pins one exact revision and cannot silently switch it.                | `expert_squads`, author your own       |
 | **Durable execution** | Process leases, an event log, and a reconciler resume owned work after a restart.                    | Platform guarantee                     |
 | **Verification**      | Integrity review, fact-checking, and visual QA run as named stages.                                  | acceptance configuration               |
 | **Evidence**          | Host observations record file changes and command results apart from any agent summary.              | Platform guarantee                     |

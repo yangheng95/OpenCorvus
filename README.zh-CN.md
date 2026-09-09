@@ -20,7 +20,7 @@
   <a href="https://opencorvus.com/zh-cn/"><img alt="文档" src="https://img.shields.io/badge/docs-opencorvus.com-111310?style=for-the-badge&logo=readthedocs&logoColor=white" /></a>
   <a href="https://bun.sh"><img alt="运行时：Bun" src="https://img.shields.io/badge/runtime-Bun%201.3-111310?style=for-the-badge&logo=bun&logoColor=white" /></a>
   <img alt="87 个模型供应商" src="https://img.shields.io/badge/model%20providers-87-2946d3?style=for-the-badge" />
-  <img alt="119 个专家团" src="https://img.shields.io/badge/expert%20squads-119-2946d3?style=for-the-badge" />
+  <a href="https://opencorvus.com/zh-cn/market/"><img alt="浏览专家团目录" src="https://img.shields.io/badge/expert%20squads-explore-2946d3?style=for-the-badge" /></a>
   <img alt="13 个聊天渠道" src="https://img.shields.io/badge/chat%20channels-13-2946d3?style=for-the-badge" />
 </p>
 
@@ -46,7 +46,7 @@
 
 OpenCorvus 就是这样一套已经组装好、面向长程工作的 Harness。它随包提供覆盖五个主要
 角色的流式 Agent 循环、43 个内置工具、87 个模型供应商的目录、可在重启后恢复的编排、
-持久化的权限授权、项目与会话记忆、自动上下文压缩，以及 119 个可检查专家团。Agent
+持久化的权限授权、项目与会话记忆、自动上下文压缩，以及 [可检查的专家团](https://opencorvus.com/zh-cn/market/)。Agent
 真正开始工作前，必须显式选择模型并配置一个可访问的供应商；目录是能力元数据，不是
 隐藏的默认凭据或模型 fallback（后备路径）。
 
@@ -167,7 +167,7 @@ OpenCorvus 不会在后台改自己的专家团：这里没有自主重写循环
 | -------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **模型供应商** | 内置目录解析 87 个供应商、2,579 个模型并支持本地运行时；运行 Agent 前必须显式选择模型并配置可访问的供应商。                |
 | **工具**       | 43 个内置工具，浏览器与计算机控制作为默认能力块提供。                                                                      |
-| **专家团**     | 公开目录中共 119 个 —— 4 个已内置可直接使用，115 个可导入。                                                                |
+| **专家团**     | 在[公开目录](https://opencorvus.com/zh-cn/market/)查看已内置可用的专家团和可导入的资源包。                                                                |
 | **Agent 角色** | 五个主要角色：`coding`、`chat`、`work`、`control`、`mission`。                                                             |
 | **聊天渠道**   | Slack、Discord、Telegram、飞书、钉钉、企业微信、WhatsApp、Line、Signal、Matrix、Mattermost、Microsoft Teams、Google Chat。 |
 | **接入界面**   | 桌面应用、带服务器发送事件（SSE）的 HTTP API，以及定时自动化。                                                             |
@@ -184,7 +184,7 @@ OpenCorvus 不会在后台改自己的专家团：这里没有自主重写循环
 | **上下文**     | 自动压缩与逐轮上下文预算，让长程运行始终留在窗口内。                 | 模型与预算配置                       |
 | **记忆**       | 项目与会话记忆，具备检索、组织与显式注入能力。                       | `instructions`、记忆配置             |
 | **权限**       | 每一次副作用执行前，都要经过一道持久化的允许／询问／拒绝授权。       | `permission` 规则、shell 作用域      |
-| **专家团**     | 119 个可检查的专家团；任务锁定一个精确版本，不会静默切换。           | `expert_squads`、自行编写            |
+| **专家团**     | [公开目录](https://opencorvus.com/zh-cn/market/)中的可检查专家团；任务锁定一个精确版本，不会静默切换。           | `expert_squads`、自行编写            |
 | **持久化执行** | 进程租约、事件日志与协调器，在重启后恢复已归属的工作。               | 平台保证                             |
 | **校验**       | 完整性复核、事实核查与视觉 QA 作为具名阶段运行。                     | 验收配置                             |
 | **证据**       | 宿主观测独立记录文件变更与命令结果，不依赖 Agent 的自述总结。        | 平台保证                             |
