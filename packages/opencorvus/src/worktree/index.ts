@@ -1,6 +1,6 @@
 import { $ } from "bun"
 import { createHash, randomUUID } from "node:crypto"
-import fsSync from "node:fs"
+import fsSync, { type BigIntStats } from "node:fs"
 import fs from "fs/promises"
 import path from "path"
 import z from "zod"
@@ -1127,14 +1127,12 @@ export namespace Worktree {
 
   export const ManagedRemovalPlan = z
     .object({
-      version: z.literal(2),
+      version: z.literal(3),
       projectID: z.string().min(1),
       projectGeneration: z.string().uuid(),
       primaryDirectory: z.string().min(1),
       directoryKey: z.string().min(1),
-      device: z.number(),
-      inode: z.number(),
-      birthtimeMs: z.number(),
+      ...ProjectDirectoryAdmission.PhysicalOccurrence.shape,
       authority: z.discriminatedUnion("kind", [
         z
           .object({
@@ -1155,9 +1153,7 @@ export namespace Worktree {
       matchedSandboxes: z.array(
         z.object({
           directory: z.string(),
-          device: z.number(),
-          inode: z.number(),
-          birthtimeMs: z.number(),
+          ...ProjectDirectoryAdmission.PhysicalOccurrence.shape,
           symbolicLink: z.boolean(),
         }),
       ),
@@ -1212,13 +1208,13 @@ export namespace Worktree {
   }
 
   function matchesAliasOccurrence(
-    current: Awaited<ReturnType<typeof fs.lstat>>,
+    current: BigIntStats,
     alias: ManagedRemovalPlan["matchedSandboxes"][number],
   ): boolean {
     return (
-      current.dev === alias.device &&
-      current.ino === alias.inode &&
-      current.birthtimeMs === alias.birthtimeMs &&
+      String(current.dev) === alias.device &&
+      String(current.ino) === alias.inode &&
+      String(current.birthtimeNs) === alias.birthtimeNs &&
       current.isSymbolicLink() === alias.symbolicLink
     )
   }
@@ -1232,15 +1228,15 @@ export namespace Worktree {
     for (const [index, alias] of identity.matchedSandboxes.entries()) {
       if (!alias.symbolicLink || Project.samePath(alias.directory, targetDirectory)) continue
       const quarantine = aliasQuarantine(identity, alias.directory, index)
-      let source: Awaited<ReturnType<typeof fs.lstat>> | undefined
-      let retained: Awaited<ReturnType<typeof fs.lstat>> | undefined
+      let source: BigIntStats | undefined
+      let retained: BigIntStats | undefined
       try {
-        source = await fs.lstat(alias.directory)
+        source = await fs.lstat(alias.directory, { bigint: true })
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
       }
       try {
-        retained = await fs.lstat(quarantine)
+        retained = await fs.lstat(quarantine, { bigint: true })
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
       }
@@ -1250,7 +1246,7 @@ export namespace Worktree {
       if (source) {
         await afterSandboxAliasObservation?.(alias.directory)
         await Filesystem.renameDurableNoReplace(alias.directory, quarantine)
-        retained = await fs.lstat(quarantine)
+        retained = await fs.lstat(quarantine, { bigint: true })
       }
       if (!retained) continue
       if (!matchesAliasOccurrence(retained, alias)) {
@@ -1336,12 +1332,12 @@ export namespace Worktree {
         ) {
           continue
         }
-        const alias = await fs.lstat(sandbox)
+        const alias = await fs.lstat(sandbox, { bigint: true })
         matchedSandboxes.push({
           directory: sandbox,
-          device: alias.dev,
-          inode: alias.ino,
-          birthtimeMs: alias.birthtimeMs,
+          device: String(alias.dev),
+          inode: String(alias.ino),
+          birthtimeNs: String(alias.birthtimeNs),
           symbolicLink: alias.isSymbolicLink(),
         })
       }
@@ -1351,14 +1347,14 @@ export namespace Worktree {
         })
       }
       return ManagedRemovalPlan.parse({
-        version: 2,
+        version: 3,
         projectID,
         projectGeneration: projectOccurrence.generation,
         primaryDirectory,
         directoryKey: await ProjectDirectoryAdmission.key(input.directory),
         device: occurrence.device,
         inode: occurrence.inode,
-        birthtimeMs: occurrence.birthtimeMs,
+        birthtimeNs: occurrence.birthtimeNs,
         authority:
           input.authority === "project_delete"
             ? { kind: "project_delete" }
@@ -1481,7 +1477,7 @@ export namespace Worktree {
       (occurrence !== undefined &&
         (removalIdentity.device !== occurrence.device ||
           removalIdentity.inode !== occurrence.inode ||
-          removalIdentity.birthtimeMs !== occurrence.birthtimeMs))
+          removalIdentity.birthtimeNs !== occurrence.birthtimeNs))
     ) {
       return { directory: input.directory, removed: false, proof: "owned" }
     }
@@ -2846,12 +2842,10 @@ export namespace Worktree {
   }
 
   const ResetOperationIdentity = z.object({
-    version: z.literal(1),
+    version: z.literal(2),
     projectID: z.string().min(1),
     directoryKey: z.string().min(1),
-    device: z.number(),
-    inode: z.number(),
-    birthtimeMs: z.number(),
+    ...ProjectDirectoryAdmission.PhysicalOccurrence.shape,
     branch: z.string(),
     requestedRef: z.string().min(1),
     targetCommit: z.string().regex(/^[0-9a-f]{40,64}$/),
@@ -2901,7 +2895,7 @@ export namespace Worktree {
       persistedReset.directoryKey === directoryIdentity.key &&
       persistedReset.device === occurrence.device &&
       persistedReset.inode === occurrence.inode &&
-      persistedReset.birthtimeMs === occurrence.birthtimeMs &&
+      persistedReset.birthtimeNs === occurrence.birthtimeNs &&
       persistedReset.requestedRef === requestedRef
     const resetPlan = await resolveResetPlan({
       directory,
@@ -2913,12 +2907,12 @@ export namespace Worktree {
       persistedReset.branch === resetPlan.branch &&
       persistedReset.targetCommit === resetPlan.targetCommit
     const operationIdentity: ResetOperationIdentity = {
-      version: 1,
+      version: 2,
       projectID,
       directoryKey: directoryIdentity.key,
       device: occurrence.device,
       inode: occurrence.inode,
-      birthtimeMs: occurrence.birthtimeMs,
+      birthtimeNs: occurrence.birthtimeNs,
       branch: resetPlan.branch,
       requestedRef,
       targetCommit: resetPlan.targetCommit,

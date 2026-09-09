@@ -676,11 +676,11 @@ terminal poll 的 I/O rejection 被计数并在 waiter 边界转换为固定 dur
 canonical terminal。若 durable state 的 scoped Project row 已删除，broker 以 exact occurrence CAS 结算：pending 发布 `revoked`，
 finishing 发布 `exchange_uncertain`，并直接投影该 terminal；listener、本地 waiter 与 peer waiter 不等待 timeout。credential retirement 保留 terminal-only tombstone 时为每个 key
 预生成新的 revision；atomic rename 的 ambiguous catch 只有重读到 exact absent/tombstone footprint 才能视为提交，旧 revision 不能
-在 pre-rename failure 后复活 credential。Project 删除在 SQLite commit 前耐久发布唯一 v5 active cleanup manifest；该 manifest 冻结
+在 pre-rename failure 后复活 credential。Project 删除在 SQLite commit 前耐久发布唯一 v6 active cleanup manifest；该 manifest 冻结
 Project generation、ordinary/anonymous kind、完整 `[worktree,...sandboxes]` logical/physical directory identity 与有序 target。ordinary
 Project 的每个 target 仅为该 registered directory 下的 `.opencorvus/.r` runtime root，用户维护的 `.opencorvus` configuration 保留；
 只有 anonymous carrying Project 删除其唯一专属 root。重复或物理 alias/overlap 在首次 quarantine 前失败，multi-target rollback 逆序恢复。
-每个 target 同时冻结 device/inode/birth occurrence，并在第一次 namespace mutation 前取得同一 operation 的 durable directory admission；
+每个 target 同时冻结从 bigint stat 取得的十进制字符串 device/inode/birthtimeNs occurrence，并在第一次 namespace mutation 前取得同一 operation 的 durable directory admission；
 ordinary 与 anonymous target 都必须在 rename 后、rollback 后和 startup recovery 时重读 exact source/quarantine occurrence。rename 已生效但
 directory metadata sync 失败时只按该重读事实收敛，不能把 `ENOENT` 当作独立成功证据。rollback 未完全恢复时，active manifest、全部
 directory admission 与 Project maintenance fence 一起保留；startup 先验证完整 worktree/sandboxes snapshot，再恢复并统一释放。

@@ -13,20 +13,13 @@ import type { RuntimeProcessOccurrenceObserver } from "@/runtime/process-occurre
 import { ImplicitProject } from "./implicit-project"
 import { ProjectRuntimePaths } from "./runtime-paths"
 import { McpAuth } from "@/mcp/auth"
-import { projectDeletionCleanupRoot } from "./deletion-cleanup-admission"
+import { PROJECT_DELETION_CLEANUP_FORMAT, projectDeletionCleanupRoot } from "./deletion-cleanup-admission"
 import { ProjectDirectoryAdmission } from "./directory-admission"
-
-const DirectoryOccurrence = z.object({
-  directoryKey: z.string().min(1),
-  device: z.number().finite(),
-  inode: z.number().finite(),
-  birthtimeMs: z.number().finite(),
-})
 
 const CleanupTarget = z.object({
   source: z.string().min(1),
   quarantine: z.string().min(1),
-  occurrence: DirectoryOccurrence.nullable(),
+  occurrence: ProjectDirectoryAdmission.DirectoryOccurrence.nullable(),
 })
 
 const RegisteredDirectory = z.object({
@@ -35,7 +28,7 @@ const RegisteredDirectory = z.object({
 })
 
 const CleanupManifest = z.object({
-  format: z.literal("opencorvus.project-deletion-cleanup.v5"),
+  format: z.literal(PROJECT_DELETION_CLEANUP_FORMAT),
   operationID: z.string().uuid(),
   databaseInstanceID: z.string().uuid(),
   projectID: z.string().min(1),
@@ -47,12 +40,26 @@ const CleanupManifest = z.object({
   timeCreated: z.number().int().nonnegative(),
 })
 
+// A completed receipt is historical evidence, not authority to interpret old
+// numeric filesystem identities. Only its immutable envelope is projected.
+const CompletedNumericReceipt = CleanupManifest.pick({
+  operationID: true,
+  databaseInstanceID: true,
+  projectID: true,
+  projectGeneration: true,
+}).extend({ format: z.literal("opencorvus.project-deletion-cleanup.v5") })
+
 export type ProjectDeletionCleanupManifest = z.infer<typeof CleanupManifest>
 export type ProjectDeletionCleanupPlan = {
   manifest: ProjectDeletionCleanupManifest
   manifestPath: string
 }
 export type ProjectDeletionDirectoryAdmissions = ProjectDirectoryAdmission.Token[]
+
+export const ProjectDeletionCleanupFormatError = NamedError.create(
+  "ProjectDeletionCleanupFormatError",
+  z.object({ manifestPath: z.string(), received: z.string(), expected: z.string() }),
+)
 
 export class ProjectDeletionDirectoryAdmissionRollbackError extends AggregateError {
   override readonly name = "ProjectDeletionDirectoryAdmissionRollbackError"
@@ -114,7 +121,7 @@ function samePhysicalOccurrence(
   left: ProjectDirectoryAdmission.DirectoryOccurrence,
   right: ProjectDirectoryAdmission.DirectoryOccurrence,
 ): boolean {
-  return left.device === right.device && left.inode === right.inode && left.birthtimeMs === right.birthtimeMs
+  return left.device === right.device && left.inode === right.inode && left.birthtimeNs === right.birthtimeNs
 }
 
 async function captureRegisteredDirectories(input: {
@@ -327,6 +334,14 @@ function parseManifest(
   manifestPath: string,
   state: "active" | "completed",
 ): ProjectDeletionCleanupManifest {
+  const received = typeof value === "object" && value && "format" in value ? String(value.format) : "missing"
+  if (received !== PROJECT_DELETION_CLEANUP_FORMAT) {
+    throw new ProjectDeletionCleanupFormatError({
+      manifestPath,
+      received,
+      expected: PROJECT_DELETION_CLEANUP_FORMAT,
+    })
+  }
   const manifest = CleanupManifest.parse(value)
   validateManifest(manifest)
   const root = state === "active" ? projectDeletionCleanupRoot() : completedCleanupRoot(manifest.databaseInstanceID)
@@ -411,7 +426,7 @@ export async function createProjectDeletionCleanupPlan(input: {
     }),
   )
   const manifest = CleanupManifest.parse({
-    format: "opencorvus.project-deletion-cleanup.v5",
+    format: PROJECT_DELETION_CLEANUP_FORMAT,
     operationID,
     databaseInstanceID: Database.Identity(),
     projectID: input.projectID,
@@ -599,7 +614,22 @@ async function recoverManifest(
     if (state === "active" && (code === "ENOENT" || code === "ENOTDIR")) return
     throw error
   }
-  const manifest = parseManifest(JSON.parse(serialized), manifestPath, state)
+  const value: unknown = JSON.parse(serialized)
+  if (
+    state === "completed" &&
+    typeof value === "object" &&
+    value &&
+    "format" in value &&
+    value.format === CompletedNumericReceipt.shape.format.value
+  ) {
+    const receipt = CompletedNumericReceipt.parse(value)
+    const expectedPath = path.join(completedCleanupRoot(receipt.databaseInstanceID), `${receipt.operationID}.json`)
+    if (!samePath(manifestPath, expectedPath)) {
+      throw new Error(`Completed Project deletion receipt path does not match operation ${receipt.operationID}`)
+    }
+    return
+  }
+  const manifest = parseManifest(value, manifestPath, state)
   const currentDatabaseInstanceID = Database.Identity()
   if (state === "active" && currentDatabaseInstanceID !== manifest.databaseInstanceID) {
     throw new ProjectDeletionCleanupDatabaseMismatchError({

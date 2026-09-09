@@ -13,7 +13,7 @@ const KIND_PREFIX = "project-worktree-deletion"
 
 const Payload = z
   .object({
-    version: z.literal(2),
+    version: z.literal(3),
     databaseInstanceID: z.string().uuid(),
     projectID: z.string().min(1),
     projectGeneration: z.string().uuid(),
@@ -67,13 +67,13 @@ function occurrenceID(input: {
   projectID: string
   projectGeneration: string
   directoryKey: string
-  removal: Pick<Worktree.ManagedRemovalPlan, "device" | "inode" | "birthtimeMs">
+  removal: Pick<Worktree.ManagedRemovalPlan, "device" | "inode" | "birthtimeNs">
 }): string {
   return createHash("sha256")
     .update(
-      `project-worktree-deletion-v2\0${input.databaseInstanceID}\0${input.projectID}\0` +
+      `project-worktree-deletion-v3\0${input.databaseInstanceID}\0${input.projectID}\0` +
         `${input.projectGeneration}\0${input.directoryKey}\0${input.removal.device}\0` +
-        `${input.removal.inode}\0${input.removal.birthtimeMs}`,
+        `${input.removal.inode}\0${input.removal.birthtimeNs}`,
     )
     .digest("hex")
     .slice(0, 40)
@@ -200,7 +200,7 @@ export namespace ProjectWorktreeDeletion {
             (entry) =>
               entry.removal.device === observed.device &&
               entry.removal.inode === observed.inode &&
-              entry.removal.birthtimeMs === observed.birthtimeMs,
+              entry.removal.birthtimeNs === observed.birthtimeNs,
           )
         : []
       if (exact.length > 1) {
@@ -234,12 +234,12 @@ export namespace ProjectWorktreeDeletion {
         removal.directoryKey !== directoryKey ||
         removal.device !== observed.device ||
         removal.inode !== observed.inode ||
-        removal.birthtimeMs !== observed.birthtimeMs
+        removal.birthtimeNs !== observed.birthtimeNs
       ) {
         throw new Error(`Project worktree deletion occurrence changed during frozen intent capture: ${input.directory}`)
       }
       const payload = Payload.parse({
-        version: 2,
+        version: 3,
         databaseInstanceID,
         projectID: input.projectID,
         projectGeneration: input.projectGeneration,

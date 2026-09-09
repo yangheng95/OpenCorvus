@@ -41,7 +41,7 @@ const CreatePayload = z
 
 const DeletePayload = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
     lifecycle: z.literal("deleting"),
     databaseInstanceID: z.string().uuid(),
     projectID: z.string().min(1),
@@ -423,7 +423,7 @@ export namespace WorkspaceLifecycle {
   }): Promise<DeleteEntry> {
     const databaseInstanceID = currentDatabaseIdentity()
     const payload = DeletePayload.parse({
-      version: 1,
+      version: 2,
       lifecycle: "deleting",
       databaseInstanceID,
       projectID: input.workspace.projectID,

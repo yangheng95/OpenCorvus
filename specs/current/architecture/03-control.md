@@ -55,6 +55,14 @@ removal plan，之后每次 retry 都校验相同 Project generation、directory
 target 与 sandbox authority。identity drift 返回 typed conflict，未完整的外部阶段返回 typed pending；
 不存在 catch-only rollback、随机重建或 registry-prune 后丢弃 branch authority 的成功路径。
 
+Directory occurrence 的 device、inode 和 birthtimeNs 使用 bigint stat 的规范十进制字符串，序列化不得经过 Number。
+ManagedRemovalPlan v3、reset operation v2、Project worktree deletion payload v3 与 Workspace delete payload v2
+使用这一精确身份；scope/discovery namespace 保持稳定，使已有 journal 和 frontier 继续可见。旧数值格式不提供
+当前 mutation authority，也不通过重采样或转字符串升级。其解析错误保留原 journal/frontier；Workspace recovery
+可能因此拒绝启动恢复。Project child 的已 committed 旧回执也在同一 scope 内解析，可能阻止同路径重建后的
+新 child 删除；仅结算旧操作不足以解除升级障碍。旧历史回执的安全整理尚未交付，包含这些记录的现有安装
+不得直接升级此格式。operator 必须根据独立证据处理，不能自动丢弃旧所有权。
+
 Workspace create 在 journal/Git 之前写入 transaction-local lifecycle admission，并一直持有到 lifecycle
 terminal。Project deletion 关闭 registry admission 的同一 immediate transaction 必须证明该 Project 没有
 Workspace create admission；Project identity convergence 也必须保留其 exact Project occurrence。恢复只在

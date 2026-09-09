@@ -63,12 +63,13 @@ export namespace ProjectDirectoryAdmission {
     occurrence?: DirectoryOccurrence
   }
 
-  export type DirectoryOccurrence = {
-    directoryKey: string
-    device: number
-    inode: number
-    birthtimeMs: number
-  }
+  export const PhysicalOccurrence = z.object({
+    device: z.string().regex(/^(0|[1-9][0-9]*)$/),
+    inode: z.string().regex(/^(0|[1-9][0-9]*)$/),
+    birthtimeNs: z.string().regex(/^(0|-?[1-9][0-9]*)$/),
+  })
+  export const DirectoryOccurrence = PhysicalOccurrence.extend({ directoryKey: z.string().min(1) })
+  export type DirectoryOccurrence = z.infer<typeof DirectoryOccurrence>
 
   export function current(): Token | undefined {
     return tokenContext.getStore()
@@ -169,9 +170,9 @@ export namespace ProjectDirectoryAdmission {
   }
 
   export async function observeDirectory(directory: string): Promise<DirectoryOccurrence> {
-    const [directoryKey, info] = await Promise.all([key(directory), fs.stat(directory)])
+    const [directoryKey, info] = await Promise.all([key(directory), fs.stat(directory, { bigint: true })])
     if (!info.isDirectory()) throw new Error(`Project directory is not a directory: ${directory}`)
-    return { directoryKey, device: info.dev, inode: info.ino, birthtimeMs: info.birthtimeMs }
+    return { directoryKey, device: String(info.dev), inode: String(info.ino), birthtimeNs: String(info.birthtimeNs) }
   }
 
   export function sameOccurrence(left: DirectoryOccurrence, right: DirectoryOccurrence): boolean {
@@ -179,7 +180,7 @@ export namespace ProjectDirectoryAdmission {
       left.directoryKey === right.directoryKey &&
       left.device === right.device &&
       left.inode === right.inode &&
-      left.birthtimeMs === right.birthtimeMs
+      left.birthtimeNs === right.birthtimeNs
     )
   }
 

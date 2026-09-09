@@ -849,7 +849,7 @@ describe("Workspace durable lifecycle", () => {
       directory: project.path,
       fn: () => Worktree.create({ name }),
     })
-    const secondOccurrence = await fs.stat(second.directory)
+    const secondOccurrence = await fs.stat(second.directory, { bigint: true })
     {
       using cut = ProjectDeleteTestHooks.replaceBeforeDatabaseCommit(() => {
         throw new Error("crash after second managed-child terminal receipt")
@@ -866,13 +866,13 @@ describe("Workspace durable lifecycle", () => {
     }
     expect(await Filesystem.exists(second.directory)).toBe(false)
 
-    let replayedOccurrence: { device: number; inode: number; birthtimeMs: number } | undefined
+    let replayedOccurrence: { device: string; inode: string; birthtimeNs: string } | undefined
     let frontierCount = 0
     using observe = ProjectWorktreeDeletion.TestHooks.installBeforeCommit((entry) => {
       replayedOccurrence = {
         device: entry.removal.device,
         inode: entry.removal.inode,
-        birthtimeMs: entry.removal.birthtimeMs,
+        birthtimeNs: entry.removal.birthtimeNs,
       }
     })
     using frontier = ProjectWorktreeDeletion.TestHooks.installAfterFrontierQuery((query) => {
@@ -889,9 +889,9 @@ describe("Workspace durable lifecycle", () => {
       retry: expect.objectContaining({ ok: true, status: "committed", projectID: current.id }),
       project: undefined,
       replayedOccurrence: {
-        device: secondOccurrence.dev,
-        inode: secondOccurrence.ino,
-        birthtimeMs: secondOccurrence.birthtimeMs,
+        device: String(secondOccurrence.dev),
+        inode: String(secondOccurrence.ino),
+        birthtimeNs: String(secondOccurrence.birthtimeNs),
       },
       frontierCount: 1,
     })
