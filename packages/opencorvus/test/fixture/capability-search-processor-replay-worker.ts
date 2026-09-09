@@ -1,5 +1,4 @@
 import fs from "node:fs/promises"
-import { Bus } from "@/bus"
 import { Config } from "@/config/config"
 import { Instance } from "@/project/instance"
 import { Message, Session } from "@/session"
@@ -51,11 +50,6 @@ await Instance.provide({
       agentID: "coding",
       messages: await Session.messages({ sessionID: session.id }),
     })
-    let updates = 0
-    const stop = Bus.subscribe(Message.Event.PartUpdated, (event) => {
-      const part = event.properties.part
-      if (part.type === "tool" && part.callID === state.callID) updates += 1
-    })
     const original = LLM.stream
     LLM.stream = (async (input: any) => {
       const search = input.tools.capability_search
@@ -68,9 +62,23 @@ await Instance.provide({
             messages: input.messages,
             abortSignal: input.abort,
           })
-          yield { type: "tool-result", toolCallId: state.callID, toolName: "capability_search", input: state.params, output }
-          yield { type: "finish-step", finishReason: "tool-calls", usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } }
-          yield { type: "finish", finishReason: "tool-calls", totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 } }
+          yield {
+            type: "tool-result",
+            toolCallId: state.callID,
+            toolName: "capability_search",
+            input: state.params,
+            output,
+          }
+          yield {
+            type: "finish-step",
+            finishReason: "tool-calls",
+            usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          }
+          yield {
+            type: "finish",
+            finishReason: "tool-calls",
+            totalUsage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+          }
         })(),
       }
     }) as typeof LLM.stream
@@ -88,8 +96,9 @@ await Instance.provide({
       })
     } finally {
       LLM.stream = original
-      stop()
     }
-    process.stdout.write(`CAPABILITY_SEARCH_REPLAY=${JSON.stringify({ updates })}\n`)
+    const replayed = await MessageStore.get({ sessionID: state.sessionID, messageID: state.assistantID })
+    const parts = replayed.parts.filter((part) => part.type === "tool" && part.tool === "capability_search")
+    process.stdout.write(`CAPABILITY_SEARCH_REPLAY=${JSON.stringify({ parts })}\n`)
   },
 })

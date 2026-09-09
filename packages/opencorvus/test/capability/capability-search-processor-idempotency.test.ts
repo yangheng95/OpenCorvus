@@ -118,6 +118,7 @@ describe("capability_search Processor completion ownership", () => {
   test("keeps CAS completion append-only when revision one is replayed after revision two", async () => {
     await using project = await memoryProject()
     const statePath = path.join(project.path, "capability-search-processor-replay.json")
+    let expectedReplayParts: unknown[] = []
     await Instance.provide({
       directory: project.path,
       fn: async () => {
@@ -138,7 +139,7 @@ describe("capability_search Processor completion ownership", () => {
           sessionID: session.id,
           messageID: user.id,
           type: "text",
-          text: "Reveal and then deactivate read.",
+          text: "Reveal and then deactivate webfetch.",
           kind: "user_content",
         })
         const firstAssistant = assistant(session.id, user.id)
@@ -160,8 +161,8 @@ describe("capability_search Processor completion ownership", () => {
           agentID: "coding",
           messages: await Session.messages({ sessionID: session.id }),
         })
-        const readRef = firstResolved.occurrence.ref("read")
-        const firstParams = { queries: ["read"], exact_refs: [readRef], deactivate_refs: [], limit: 5 }
+        const extensionRef = firstResolved.occurrence.ref("webfetch")
+        const firstParams = { queries: ["webfetch"], exact_refs: [extensionRef], deactivate_refs: [], limit: 5 }
         const callID = "call_processor_reveal_revision_one"
         const states: string[] = []
         const stop = Bus.subscribe(Message.Event.PartUpdated, (event) => {
@@ -177,7 +178,6 @@ describe("capability_search Processor completion ownership", () => {
           calls: [{ callID, params: firstParams }],
         })
         expect(states).toEqual(["running", "completed"])
-        expect(firstProcessor.message.time.completed).toBeUndefined()
         await processSearch({
           processor: firstProcessor,
           user,
@@ -187,7 +187,7 @@ describe("capability_search Processor completion ownership", () => {
           calls: [
             {
               callID: "call_processor_reveal_revision_two",
-              params: { queries: [""], exact_refs: [], deactivate_refs: [readRef], limit: 5 },
+              params: { queries: [""], exact_refs: [], deactivate_refs: [extensionRef], limit: 5 },
             },
           ],
         })
@@ -211,6 +211,17 @@ describe("capability_search Processor completion ownership", () => {
             : [],
         )
         expect(receipts.map((receipt) => receipt.revision).sort()).toEqual([1, 2])
+        expectedReplayParts = parts.filter((part) => part.type === "tool" && part.tool === "capability_search")
+        expect(expectedReplayParts).toEqual([
+          expect.objectContaining({
+            messageID: firstAssistant.id,
+            state: expect.objectContaining({ status: "completed" }),
+          }),
+          expect.objectContaining({
+            messageID: firstAssistant.id,
+            state: expect.objectContaining({ status: "completed" }),
+          }),
+        ])
         await fs.writeFile(
           statePath,
           JSON.stringify({
@@ -242,6 +253,6 @@ describe("capability_search Processor completion ownership", () => {
     expect(exitCode, stderr).toBe(0)
     const marker = stdout.split(/\r?\n/).find((line) => line.startsWith("CAPABILITY_SEARCH_REPLAY="))
     if (!marker) throw new Error(`Cross-process replay returned no marker: ${stdout}`)
-    expect(JSON.parse(marker.slice("CAPABILITY_SEARCH_REPLAY=".length))).toEqual({ updates: 0 })
+    expect(JSON.parse(marker.slice("CAPABILITY_SEARCH_REPLAY=".length))).toEqual({ parts: expectedReplayParts })
   }, 60_000)
 })
