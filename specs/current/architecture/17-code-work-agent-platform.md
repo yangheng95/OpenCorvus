@@ -1219,7 +1219,7 @@ Exit criteria:
 | Mission and Orchestrator prompts | Require explicit pillar/profile per Mission Task; keep provider execution inside the fixed domain Task. |
 | new capability catalog module | Own typed-ref codec, normalized snapshot, revision, caller discovery view, and fuzzy ranking; own no mounting or execution. |
 | `ConversationCapability`, Mission Skill runtime, `PromptProfileResolver` | Publish the ephemeral Harness projection through their existing specialized ownership; do not create a generic mount Registry. |
-| `AgentToolPool` and runtime-template contracts | Remain static runtime upper bounds and declare platform base/transport Tools. Native Mission has exactly `mission_state` and `scheduler_message` in its permanent transport base; every other domain or terminal leaf remains reveal-selected. |
+| `AgentToolPool` and runtime-template contracts | Remain static runtime upper bounds and declare platform base/transport Tools. Native Mission retains `mission_state` and `scheduler_message` as transport tools; authorized routine tools are directly callable under the [routine capability contract](capability-search-runtime.md#authority-layers). Specialist and extension leaves use exact reveal under that same contract. |
 | `tool/skill.ts` and `skill/mounts.ts` | Remain exact Skill loader/projector; share indexing metadata, not loading authority. |
 | ToolRegistry/execution surface/SessionLoop | Materialize exact projected refs, then apply switches and permission narrowing; remain exact execution owner. |
 | MCP index/auth/OAuth | Publish safe metadata and auth status; remain transport/auth owner; authentication does not mount; raw transactional provider tools are not separately model-visible. |
