@@ -44,6 +44,7 @@ try {
     if (result.failure) throw new Error(`${file}: ${result.failure.message}`)
     if (result.exitCode === undefined) throw new Error(`OpenCorvus test process exited without a result for ${file}`)
     if (result.exitCode !== 0) {
+      console.error(`OpenCorvus test file failed (exit=${result.exitCode}): ${file}`)
       process.exitCode = result.exitCode
       break
     }
