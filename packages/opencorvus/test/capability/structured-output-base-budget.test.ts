@@ -109,8 +109,10 @@ test("a real structured turn admits StructuredOutput into the immutable revision
           format: {
             type: "json_schema",
             schema: {
+              $id: "https://schemas.example.test/structured-answer.json",
+              $defs: { answer: { type: "string" } },
               type: "object",
-              properties: { answer: { type: "string" } },
+              properties: { answer: { $ref: "#/$defs/answer" } },
               required: ["answer"],
               additionalProperties: false,
             },
