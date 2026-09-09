@@ -343,7 +343,10 @@ export async function resolveCoreProjectedTaskToolExecutionScope(input: {
   const expectedCapabilityRef = capabilityRef({
     kind: "tool",
     source: "platform",
-    owner_ref: "tool-registry",
+    owner_ref:
+      contract.resources.tools.kind(input.toolName) === "projected"
+        ? `runtime-projection:${identity.agentID}`
+        : "tool-registry",
     local_ref: input.toolName,
   })
   assertExactTaskToolCapabilityAuthority({

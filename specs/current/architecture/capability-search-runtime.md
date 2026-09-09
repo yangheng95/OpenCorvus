@@ -112,6 +112,12 @@ second definition owner.
 
 ## Exact materialization owners
 
+- Core projected Task tools derive their exact capability owner from the
+  installed immutable runtime factory binding: a projected leaf belongs to
+  `runtime-projection:<agentID>`, while a registry leaf belongs to
+  `tool-registry`. Artifact snapshot and worker publication validate that same
+  exact ref against executable Harness grants and the current occurrence's
+  active refs, in addition to persisted call and project/worker identity.
 - Tool Registry initializes only requested Tool IDs.
 - Native Mission re-materializes `mission_state` and `scheduler_message` from
   the current frozen Catalog and Harness on every Provider step, applies the
