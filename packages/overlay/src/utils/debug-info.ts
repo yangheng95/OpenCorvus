@@ -86,6 +86,12 @@ function taskProcessIncidents(board: any): any[] {
 }
 
 function debugProcessIncident(incident: any): string {
+  const request = incident?.streamRequest
+  const streamRequest = request
+    ? `; streamRequest.requestID=${debugText(request.requestID)}; streamRequest.agentID=${debugText(request.agentID)}; ` +
+      `streamRequest.providerID=${debugText(request.providerID)}; streamRequest.modelID=${debugText(request.modelID)}; ` +
+      `streamRequest.apiModelID=${debugText(request.apiModelID)}`
+    : ""
   const message =
     typeof incident?.message === "string" && incident.message.trim() ? `; message=${debugText(incident.message)}` : ""
   const affectedExecutions = Array.isArray(incident?.affectedExecutions)
@@ -100,7 +106,7 @@ function debugProcessIncident(incident: any): string {
     `${String(incident?.id ?? "?")}  source=${String(incident?.source ?? "?")}; session=${String(incident?.sessionID ?? "?")}; ` +
     `inputMessageID=${String(incident?.inputMessageID ?? "-")}; ` +
     `processOccurrenceID=${String(incident?.processOccurrenceID ?? "-")}; affectedExecutions=${affectedExecutions}; ` +
-    `error=${String(incident?.errorName ?? "unknown")}; emitted=${formatDebugTime(incident?.emittedAt)}${message}`
+    `error=${String(incident?.errorName ?? "unknown")}; emitted=${formatDebugTime(incident?.emittedAt)}${streamRequest}${message}`
   )
 }
 
