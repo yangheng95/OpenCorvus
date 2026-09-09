@@ -30,6 +30,7 @@ import { AGENT_COORDINATION_DECISIONS } from "@/engine/agent-coordination-decisi
 import { Identifier } from "@/id/id"
 import { MailboxAcknowledgementPayload, MailboxAgentMessagePayload } from "@/engine/mailbox-event"
 import { Message } from "@/session/message"
+import { StreamRequestIdentity } from "@/session/stream-request"
 import { PermissionDecision } from "@/permission/decision"
 import { Answer as QuestionAnswer, Request as QuestionRequest } from "@/question/types"
 import { isModelReference } from "@/provider/model-ref"
@@ -597,6 +598,7 @@ export const TaskBoardGoal = z.object({
 
 export const TaskBoardProcessIncident = z.object({
   id: z.string().min(1),
+  streamRequest: StreamRequestIdentity.optional(),
   source: z.enum(["session_stream", "execution_lifecycle", "infrastructure"]),
   sessionID: Identifier.schema("session").optional(),
   inputMessageID: Identifier.schema("message").optional(),

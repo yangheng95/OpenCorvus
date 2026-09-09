@@ -29392,6 +29392,13 @@ export type TaskBoardResponses = {
       processOccurrenceID?: string
       sessionID?: string
       source: "session_stream" | "execution_lifecycle" | "infrastructure"
+      streamRequest?: {
+        agentID: string
+        apiModelID: string
+        modelID: string
+        providerID: string
+        requestID: string
+      }
     }>
     project?: {
       id: string
@@ -31429,6 +31436,13 @@ export type TaskConversationResponses = {
         processOccurrenceID?: string
         sessionID?: string
         source: "session_stream" | "execution_lifecycle" | "infrastructure"
+        streamRequest?: {
+          agentID: string
+          apiModelID: string
+          modelID: string
+          providerID: string
+          requestID: string
+        }
       }>
       project?: {
         id: string

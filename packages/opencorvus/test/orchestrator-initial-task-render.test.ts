@@ -2,6 +2,8 @@ import { afterEach, expect, spyOn, test } from "bun:test"
 import { rejectLocalStream } from "./fixture/rejected-local-stream"
 import { listOrchestratorStreamErrorArtifacts } from "@/engine/store"
 import { Orchestrator } from "@/orchestrator/agent"
+import { compileBoard } from "@/workbench/board"
+import { TaskBoard } from "@/engine/model"
 import { Bus } from "@/bus"
 import {
   TestHooks as TaskControlTestHooks,
@@ -253,6 +255,18 @@ async function assertInitialTaskRender(streamCase: "normal" | "helper-and-primar
             { reason: "APIError: orchestrator local rejection", errorName: "APIError", sessionID: expect.any(String) },
           ])
         const task = requireTask(taskID)
+        if (streamCase === "helper-and-primary") {
+          const board = TaskBoard.parse(compileBoard({ taskID }))
+          expect(board.processIncidents.map((incident) => incident.streamRequest)).toEqual(
+            ["memory", "orchestrator"].map((agentID) => ({
+              requestID: `${agentID}-occurrence`,
+              agentID,
+              providerID: model.providerID,
+              modelID: model.modelID,
+              apiModelID: "local-wire-model",
+            })),
+          )
+        }
         const child = (await Session.children(task.session_id!)).find((session) => session.kind === "orchestrator")
         expect(child).toBeDefined()
         const messages = await Session.messages({ sessionID: child!.id })

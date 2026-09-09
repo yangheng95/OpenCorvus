@@ -41,6 +41,7 @@ import { VisualReviewArtifactPayloadSchema } from "@/visual-qa/persist"
 import { FactCheckReviewArtifactSchema } from "@/fact-check/schema"
 import { parseProcessRecoveryFactContext } from "@/engine/process-recovery-fact"
 import { MessageTable } from "@/session/session.sql"
+import { StreamRequestIdentity } from "@/session/stream-request"
 
 const BOARD_SNAPSHOT_LIMIT = 80
 const BOARD_SUMMARY_LIMIT = 4000
@@ -219,6 +220,9 @@ function taskProcessIncidents(taskID: string, executionProjection: ReturnType<ty
       id: row.eventID,
       source: "session_stream" as const,
       sessionID: row.sessionID,
+      ...(payload.streamRequest !== undefined
+        ? { streamRequest: StreamRequestIdentity.parse(payload.streamRequest) }
+        : {}),
       errorName,
       ...(message ? { message } : {}),
       ...(assistantMessageID ? { assistantMessageID } : {}),
