@@ -509,7 +509,7 @@ const copy =
   .oc-chip[aria-pressed="true"] {
     background: var(--oc-color-bg-contrast);
     border-color: transparent;
-    color: var(--oc-color-text-inverse);
+    color: var(--oc-color-bg-page);
   }
 
   .oc-note {
@@ -556,7 +556,6 @@ const copy =
   }
 
   .oc-record {
-    display: flex;
     flex-direction: column;
     gap: var(--oc-space-3);
     color: inherit;
@@ -629,8 +628,11 @@ const copy =
 
   .oc-empty {
     margin-top: var(--oc-space-5);
-    display: flex;
     flex-direction: column;
     gap: var(--oc-space-3);
+  }
+  .oc-record:not([hidden]),
+  .oc-empty:not([hidden]) {
+    display: flex;
   }
 </style>
