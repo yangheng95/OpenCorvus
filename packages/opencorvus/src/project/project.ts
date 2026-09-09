@@ -325,8 +325,8 @@ export namespace Project {
 
   async function statIdentity(value: string) {
     try {
-      const info = await stat(value)
-      if (info.ino === 0) return undefined
+      const info = await stat(value, { bigint: true })
+      if (info.ino === 0n) return undefined
       return `${info.dev}:${info.ino}`
     } catch (error) {
       if (isMissingPathError(error)) return undefined
