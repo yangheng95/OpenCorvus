@@ -1,4 +1,4 @@
-import type { Stats } from "node:fs"
+import type { BigIntStats } from "node:fs"
 import fs from "node:fs/promises"
 import path from "node:path"
 
@@ -16,16 +16,16 @@ export async function readBrowserPreviewArtifactFile(input: {
   const canonicalAuthorityRoot = await fs.realpath(authorityRoot)
   const authorityRelative = path.relative(authorityRoot, filePath)
   let current = authorityRoot
-  let targetBeforeOpen: Stats | undefined
+  let targetBeforeOpen: BigIntStats | undefined
   for (const segment of authorityRelative.split(path.sep)) {
     current = path.join(current, segment)
-    const item = await fs.lstat(current)
+    const item = await fs.lstat(current, { bigint: true })
     if (item.isSymbolicLink()) {
       throw new Error(`Browser Preview artifact path contains a symbolic link: ${filePath}`)
     }
     if (current === filePath) targetBeforeOpen = item
   }
-  if (!targetBeforeOpen?.isFile() || targetBeforeOpen.nlink !== 1) {
+  if (!targetBeforeOpen?.isFile() || targetBeforeOpen.nlink !== 1n) {
     throw new Error(`Browser Preview artifact must be a single-link regular file: ${filePath}`)
   }
 
@@ -44,27 +44,27 @@ export async function readBrowserPreviewArtifactFile(input: {
 
   const handle = await fs.open(filePath, "r")
   try {
-    const before = await handle.stat()
-    if (!before.isFile() || before.nlink !== 1 || !sameFileIdentity(targetBeforeOpen, before)) {
+    const before = await handle.stat({ bigint: true })
+    if (!before.isFile() || before.nlink !== 1n || !sameFileIdentity(targetBeforeOpen, before)) {
       throw new Error(`Browser Preview artifact identity changed before it was opened: ${filePath}`)
     }
     const bytes = await handle.readFile()
-    const after = await handle.stat()
-    const pathAfter = await fs.lstat(filePath)
+    const after = await handle.stat({ bigint: true })
+    const pathAfter = await fs.lstat(filePath, { bigint: true })
     const canonicalAuthorityAfter = await fs.realpath(authorityRoot)
     const canonicalScopeAfter = await fs.realpath(scopedRoot)
     const canonicalFileAfter = await fs.realpath(filePath)
     if (
       pathAfter.isSymbolicLink() ||
       !pathAfter.isFile() ||
-      after.nlink !== 1 ||
-      pathAfter.nlink !== 1 ||
+      after.nlink !== 1n ||
+      pathAfter.nlink !== 1n ||
       canonicalAuthorityAfter !== canonicalAuthorityRoot ||
       canonicalScopeAfter !== canonicalScopedRoot ||
       canonicalFileAfter !== canonicalFile ||
       !sameFileIdentity(before, after) ||
       !sameFileIdentity(after, pathAfter) ||
-      bytes.byteLength !== after.size
+      BigInt(bytes.byteLength) !== after.size
     ) {
       throw new Error(`Browser Preview artifact changed while it was being read: ${filePath}`)
     }
@@ -95,13 +95,13 @@ function assertDescendantCanonical(root: string, candidate: string, message: str
   if (candidate === root || !candidate.startsWith(`${root}${path.sep}`)) throw new Error(message)
 }
 
-function sameFileIdentity(left: Stats, right: Stats): boolean {
+function sameFileIdentity(left: BigIntStats, right: BigIntStats): boolean {
   return (
     left.dev === right.dev &&
     left.ino === right.ino &&
     left.size === right.size &&
-    left.mtimeMs === right.mtimeMs &&
-    left.ctimeMs === right.ctimeMs &&
+    left.mtimeNs === right.mtimeNs &&
+    left.ctimeNs === right.ctimeNs &&
     left.nlink === right.nlink
   )
 }
