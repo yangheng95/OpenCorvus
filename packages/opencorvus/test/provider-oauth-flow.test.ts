@@ -500,6 +500,20 @@ describe.serial("Provider OAuth flow occurrence", () => {
   }
 
   test("concurrent expired-owner cleanup and replacement admission share one executor disposal", async () => {
+    async function phase<T>(name: string, operation: Promise<T>): Promise<T> {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      try {
+        return await Promise.race([
+          operation,
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`OAuth disposal checker timed out: ${name}`)), 10_000)
+          }),
+        ])
+      } finally {
+        clearTimeout(timer)
+      }
+    }
+
     ProviderAuth.TestHooks.pendingRenewalIntervalMs = 5
     let disposalAttempts = 0
     let releaseDisposal!: () => void
@@ -520,31 +534,37 @@ describe.serial("Provider OAuth flow occurrence", () => {
         onCallback: async () => ({ type: "success", key: "replacement-key" }),
       }),
     )
-    const expired = await ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope: "global" })
-    await ProviderOAuthFlowStore.TestHooks.expirePending(expired.flowID)
-    await disposalStarted
-
-    const replacementAdmission = ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope: "global" })
-    await Bun.sleep(20)
-    expect(disposalAttempts).toBe(1)
-    releaseDisposal()
-    const replacement = await replacementAdmission
-    expect({
-      disposalAttempts,
-      expired: await ProviderOAuthFlowStore.get(expired.flowID),
-      replacement: await ProviderOAuthFlowStore.get(replacement.flowID),
-    }).toEqual({
-      disposalAttempts: 1,
-      expired: expect.objectContaining({ state: "failed" }),
-      replacement: expect.objectContaining({ state: "pending", exchangeOwnerID: expect.any(String) }),
-    })
-    await ProviderAuth.callback({
-      providerID: PROVIDER,
-      method: 0,
-      code: "replacement",
-      flowID: replacement.flowID,
-      scope: "global",
-    })
+    try {
+      const expired = await phase(
+        "initial authorization completes",
+        ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope: "global" }),
+      )
+      await phase("pending lease expires", ProviderOAuthFlowStore.TestHooks.expirePending(expired.flowID))
+      await phase("expired owner enters disposal", disposalStarted)
+      const replacementAdmission = ProviderAuth.authorize({ providerID: PROVIDER, method: 0, scope: "global" })
+      await Bun.sleep(20)
+      expect(disposalAttempts).toBe(1)
+      releaseDisposal()
+      const replacement = await phase("replacement authorization completes", replacementAdmission)
+      expect({
+        disposalAttempts,
+        expired: await ProviderOAuthFlowStore.get(expired.flowID),
+        replacement: await ProviderOAuthFlowStore.get(replacement.flowID),
+      }).toEqual({
+        disposalAttempts: 1,
+        expired: expect.objectContaining({ state: "failed" }),
+        replacement: expect.objectContaining({ state: "pending", exchangeOwnerID: expect.any(String) }),
+      })
+      await phase("replacement callback completes", ProviderAuth.callback({
+        providerID: PROVIDER,
+        method: 0,
+        code: "replacement",
+        flowID: replacement.flowID,
+        scope: "global",
+      }))
+    } finally {
+      releaseDisposal()
+    }
   })
 
   test("the callback binds the method to the occurrence instead of matching only the provider", async () => {
