@@ -21,10 +21,8 @@ import { PrimaryAssistantRegistry } from "../../src/agent/primary-assistant-regi
 import { sessionRuntimeFromNativeAgent } from "../../src/agent/session-agent-runtime"
 import { SessionProcessor } from "../../src/session/processor"
 import { resolveTestCapabilityTools } from "../fixture/capability-occurrence"
-import {
-  CAPABILITY_REVEAL_MAX_ACTIVE_CHARS,
-  CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS,
-} from "../../src/capability/reveal-receipt"
+import { capabilityRevealBaseDefinitions } from "../../src/capability/reveal-receipt"
+import { normalizedProviderToolDefinition } from "../../src/capability/reveal-owner"
 
 function scalePackageDefinition(id: string): ExpertSquadPackageDefinition {
   const emptyResources = { capability_refs: [] as string[] }
@@ -334,10 +332,29 @@ describe("Expert Squad catalog index", () => {
           activeLocalRefs: [],
         })
         expect(Object.keys(tools).sort()).toEqual([
+          "bash",
           "capability_search",
+          "edit",
+          "glob",
           "mission_state",
+          "panel_complete_mission",
+          "panel_create_task",
+          "panel_query_task",
+          "panel_query_task_artifacts",
+          "panel_read_task_artifact",
+          "publish_interactive_artifact",
+          "question",
+          "read",
           "scheduler_message",
+          "search_code",
+          "todoread",
+          "todowrite",
+          "wait",
+          "write",
         ])
+        const base = capabilityRevealBaseDefinitions(
+          Object.entries(tools).map(([name, tool]) => normalizedProviderToolDefinition(name, tool)),
+        )
         const search = tools.capability_search
         if (!search?.execute) throw new Error("Mission capability_search is unavailable")
         const result = await search.execute(
@@ -428,9 +445,9 @@ describe("Expert Squad catalog index", () => {
           },
         })
         expect(metadata.active_payload_chars).toBeGreaterThan(0)
-        expect(metadata.active_payload_chars).toBeLessThanOrEqual(CAPABILITY_REVEAL_MAX_ACTIVE_CHARS)
+        expect(metadata.active_payload_chars).toBe(base.payloadChars)
         expect(metadata.active_payload_tokens).toBeGreaterThan(0)
-        expect(metadata.active_payload_tokens).toBeLessThanOrEqual(CAPABILITY_REVEAL_MAX_ACTIVE_TOKENS)
+        expect(metadata.active_payload_tokens).toBe(base.payloadTokens)
       },
     })
   })
