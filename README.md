@@ -74,10 +74,10 @@ rather than a boast: it is what makes every layer replaceable. It stands on a gr
 deal of open source, Bun, the AI SDK, SolidJS and Tauri among them.
 
 <p align="center">
-  <a href="https://github.com/yangheng95/opencorvus/raw/main/packages/web/public/media/opencorvus-mission-v5r-en-US.mp4"><img src="https://github.com/yangheng95/opencorvus/raw/main/packages/web/public/media/opencorvus-mission-v5r-en-US-poster.jpg" alt="OpenCorvus Mission product story" width="880" /></a>
+  <a href="https://github.com/yangheng95/opencorvus/raw/main/packages/web/public/media/opencorvus-delivery-v1-en-US.mp4"><img src="https://github.com/yangheng95/opencorvus/raw/main/packages/web/public/media/opencorvus-delivery-v1-en-US-poster.jpg" alt="OpenCorvus: from goal to delivery" width="880" /></a>
 </p>
 
-<p align="center"><sub>Why long-horizon agents fail, how Mission schedules durable work, and what a 12 h 45 min DeBERTa case delivered. 4 min 11 s, narrated with subtitles: <a href="https://github.com/yangheng95/opencorvus/raw/main/packages/web/public/media/opencorvus-mission-v5r-en-US.mp4">English</a> · <a href="https://github.com/yangheng95/opencorvus/raw/main/packages/web/public/media/opencorvus-mission-v5r-zh-CN.mp4">简体中文</a>.</sub></p>
+<p align="center"><sub>Set the goal. Review the key results. An illustrated product workflow from feedback through implementation, review and delivery. Under 2 minutes, narrated with captions; not a recorded task run: <a href="https://github.com/yangheng95/opencorvus/raw/main/packages/web/public/media/opencorvus-delivery-v1-en-US.mp4">English</a> · <a href="https://github.com/yangheng95/opencorvus/raw/main/packages/web/public/media/opencorvus-delivery-v1-zh-CN.mp4">简体中文</a>.</sub></p>
 
 <table>
   <tr>

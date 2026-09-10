@@ -261,10 +261,10 @@ export const landingCopy: Record<PublicLocale, LandingCopy> = {
     },
     demo: {
       eyebrow: "产品故事",
-      title: "别再替 Agent 维持交接",
-      lead: "从上下文遗忘，到 Mission 调度、恢复、验收和专家团进化，4 分 11 秒讲清楚。",
-      label: "OpenCorvus Mission 中文产品故事",
-      caption: "简体中文版 · 4 分 11 秒 · 有声旁白与字幕 · 随页面语言切换",
+      title: "你定目标，审关键结果",
+      lead: "从用户反馈到可演示的新版本，看看目标、专家团协作和验收如何串起一段完整工作。",
+      label: "OpenCorvus 从目标到交付：中文产品流程示意",
+      caption: "简体中文 · 约 1 分半 · 旁白与字幕 · 产品流程示意，非任务实录",
     },
     benchmark: {
       eyebrow: "实测结果",
@@ -557,10 +557,10 @@ export const landingCopy: Record<PublicLocale, LandingCopy> = {
     },
     demo: {
       eyebrow: "Product story",
-      title: "Stop maintaining every agent handoff yourself",
-      lead: "From context loss to Mission scheduling, recovery, acceptance and squad evolution—in 4 minutes 11 seconds.",
-      label: "OpenCorvus Mission product story in English",
-      caption: "English version · 4 min 11 s · narrated with subtitles · follows the page language",
+      title: "Set the goal. Review the key results.",
+      lead: "From user feedback to a version you can demo: see how goals, specialist handoffs and acceptance connect a complete workflow.",
+      label: "OpenCorvus from goal to delivery: illustrated workflow in English",
+      caption: "English · under 2 minutes · narrated with captions · illustrated workflow, not a recorded run",
     },
     benchmark: {
       eyebrow: "Measured result",

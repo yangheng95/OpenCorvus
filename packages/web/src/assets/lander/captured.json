@@ -3,7 +3,7 @@
   "refresh": {
     "gallery": "Run the desktop app on the target release, drive it to the state each shot describes, and capture the window. Shots must show real work, not an empty state.",
     "conceptFlow": "qa/record-real-client-demo.ps1 records the desktop window against a live task, then qa/curate-client-demo.mjs edits the frames into the GIF.",
-    "demoVideo": "Generate the zh-CN and en-US V5R masters from the same 12-scene renderer, complete the SHA-bound five-frame gate and final inspection for each locale, then encode each accepted master to H.264/AAC with 48 kHz stereo audio and +faststart. Extract the poster from 250 seconds of that locale's physical web file so the idle player shows the final brand, author and project addresses without subtitles. The route locale is the only media selector: / uses en-US and /zh-cn/ uses zh-CN."
+    "demoVideo": "Render specs/artifacts/2026-09-10-website-story/build.py from its bilingual script and retained narration. Inspect all scenes and actual locale-specific website playback. Update hashes from final physical masters and posters. The assets are original illustrated workflows, not captured app sessions."
   },
   "assets": [
     {
@@ -22,48 +22,46 @@
       "knownIssues": []
     },
     {
-      "file": "media/opencorvus-mission-v5r-en-US.mp4",
+      "file": "media/opencorvus-delivery-v1-en-US.mp4",
       "locale": "en-US",
-      "capturedAppVersion": "0.0.53-beta",
-      "capturedOn": "2026-08-25",
+      "createdOn": "2026-09-10",
+      "kind": "original-illustrated-workflow",
       "knownIssues": [],
-      "sourceMission": "OpenCorvus Mission product story: long-horizon failure, durable scheduling and recovery, artifact acceptance, squad evolution, a DeBERTa evidence case, and AutomationBench same-model control",
-      "durationSeconds": 251,
-      "buildDigest": "67f1192dae55",
-      "sha256": "aac5ba7b6aad91f0f1a49fd93fe9ddbe197a0717cef9f59b71ada823a9a2fd44",
-      "bytes": 21932471
+      "source": "specs/artifacts/2026-09-10-website-story/story.json",
+      "sha256": "4e776fb47c29b286e83d0f898c12287b682f5cb8e12e4ef73966570e2f52cf45",
+      "bytes": 2459299,
+      "durationSeconds": 95.979667
     },
     {
-      "file": "media/opencorvus-mission-v5r-en-US-poster.jpg",
+      "file": "media/opencorvus-delivery-v1-en-US-poster.jpg",
       "locale": "en-US",
-      "capturedAppVersion": "0.0.53-beta",
-      "capturedOn": "2026-08-25",
+      "createdOn": "2026-09-10",
+      "kind": "rendered-workflow-poster",
       "knownIssues": [],
-      "sourceMission": "frame at 250s of media/opencorvus-mission-v5r-en-US.mp4",
-      "sha256": "d76e953e8b15b8978f7c0ee21940b6be66f94f8995511bff9fd2167a98447463",
-      "bytes": 161279
+      "source": "specs/artifacts/2026-09-10-website-story/story.json",
+      "sha256": "43f3b84eabb0c4cdbc515487b4138a2a43f429c72629a6520ffd7be7d94a308a",
+      "bytes": 201608
     },
     {
-      "file": "media/opencorvus-mission-v5r-zh-CN.mp4",
+      "file": "media/opencorvus-delivery-v1-zh-CN.mp4",
       "locale": "zh-CN",
-      "capturedAppVersion": "0.0.53-beta",
-      "capturedOn": "2026-08-25",
+      "createdOn": "2026-09-10",
+      "kind": "original-illustrated-workflow",
       "knownIssues": [],
-      "sourceMission": "OpenCorvus Mission 中文产品故事：长程任务失效、持久调度与恢复、产物验收、专家团进化、DeBERTa 证据案例与 AutomationBench 同模型对照",
-      "durationSeconds": 251,
-      "buildDigest": "771513f83c88",
-      "sha256": "8a6d389dd47c066a292461ec91b017bbcc60cf9dceb6fff2bee56009053195dc",
-      "bytes": 21436523
+      "source": "specs/artifacts/2026-09-10-website-story/story.json",
+      "sha256": "0fe71a14fcb9c674c18c8c7e585e934b1588b8ae57b6dc631d2905d57a63604d",
+      "bytes": 2382915,
+      "durationSeconds": 92.104667
     },
     {
-      "file": "media/opencorvus-mission-v5r-zh-CN-poster.jpg",
+      "file": "media/opencorvus-delivery-v1-zh-CN-poster.jpg",
       "locale": "zh-CN",
-      "capturedAppVersion": "0.0.53-beta",
-      "capturedOn": "2026-08-25",
+      "createdOn": "2026-09-10",
+      "kind": "rendered-workflow-poster",
       "knownIssues": [],
-      "sourceMission": "frame at 250.85s of media/opencorvus-mission-v5r-zh-CN.mp4",
-      "sha256": "37d2a767411ea61e25bbfaae30759f4111d5e42ee98b471255db1e31d1c5db7e",
-      "bytes": 156766
+      "source": "specs/artifacts/2026-09-10-website-story/story.json",
+      "sha256": "2ad490921f9de60d0cf28d9a444d5beb467e4c00166295e6f99fb395570923dc",
+      "bytes": 178499
     }
   ]
 }

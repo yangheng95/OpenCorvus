@@ -1,0 +1,48 @@
+{
+  "durationSeconds": 92.104667,
+  "scenes": [
+    {
+      "scene": 1,
+      "start": 0,
+      "duration": 10.666666666666666
+    },
+    {
+      "scene": 2,
+      "start": 10.667,
+      "duration": 11.625
+    },
+    {
+      "scene": 3,
+      "start": 22.292,
+      "duration": 11.333333333333334
+    },
+    {
+      "scene": 4,
+      "start": 33.625,
+      "duration": 12.791666666666666
+    },
+    {
+      "scene": 5,
+      "start": 46.417,
+      "duration": 10.583333333333334
+    },
+    {
+      "scene": 6,
+      "start": 57.0,
+      "duration": 10.583333333333334
+    },
+    {
+      "scene": 7,
+      "start": 67.583,
+      "duration": 13.25
+    },
+    {
+      "scene": 8,
+      "start": 80.833,
+      "duration": 11.25
+    }
+  ],
+  "sha256": "0fe71a14fcb9c674c18c8c7e585e934b1588b8ae57b6dc631d2905d57a63604d",
+  "bytes": 2382915,
+  "voice": "zh-CN-XiaoxiaoNeural"
+}

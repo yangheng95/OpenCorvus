@@ -1,0 +1,334 @@
+{
+  "zh-CN": {
+    "voice": "zh-CN-XiaoxiaoNeural",
+    "label": "产品流程示意 · 非任务实录",
+    "scenes": [
+      {
+        "tag": "从目标到交付",
+        "title": "一个人做产品，\n谁来接住整段工作？",
+        "accent": "你定目标，审关键结果。",
+        "cards": [
+          [
+            "反馈",
+            "整理问题与需求"
+          ],
+          [
+            "实现",
+            "把方案做出来"
+          ],
+          [
+            "交付",
+            "验收、演示、说明"
+          ]
+        ],
+        "voice": "一个人做产品，难的往往是接住整段工作。用户反馈、需求判断、实现、验收，还有最后的交付说明。"
+      },
+      {
+        "tag": "01 / 把目标说清楚",
+        "title": "把一批用户反馈，\n变成可演示的新版本。",
+        "accent": "示例目标：改进项目中的批量导入体验",
+        "cards": [
+          [
+            "输入",
+            "已有项目与反馈"
+          ],
+          [
+            "范围",
+            "预览、校验、错误提示"
+          ],
+          [
+            "验收",
+            "可运行页面与检查结果"
+          ]
+        ],
+        "voice": "以改进批量导入为例。目标不只是一段代码，而是预览、校验和错误提示形成完整体验，并留下可检查的结果。"
+      },
+      {
+        "tag": "02 / 工作有连续的上下文",
+        "title": "围绕同一个目标，\n继续推进。",
+        "accent": "Mission 组织目标、阶段和任务进展",
+        "cards": [
+          [
+            "目标",
+            "为什么改、改到什么程度"
+          ],
+          [
+            "阶段",
+            "当前产物与待处理项"
+          ],
+          [
+            "继续",
+            "带着已有结果推进"
+          ]
+        ],
+        "voice": "OpenCorvus 用 Mission 组织目标和任务进展。工作跨过多个阶段时，可以沿着已有记录继续，而不是每次重新交代背景。"
+      },
+      {
+        "tag": "03 / 专家团围绕产物协作",
+        "title": "上一阶段的产物，\n成为下一步的依据。",
+        "accent": "协作的价值，在于交接得上",
+        "cards": [
+          [
+            "分析",
+            "整理边界与验收条件"
+          ],
+          [
+            "实现",
+            "交付代码与运行入口"
+          ],
+          [
+            "复核",
+            "对照要求检查结果"
+          ]
+        ],
+        "voice": "专家团按阶段协作：分析明确边界，实现交付代码，复核对照要求检查。关键不是用了多少个智能体，而是产物能不能接得上。"
+      },
+      {
+        "tag": "04 / 把反馈接回工作",
+        "title": "“异常行也要能导出。”\n接下来，补完整。",
+        "accent": "一次实质修改，贯穿受影响的交付物",
+        "cards": [
+          [
+            "修改实现",
+            "补齐异常处理"
+          ],
+          [
+            "重新检查",
+            "核对输出与边界"
+          ],
+          [
+            "同步说明",
+            "更新使用方式"
+          ]
+        ],
+        "voice": "当你提出异常行也要能导出，后续工作就要覆盖实现、检查和说明。你审关键结果，再给出下一步要求。"
+      },
+      {
+        "tag": "05 / 交付能打开，也能核对",
+        "title": "收到的不是一句完成，\n而是可验收的结果。",
+        "accent": "打开产物，对照要求，决定是否接受",
+        "cards": [
+          [
+            "运行入口",
+            "查看实际效果"
+          ],
+          [
+            "文件与差异",
+            "检查具体改动"
+          ],
+          [
+            "检查与说明",
+            "了解结果和待办"
+          ]
+        ],
+        "voice": "交付时，打开实际产物，检查文件与差异，核对检查结果和未完成项。是否满足要求，由你判断。"
+      },
+      {
+        "tag": "开源 · 可配置模型 · 可检查产物",
+        "title": "让 AI 的工作，\n围绕交付组织起来。",
+        "accent": "OpenCorvus / 面向多阶段工作的 Agent 工作台",
+        "cards": [
+          [
+            "你",
+            "定目标、给反馈"
+          ],
+          [
+            "OpenCorvus",
+            "组织任务与协作"
+          ],
+          [
+            "交付",
+            "你检查、你接受"
+          ]
+        ],
+        "voice": "OpenCorvus 是面向多阶段工作的开源智能体工作台。需要配置可用模型并保持运行。实际效果取决于任务、模型和你的验收。"
+      },
+      {
+        "tag": "从一个真实目标开始",
+        "title": "带上你的项目，\n试一段完整工作。",
+        "accent": "opencorvus.com",
+        "cards": [
+          [
+            "明确范围",
+            "选一个有边界的目标"
+          ],
+          [
+            "写下标准",
+            "说明怎样才算完成"
+          ],
+          [
+            "检查交付",
+            "记录效果与待改进项"
+          ]
+        ],
+        "voice": "带上你的项目，选一个有边界的目标，写清验收标准。从一段完整工作开始，看看 OpenCorvus 能为你接住多少交付。"
+      }
+    ]
+  },
+  "en-US": {
+    "voice": "en-US-JennyNeural",
+    "label": "ILLUSTRATED WORKFLOW · NOT A RECORDED RUN",
+    "scenes": [
+      {
+        "tag": "FROM GOAL TO DELIVERY",
+        "title": "Building solo?\nThe work keeps going.",
+        "accent": "Set the goal. Review the key results.",
+        "cards": [
+          [
+            "Feedback",
+            "Understand the need"
+          ],
+          [
+            "Implementation",
+            "Build the change"
+          ],
+          [
+            "Delivery",
+            "Verify and explain"
+          ]
+        ],
+        "voice": "Building a product solo means carrying the whole job. Feedback, requirements, implementation, verification, and the explanation that makes a change usable."
+      },
+      {
+        "tag": "01 / DEFINE THE OUTCOME",
+        "title": "Turn feedback into\nsomething you can demo.",
+        "accent": "Example goal: improve a project's bulk import experience",
+        "cards": [
+          [
+            "Input",
+            "Existing project and feedback"
+          ],
+          [
+            "Scope",
+            "Preview, validation, errors"
+          ],
+          [
+            "Acceptance",
+            "Working page and checks"
+          ]
+        ],
+        "voice": "Consider a better bulk import experience. The outcome includes preview, validation, and useful error handling, with a working result you can inspect."
+      },
+      {
+        "tag": "02 / KEEP THE CONTEXT",
+        "title": "One goal.\nKeep the work moving.",
+        "accent": "Mission organizes the goal, stages, and task progress",
+        "cards": [
+          [
+            "Goal",
+            "Why it matters and what fits"
+          ],
+          [
+            "Progress",
+            "Artifacts and open items"
+          ],
+          [
+            "Continue",
+            "Build on existing results"
+          ]
+        ],
+        "voice": "OpenCorvus uses Mission to organize goals and task progress. Across stages, existing records give the next step context, reducing the need to explain the job again."
+      },
+      {
+        "tag": "03 / HAND OFF REAL ARTIFACTS",
+        "title": "Artifacts connect\none stage to the next.",
+        "accent": "The value of a squad is in the handoff",
+        "cards": [
+          [
+            "Analysis",
+            "Scope and acceptance criteria"
+          ],
+          [
+            "Implementation",
+            "Code and a way to run it"
+          ],
+          [
+            "Review",
+            "Check against requirements"
+          ]
+        ],
+        "voice": "Specialist squads work across stages. Analysis defines boundaries, implementation produces code, and review checks requirements. The useful question is whether their artifacts connect."
+      },
+      {
+        "tag": "04 / TURN FEEDBACK INTO FOLLOW-UP",
+        "title": "Export invalid rows.\nCarry the change through.",
+        "accent": "A meaningful revision reaches every affected deliverable",
+        "cards": [
+          [
+            "Implement",
+            "Add the error workflow"
+          ],
+          [
+            "Check",
+            "Verify output and edge cases"
+          ],
+          [
+            "Explain",
+            "Update usage instructions"
+          ]
+        ],
+        "voice": "You ask to export invalid rows. The follow-up now needs implementation, checks, and updated instructions. You review key results and set the next direction."
+      },
+      {
+        "tag": "05 / INSPECT THE DELIVERY",
+        "title": "Open the result.\nDecide if it is done.",
+        "accent": "Acceptance starts with something you can inspect",
+        "cards": [
+          [
+            "Run it",
+            "See the actual behavior"
+          ],
+          [
+            "Inspect",
+            "Review files and changes"
+          ],
+          [
+            "Verify",
+            "Read checks and open items"
+          ]
+        ],
+        "voice": "At delivery, open the result. Inspect files and changes. Read check results and unfinished items. You decide whether the work meets the requirements."
+      },
+      {
+        "tag": "OPEN SOURCE · CONFIGURABLE MODELS",
+        "title": "Organize AI work\naround delivery.",
+        "accent": "OpenCorvus / An agent workbench for multi-stage work",
+        "cards": [
+          [
+            "You",
+            "Set goals and give feedback"
+          ],
+          [
+            "OpenCorvus",
+            "Organize tasks and handoffs"
+          ],
+          [
+            "Delivery",
+            "Inspect and accept"
+          ]
+        ],
+        "voice": "OpenCorvus is an open source agent workbench for multi-stage work. Configure an available model and keep the runtime running. Results depend on the task, model, and your review."
+      },
+      {
+        "tag": "START WITH A REAL GOAL",
+        "title": "Bring your project.\nTry the whole workflow.",
+        "accent": "opencorvus.com",
+        "cards": [
+          [
+            "Scope",
+            "Choose a bounded goal"
+          ],
+          [
+            "Define",
+            "Write acceptance criteria"
+          ],
+          [
+            "Review",
+            "Inspect results and gaps"
+          ]
+        ],
+        "voice": "Bring your project. Choose a bounded goal and write down what done means. Try a complete workflow, and see how much of the delivery OpenCorvus can help carry."
+      }
+    ]
+  }
+}

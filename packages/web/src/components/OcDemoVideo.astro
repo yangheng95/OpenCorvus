@@ -9,8 +9,8 @@ const { locale } = Astro.props
 const copy = landingCopy[locale].demo
 const base = import.meta.env.BASE_URL.replace(/\/$/, "")
 const mediaLocale = locale === "zh-cn" ? "zh-CN" : "en-US"
-const videoSrc = `${base}/media/opencorvus-mission-v5r-${mediaLocale}.mp4`
-const posterSrc = `${base}/media/opencorvus-mission-v5r-${mediaLocale}-poster.jpg`
+const videoSrc = `${base}/media/opencorvus-delivery-v1-${mediaLocale}.mp4`
+const posterSrc = `${base}/media/opencorvus-delivery-v1-${mediaLocale}-poster.jpg`
 ---
 
 <section class="oc-demo oc-anchor" id="demo" aria-labelledby="oc-demo-title">
