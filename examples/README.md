@@ -17,7 +17,17 @@ uses no external packages. Running an OpenCorvus task additionally needs the
 [runtime and model setup](https://opencorvus.com/start/quickstart/).
 Model availability, time and cost depend on your provider and configuration.
 
-### 1. Copy the project
+### 1. Get the project
+
+[Download Parcel Notes ZIP](https://opencorvus.com/examples/parcel-notes.zip),
+extract it into a fresh directory, and open a terminal in the extracted `parcel-notes`
+folder (the one containing `package.json`). The download contains just the three
+canonical input files; you do not need the OpenCorvus source repository.
+
+Run `node src/index.js` and `node --test test/output.test.js` there. Expect `750 g`
+and one passing test. Then continue to step 2 below.
+
+If you already have a source checkout, you can instead copy the project:
 
 From the root of a downloaded or cloned OpenCorvus source checkout, copy only
 `examples/parcel-notes` into a disposable directory. Open that copied directory
@@ -119,7 +129,16 @@ Parcel Notes 是一个输入固定、内容公开的小项目，用于体验 Ope
 [安装运行时并配置模型](https://opencorvus.com/zh-cn/start/quickstart/)。模型是否可用、
 耗时和费用取决于你的 Provider 与配置。
 
-### 1. 复制项目
+### 1. 获取项目
+
+[下载 Parcel Notes ZIP](https://opencorvus.com/examples/parcel-notes.zip)，
+解压到新目录，在解压出的 `parcel-notes` 文件夹（包含 `package.json` 的那一层）
+打开终端。下载包只有三个原始输入文件，无需下载整个 OpenCorvus 源码仓库。
+
+运行 `node src/index.js` 和 `node --test test/output.test.js`，确认输出 `750 g`
+且一项测试通过，然后继续下面的第 2 步。
+
+如果已经有源码副本，也可以使用复制方式：
 
 在下载或克隆的 OpenCorvus 源码根目录，执行上方的 PowerShell 或 Bash 命令，
 只把 `examples/parcel-notes` 复制到一个临时目录。以该副本作为 OpenCorvus 项目，
