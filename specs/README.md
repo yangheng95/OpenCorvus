@@ -1,5 +1,7 @@
 # Specs Storage Index
 
+- [Compiled PoC paper website publication](records/2026-09/2026-09-11-website-poc-paper.md).
+
 Real-project case result: [Luna import repair, patch and acceptance evidence](artifacts/2026-09-10-import-case/RESULT.md).
 
 Prepared case distribution: [LinkedIn and Xiaohongshu copy, not submitted](artifacts/2026-09-10-import-case/SOCIAL.md).

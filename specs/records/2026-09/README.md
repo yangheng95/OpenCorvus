@@ -1,5 +1,7 @@
 # 2026-09 Records
 
+- [Compiled PoC paper website publication](2026-09-11-website-poc-paper.md).
+
 - [Expert Squad discovery diagnostic overflow](2026-09-08-discovery-diagnostic-overflow.md)
 
 - [First-result communication cards and unsent copy](../../artifacts/2026-09-09-first-result-media/README.md)
