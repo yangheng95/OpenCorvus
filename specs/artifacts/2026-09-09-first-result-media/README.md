@@ -3,6 +3,45 @@
 Prepared media and unsent posts for the Parcel Notes onboarding exercise.
 These cards show expected outputs, not an application screenshot or model-run evidence.
 
+## Inspect the actual result / 查看真实交付
+
+Before setting up a model, inspect what one completed trial produced:
+
+- [The model's project explanation](accepted-result/docs/first-result.md), copied without rewriting.
+- [Final program](accepted-result/src/index.js) and [existing test updated by the task](accepted-result/test/output.test.js).
+- [Original three-file input](../../../examples/parcel-notes) and [the prompts you can try](../../../examples/README.md).
+
+The requested change was `375` → `425` grams. The program's weights became
+`[125, 250, 425]`, the test expectation became `800 g`, and the explanation cites
+the changed source. `package.json` retained its original bytes. These are the
+retained files from Task `tsk_g00VUijyPO005z4tnMo5`, run with
+`openai/gpt-5.6-luna` in a Windows source environment; the
+[maintainer record](../../records/2026-09/2026-09-08-founder-operations.md)
+documents the accepted first request and same-task follow-up.
+
+To check this delivered project yourself, download or clone this repository,
+then run from its root with Node.js 22+ (no model or package install required):
+
+```sh
+node specs/artifacts/2026-09-09-first-result-media/accepted-result/src/index.js
+node --test specs/artifacts/2026-09-09-first-result-media/accepted-result/test/output.test.js
+```
+
+The copied files were rerun on 10 September 2026: `800 g`, **1 test passed**.
+This command replay is new verification of retained files, not a new model run.
+The original task needed tool-input corrections. This small onboarding example
+does not demonstrate business-project performance, released-installer acceptance,
+independent user success, elapsed time or cost savings.
+
+**中文：** 配置模型之前，可以先打开上方的原始生成说明、最终源码和测试，看看交付物到底是什么。
+任务把第三个重量从 `375` 改为 `425`，程序和既有测试同步得到 `800 g`，说明引用了对应源码，
+`package.json` 的字节保持不变。四个文件直接复制自上述真实 Luna 任务，没有重写成更漂亮的答案。
+在仓库根目录执行上面两条命令即可自行核对，不需要模型或安装依赖，只需 Node.js 22+。
+本次重跑得到 `800 g`、1 项测试通过；这是旧产物的新核验，不是一次新的模型执行。
+首次任务曾发生工具输入纠正；小样例不代表业务项目效果、安装包或独立用户已验收通过，也不证明耗时或费用优势。
+
+[Try it and share a concrete result or blocker / 亲自试用并反馈](https://github.com/yangheng95/opencorvus/issues/30).
+
 ## Assets
 
 - [English PNG](first-result-en.png) and [editable SVG](first-result-en.svg).
@@ -173,6 +212,8 @@ operating ledger.
 
 We are looking for **five early testers** who want an agent to explain a project, make a small change, and leave files and tests they can inspect.
 
+[Inspect the actual retained Luna deliverable](https://github.com/yangheng95/opencorvus/tree/main/specs/artifacts/2026-09-09-first-result-media#inspect-the-actual-result--查看真实交付) before setting up a model: generated explanation, changed files and runnable checks.
+
 1. [Set up OpenCorvus and a model](https://opencorvus.com/start/quickstart/).
 2. Follow the [three-file Parcel Notes exercise](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples#english). It needs Node.js 22+. The expected program output changes from `750 g` to `800 g` after the follow-up.
 3. Reply here with **your version, OS, model, and where you got to**: setup blocked / first result accepted / needs correction. One concrete blocker or useful result is enough. If you later use OpenCorvus for a different task, tell us what you used it for.
@@ -184,6 +225,8 @@ Already have an appropriate project? You can instead describe a small, non-sensi
 ## 用一个小项目，试一次实际交付
 
 寻找 **五位早期试用者**：让 OpenCorvus 读懂项目、完成一处修改，再亲自核对文件和测试。
+
+配置模型前，可以先[查看保留的真实 Luna 交付](https://github.com/yangheng95/opencorvus/tree/main/specs/artifacts/2026-09-09-first-result-media#inspect-the-actual-result--查看真实交付)：原始生成说明、修改后的文件和可运行的验收命令。
 
 1. [安装 OpenCorvus 并配置模型](https://opencorvus.com/zh-cn/start/quickstart/)。
 2. 按[三文件 Parcel Notes 指南](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples#中文)试一次。需要 Node.js 22+，续作前后的预期输出分别为 `750 g` 和 `800 g`。

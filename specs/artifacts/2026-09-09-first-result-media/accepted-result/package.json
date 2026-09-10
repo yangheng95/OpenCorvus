@@ -1,0 +1,12 @@
+{
+  "name": "parcel-notes",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/output.test.js"
+  }
+}

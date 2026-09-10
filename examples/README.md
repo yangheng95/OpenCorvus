@@ -4,6 +4,8 @@
 
 ## English
 
+[Inspect an actual Luna result before trying it](../specs/artifacts/2026-09-09-first-result-media/README.md#inspect-the-actual-result--查看真实交付): generated explanation, changed source and a test you can run without a model.
+
 Parcel Notes is a tiny project for trying OpenCorvus with fixed, public inputs.
 It adds three parcel weights and prints their total. The first task is to explain
 the code with source references; a follow-up changes one weight and updates the
@@ -105,6 +107,8 @@ There is no tracking in this sample. Sharing feedback is optional, and a locally
 passing sample is not evidence of community adoption or general model quality.
 
 ## 中文
+
+[先看一次真实 Luna 交付](../specs/artifacts/2026-09-09-first-result-media/README.md#inspect-the-actual-result--查看真实交付)：原始生成说明、修改后的源码，以及无需模型就能运行的测试。
 
 Parcel Notes 是一个输入固定、内容公开的小项目，用于体验 OpenCorvus。它把三个包裹
 的重量相加并输出总重。首次任务要求解释代码并引用来源，后续任务修改一个重量，

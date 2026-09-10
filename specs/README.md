@@ -1,6 +1,6 @@
 # Specs Storage Index
 
-Current first-result communication cards: [bilingual media and unsent copy](artifacts/2026-09-09-first-result-media/README.md).
+Current first-result demo: [actual Luna deliverable, runnable verification and bilingual media](artifacts/2026-09-09-first-result-media/README.md).
 
 Current discovery diagnostic repair: [oversized package errors](records/2026-09/2026-09-08-discovery-diagnostic-overflow.md).
 
