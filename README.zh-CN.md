@@ -40,6 +40,12 @@
 
 ---
 
+**先试一次能亲手核对的交付。** 让 OpenCorvus 解释一个小项目、完成一处修改，
+再检查生成的文件和测试。可以从[三文件引导练习](./examples/README.md#中文)开始，
+还没安装则先看[快速开始](https://opencorvus.com/zh-cn/start/quickstart/)。
+我们正在寻找五位早期试用者：[参加首次任务试用](https://github.com/yangheng95/opencorvus/issues/30)。
+安装或配置卡住也欢迎反馈。练习需要 Node.js 22+；执行 Agent 任务还需配置可用模型。
+
 **Agent Harness** 是把模型变成 Agent 的运行层：循环、工具路由、上下文管理、记忆、
 权限执行与故障恢复。长程能力是这整套系统的属性，不是模型单独的属性 —— 再强的模型，
 放进一个会丢任务状态的 Harness 里，照样跑不彻底。

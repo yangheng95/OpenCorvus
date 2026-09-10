@@ -40,6 +40,13 @@
 
 ---
 
+**Try one result you can inspect.** Ask OpenCorvus to explain a small project, make
+one change, and check the resulting files and tests. Start with the
+[three-file guided exercise](./examples/README.md#english), or
+[set up OpenCorvus](https://opencorvus.com/start/quickstart/) first.
+We are looking for five early testers: [join the first-task pilot](https://github.com/yangheng95/opencorvus/issues/30).
+A setup blocker is useful feedback too. The exercise needs Node.js 22+ and a configured model for agent tasks.
+
 An **agent harness** is the runtime that turns a model into an agent: the loop, tool
 routing, context management, memory, permission enforcement, and recovery. Long-horizon
 capability is a property of that whole system rather than of the model — a capable model

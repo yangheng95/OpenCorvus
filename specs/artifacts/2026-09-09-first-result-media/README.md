@@ -159,3 +159,37 @@ The builder writes both SVGs and PNGs beside itself and reads the existing favic
 Review both rendered images after changing text, fonts, layout or the mark.
 The prepared exports were rendered on Windows with the bundled Sharp dependency;
 there is no application UI automation or screenshot comparison in this package.
+
+## Revised pilot invitation — adoption cycle, 10 September 2026
+
+This is the published replacement for issue #30. The initial publication
+above is historical. The existing cards remain sample illustrations, not a new
+real-project demo. Independent review passed before publication; the live issue
+body was read back and matched this copy. Publication is recorded in the founder
+operating ledger.
+
+<!-- pilot-current-start -->
+## Try a small project task with OpenCorvus
+
+We are looking for **five early testers** who want an agent to explain a project, make a small change, and leave files and tests they can inspect.
+
+1. [Set up OpenCorvus and a model](https://opencorvus.com/start/quickstart/).
+2. Follow the [three-file Parcel Notes exercise](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples#english). It needs Node.js 22+. The expected program output changes from `750 g` to `800 g` after the follow-up.
+3. Reply here with **your version, OS, model, and where you got to**: setup blocked / first result accepted / needs correction. One concrete blocker or useful result is enough. If you later use OpenCorvus for a different task, tell us what you used it for.
+
+Already have an appropriate project? You can instead describe a small, non-sensitive task you want to try. Share only public-safe details. Model access and any provider charges are your choice.
+
+**What is verified:** one maintainer run using `openai/gpt-5.6-luna` in an isolated Windows source environment completed the sample and follow-up, with files and commands checked. This does not establish released-installer acceptance or independent user success. [Evidence and limits](https://github.com/yangheng95/opencorvus/blob/96668bfd15c8267be874a59cfc1cd5ff499bcea4/specs/records/2026-09/2026-09-08-founder-operations.md).
+
+## 用一个小项目，试一次实际交付
+
+寻找 **五位早期试用者**：让 OpenCorvus 读懂项目、完成一处修改，再亲自核对文件和测试。
+
+1. [安装 OpenCorvus 并配置模型](https://opencorvus.com/zh-cn/start/quickstart/)。
+2. 按[三文件 Parcel Notes 指南](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples#中文)试一次。需要 Node.js 22+，续作前后的预期输出分别为 `750 g` 和 `800 g`。
+3. 在此回复 **版本、系统、模型，以及做到哪一步**：配置卡住 / 首次交付可接受 / 需要修正。一个具体卡点或有用结果就够了。之后若用它完成另一项任务，也欢迎告诉我们用途。
+
+也可以提出你自己项目中一项小而明确的任务，只分享适合公开的信息；不要贴密钥、私人路径或私有代码。模型访问及可能产生的费用由你选择。
+
+目前已有一次维护者在 Windows 隔离源码环境中使用 `openai/gpt-5.6-luna` 完成样例和续作的验收，并核对了文件与命令输出。这不代表发布安装包或独立用户已经验收通过，详见上方证据链接。欢迎真实反馈，成功和卡住都值得记录。
+<!-- pilot-current-end -->
