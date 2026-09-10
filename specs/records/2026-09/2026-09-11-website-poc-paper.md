@@ -41,3 +41,11 @@
 ## 独立审查
 
 academic_review_round2（未参与网站实现，用户已允许默认模型）只读审查全部16项暂存差异、四张中英文浅深实际截图、构建记录、部署输入与源码分支边界。独立比较工作区/索引/443a614e原始PDF及dist产物，确认16页、4472337bytes和完整SHA-256相同；审查结论为无需要修正的有效问题。确认本机安装包目录故障属于既有路径，必须取得本次生产CI和线上证据后才可宣称上线。审查未改文件、再次委托或运行实验。
+
+## 生产发布收据
+
+- 网站提交：`29d3d87af3c0f7a0b6351298c81357609b79f6d9`，main及origin/main已同步，完整pre-push检查通过，未使用跳过hook或强制推送。源码分支codex/paper-preliminary-results及远端仍为443a614edca5ea8ebe7a85614225b7f8f807081d。
+- 对应[生产部署34516812585](https://github.com/yangheng95/opencorvus/actions/runs/34516812585)结论success：完整网站build、三平台canonical archive检查以及sign and deploy RackNerd release全部成功。本机完整build的安装包目录限制已由同一提交在干净生产环境中的完整构建结果补足。
+- 公网读取时间（UTC）：`2026-09-10T18:56:40.723465+00:00`。英文主页https://opencorvus.com/与中文主页https://opencorvus.com/zh-cn/均返回200 text/html；[论文PDF](https://opencorvus.com/papers/opencorvus-poc.pdf)返回200 application/pdf，4472337bytes，SHA-256 `7fb7ff656cdb85971e53920a81c604da203f039008500cf6cc34e38edb6371c5`，与已审查原件一致。
+- 在全新独立Chromium页面实际点击线上Paper入口、PDF阅读按钮（新标签页）、中文语言切换及论文入口。对应地址为https://opencorvus.com/#research和https://opencorvus.com/zh-cn/#research。逐张人工查看线上中英文截图（TEMP/opencorvus-poc-live-en.png、opencorvus-poc-live-zh.png），确认完整标题、PoC Version · Under Construction、说明和下载入口正常显示。
+- 本轮论文网站发布完成。只托管已编译PDF，不依赖源码分支，不删除源码分支，不重写正文或新增实验；这不是论文研究完成或长期社区采用目标达成的证据。
