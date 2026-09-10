@@ -1,13 +1,6 @@
-\begin{tikzpicture}[font=\small,>=Latex,box/.style={draw,rounded corners=2pt,align=center,minimum height=12mm,text width=37mm},node distance=8mm]
-\node[box] (facts) {Durable facts\\and lifecycle revisions};
-\node[box,right=of facts] (reduce) {Projection\\facts, policy, leases, time};
-\node[box,right=of reduce] (driver) {Driver and activation\\hints, scans, wakes};
-\node[box,below=of facts] (evidence) {Exact evidence\\read, select, publish};
-\node[box,below=of reduce] (turn) {Agent turn\\tool request / observation};
-\node[box,below=of driver] (world) {External environment\\operation-specific effects};
-\draw[->] (facts)--(reduce);\draw[->] (reduce)--(driver);
-\draw[->] (driver)--(turn);\draw[->] (turn)--(world);
-\draw[->] (turn)--(evidence);\draw[->] (evidence)--(facts);
-\draw[->] (world.south) -- ++(0,-5mm) -| (turn.south);
-\node[align=center,font=\footnotesize,below=12mm of turn] {Delivery decision references evidence and accepted requirement revisions.};
-\end{tikzpicture}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\linewidth]{figures/architecture.png}
+\caption{A reusable organization and its task-specific workflow choices. The five expert roles and three alternative workflow declarations follow Research Studio. The image abbreviates the package digest $h_v$ as $h$. Solid role-to-role arrows are declared dependencies; dashed orchestrator links indicate LLM dispatch. The resource bands belong to the package, while outputs and execution state belong to individual tasks.}
+\label{fig:organization}
+\end{figure}

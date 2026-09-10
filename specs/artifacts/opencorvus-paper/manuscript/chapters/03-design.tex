@@ -1,81 +1,82 @@
-\section{Runtime Design}\label{sec:design}
-\subsection{Facts, projections, and physical activation}
-Figure~\ref{fig:architecture} shows the separation used in our analysis. Domain inputs and observed outcomes contribute durable facts. Reducers interpret those facts with lifecycle policy, ownership, and time. The driver requests scans and arranges activation; a scan is not itself a new task definition. Agent turns produce real tool requests and observations, and delivery decisions refer back to identifiable evidence.
+\section{Experience-Driven Organizational Evolution}\label{sec:evolution}
+The improvement process runs across tasks. A new conversation, additional worker, or repaired output within Equation~\ref{eq:run} does not change $\mathcal O_v$. Organizational evolution produces and retains a distinct package revision for subsequent tasks.
 
-\begin{figure}[htbp]\centering
-\input{figures/architecture}
-\caption{Analytical view of selected \oc{} paths. Arrows denote information or authority dependencies, not a claim of a single atomic pipeline. External effects cross the database boundary.}\label{fig:architecture}
-\end{figure}
+\subsection{Experience and attribution}
+We represent the evidence associated with an evaluated execution as
+\begin{equation}
+e=(x_{\mathrm{id}},h_v,\gamma,\ell_{\tau},\ell_y,s,c,u,\iota),
+\label{eq:experience}
+\end{equation}
+where $\gamma$ identifies the frozen evaluation context; $\ell_{\tau}$ and $\ell_y$ locate run evidence and deliverable resources; $s$ is a scorer vector; $c$ records resource consumption; $u$ records human intervention; and $\iota$ locates independent integrity review. This tuple joins the implementation's separate run, evaluation, resource, and review records; intervention time is an additional study measurement. Task and package identities make the evidence attributable to a particular revision.
 
-The root-ingress reducer illustrates the distinction between a pending request and permission to continue it. In the inspected source, operator abandonment and integrity faults are classified explicitly; lifecycle epochs can make older ingress inapplicable; validated decisions can resolve it; and live leases identify an already-owned activation. These alternatives matter because blindly re-running a queued instruction after a restart can apply it to a different lifecycle interval. The reducer and wake classifier expose whether progress depends on a deadline, an infrastructure fact, or operator input. A host fault is not evidence that a domain task was successfully completed.
+The Evolution Lab divides improvement work among observation, failure analysis, experiment planning, candidate authoring, evaluation, integrity review, and recommendation roles. The failure analyst identifies a recurring procedural mismatch and links it to concrete runs. For the running example, the hypothesis is that obligations distributed across the writer instructions and quality skill need a more explicit local sequence where individual claims enter the report. A candidate elaborates the claim-to-result handoff procedure and its reference example. This attribution is a testable hypothesis, not a causal conclusion inferred solely from an LLM explanation.
 
-The driver addresses a separate problem: durable work may exist without a surviving in-memory notification. When a request arrives, the local task entry's revision increases. An existing scan owner absorbs the notification; otherwise the driver attempts capacity admission. The owner scans for a bounded number of passes, records requested wake instants, and rechecks when revisions change. Faults and non-progress are paced with backoff. The periodic live-task enumeration retains rejected admissions in its current page rather than committing past them. This mechanism supplies rediscovery opportunities without making local notification counts the business state.
+\subsection{Candidate space and update policy}
+A candidate $\mathcal O'$ must preserve the package's logical identity, declare a new version, and contain a substantive change. Let $\operatorname{Cap}(\mathcal O)$ denote the union of locally expanded capability references declared by its orchestrator and agents; let $\operatorname{Base}(\mathcal O)$ denote their base-role set. Same-package capability sets are expanded to member references; external references retain their encoded identity. The integrity relation requires
+\begin{align}
+\operatorname{Cap}(\mathcal O')&\subseteq\operatorname{Cap}(\mathcal O_v),
+&
+\operatorname{Base}(\mathcal O')&\subseteq\operatorname{Base}(\mathcal O_v),
+\label{eq:capability}\\
+F'|_{\overline{M}}&=F_v|_{\overline{M}},
+&
+M&=M(\mathcal O_v)\cup M(\mathcal O')\cup\{m\}.
+\label{eq:frozen}
+\end{align}
+$M(\mathcal O)$ contains declared prompts, the package README and selector instructions, and eligible UTF-8 skill instructions, references, and examples. Here $m$ denotes the manifest path, handled as a mutable declaration. Equation~\ref{eq:frozen} requires both file-set equality and byte equality outside the two text closures and the manifest. Candidate validation additionally resolves declared prompt paths, workflow agents, and dependencies, and rejects cycles.
 
-The schematic procedure below is an abstraction of these selected paths. It deliberately omits policy-specific reducer branches, retry coefficients, and project entry-point wiring. It is not an executable replacement for the runtime.
-\begin{quote}\small
-\begin{enumerate}
-\item On a hint for task $\tau$, increment its local revision. Coalesce with a running owner or request a scan slot.
-\item Under an admitted owner, read the current fact revision and invoke the scan against durable state.
-\item Collect activation and wake information. If new input arrived, rescan within the pass budget; otherwise stop the pass loop.
-\item On a bounded failure or lack of progress, retain the condition and arrange a later attempt under backoff.
-\item Release local scan ownership and arm the earliest retained wake, if any.
-\item Independently enumerate live tasks. Keep capacity-rejected entries eligible for later admission.
-\end{enumerate}
-\end{quote}
+The representation admits four kinds of change: procedural text; redistribution of inherited capabilities; workflow dependencies; and the role roster. Figure~\ref{fig:specialization} develops a procedural candidate within a concrete professional specialization. The union constraint in Equation~\ref{eq:capability} is package-wide. A newly introduced role can receive a capability previously held elsewhere in the parent, so it is not a per-role non-escalation guarantee.
 
-Local scan ownership and database activation leases serve different purposes. The former avoids redundant work within a driver instance; the latter guards selected durable transitions across physical contenders. Neither substitutes for project-scoped data access or for exact execution lineage. A complete deployment audit would need to trace every production entry point and ownership boundary; this paper does not claim to have formally verified that entire surface.
+The released candidate author is instructed to edit procedural text:
+\begin{equation}
+\mathcal O'\sim
+  \mu_{\phi}(\,\cdot\mid\mathcal O_v,\mathcal E_{\mathrm{dev}},H\,),
+\label{eq:mutation}
+\end{equation}
+where $H$ is the attributed failure hypothesis. The intended text space $\mathcal S_{\mathrm{text}}(\mathcal O_v)$ fixes the role roster, topology, and capability allocations while editing eligible instructions and references. A prompt does not guarantee that every sampled proposal belongs to this space. The research arm therefore checks the realized diff against $\mathcal S_{\mathrm{text}}$ before admitting a candidate to its trials; rejected attempts still consume its budget. This arm-eligibility check is part of the experimental protocol, distinct from the broader production validator. Structural mutation is an extension supported by the representation and integrity interface, rather than an automatically explored operator in this configuration.
 
-\subsection{Ownership checked at the durable transition}
-The lease module represents a target, an owner occurrence, a lease identity, activation time, and expiry. Acquisition reads the current lease in a transaction and normally refuses a new contender while that lease is unexpired. Explicit supersession is a separate authority-bearing case. Renewal requires the current identity and owner, updates the expected expiry, and appends a grant record. Release expires the exact current lease. Thus the durable structure includes both mutable expiry and grant history.
+\subsection{Worked example: refining a claim handoff}\label{sec:worked}
+Consider a development case in which an analyst publishes a corrected result after an earlier calculation, and a report incorporates a value from the earlier revision. The arithmetic in the corrected resource is sound, but the final numerical claim has the wrong evidential basis. This is an illustrative execution pattern for explaining candidate construction, not a reported experimental case. The current writer instructions already require exact analysis and review resources. The shared quality skill additionally requires claim identifiers, result-table coordinates, verification evidence, and a report model populated from accepted claims. The candidate therefore changes where and in what order these existing obligations are presented to the writer; it does not introduce the evidence contract itself.
 
-A stale worker is rejected only where a protected transition actually rechecks ownership. For example, the dispatch-lineage commitment path accepts an admission owner, asserts its lease when present, requires a durable descriptor for the exact dispatch turn, and consumes the admission in the same transaction. The optional admission parameter is material: this code inspection does not imply that every invocation carries an admission lease. Likewise, task-completion closure uses a lifecycle-scoped target and translates failed ownership assertions into an explicit closure conflict.
+The failure analyst first distinguishes competing explanations. The writer may have read an old resource; it may have read the correct resource but transcribed the wrong cell; or the report renderer may have consumed a stale report model. These explanations require different revisions. A run whose locators identify the accepted analysis but whose report-model claim points to a superseded table supports investigating the handoff procedure. A run whose model is correct but whose rendered document differs instead directs attention to the rendering path. The evidence narrows the candidate hypothesis; a fluent retrospective explanation alone does not identify the cause.
 
-Figure~\ref{fig:recovery} separates database rejection from an external effect's outcome. If a worker performs an external operation before it loses its lease, a later database rejection cannot erase that operation. If an acknowledgement is lost, the runtime may know that it lacks a result while the external service has already committed the effect. Safe recovery requires an operation-specific reconciliation or idempotency contract; the existence of a lease is insufficient.
+For the handoff hypothesis, the text candidate reorganizes those distributed obligations into a checklist placed at the writer's claim-construction step: open the accepted result; resolve the associated review; bind the claim to its table coordinate; and write the value together with its qualifications and unresolved limits. A companion example contrasts a corrected result with a superseded one using generic placeholders. This changes the presentation and point of use of the existing requirements, while preserving their underlying acceptance contract. The update retains the role roster, collaboration declarations, capabilities, and executable files. Its reusable content is the sequence of checks and the reference pattern, rather than a copied task answer or a task-specific source locator. Figure~\ref{fig:specialization} shows this relationship between specialization, evidence, and procedural revision.
 
-\begin{figure}[htbp]\centering
-\input{figures/recovery}
-\caption{Schematic failure sequence, not an observed experimental trace. The stale owner's guarded database write is rejected; whether its earlier external effect occurred requires separate evidence.}\label{fig:recovery}
-\end{figure}
+The transfer hypothesis concerns the effect of that reorganization: tasks that require carrying revised quantitative evidence into a report should exhibit fewer result--report mismatches. The same procedure can also add retrieval and checking cost, cause excessive abstention when review evidence is partial, or distract from qualitative synthesis. Matched trials therefore examine contract satisfaction and resource use, and retention tasks include assignments for which the extra numerical procedure is irrelevant. If improvement occurs only on the development example, the evidence supports fitting that example rather than transferable organizational learning. If output correctness remains unchanged while checking cost rises, the revision can be valid and precisely attributable without being useful.
 
-\subsection{Evidence is read, selected, and published}
-The artifact catalog provides exact references to engine artifact revisions, task snapshots, and resources. The read path checks identity and integrity rather than interpreting an unversioned name as the latest content. Text may be read in bounded windows. The recorded windows must collectively cover the exact reference before it qualifies as a complete read in the relevant scope. A complete transport record means that the bytes were delivered through that interface; it does not reveal how a model attended to them.
+\input{figures/specialization}
 
-The publication function accepts observed and selected locator sets from its host caller. Every declared source locator must belong to both sets. Resource checks also relate the publication to its task and validate referenced resource content. The two inspected public call paths supply these sets differently: the native tool derives scoped read and selection facts preceding the current publication, whereas the plugin host tracks reads and selections within the invocation. Both call the same catalog publication function. The authority of the input sets depends on those collectors; the function cannot prove their origin merely from a supplied array.
+\subsection{Matched comparison and retention}
+A campaign fixes task cases, repetitions, scorer digests, model configuration, environment, permissions, arm order, and resource ceilings. Baseline and candidate executions occupy matched case--repetition slots and use their exact package revisions. The publisher derives candidate identities and file differences from validated resources. Evaluation results are projected from metric execution receipts, and independent integrity review binds to the exact evaluated revision.
 
-Figure~\ref{fig:evidence} illustrates the resulting relation. Exact references prevent a reviewer from silently being credited with a later revision. Explicit selection records a producer's declared use. Yet neither guarantees comprehensive citation: a producer can omit a relevant source or misunderstand one. Domain review and independent acceptance remain separate activities.
+For scorer $j$, let $s_{ij}^{a}$ be the value for slot $i$ and arm $a\in\{0,1\}$, with 0 denoting the parent. The comparison computes
+\begin{equation}
+d_{ij}=s_{ij}^{1}-s_{ij}^{0},\qquad
+\bar d_j=\frac{1}{n}\sum_{i=1}^{n}d_{ij},\qquad
+\widehat\Delta=\sum_j w_j\frac{\sigma_j\bar d_j}{|t_j-f_j|}.
+\label{eq:comparison}
+\end{equation}
+Weights $w_j$ are the campaign's nonnegative weights normalized to sum to one, $\sigma_j\in\{-1,1\}$ sets the preferred direction, and distinct target and floor values $t_j,f_j$ define the scale. Missing required runs, scorers, or reviews make a comparison unavailable rather than contributing a zero score. The implementation reports paired summaries and an operational retain/select/inconclusive recommendation. Its multi-scorer interval approximation is discussed in Appendix~\ref{sec:implementation}; confirmatory inference uses the separate task-level analysis in Section~\ref{sec:analysis}.
 
-\begin{figure}[htbp]\centering
-\input{figures/evidence}
-\caption{Evidence path for one declared source. Byte coverage, declared use, publication, and acceptance have different semantics. The independent oracle evaluates the deliverable separately.}\label{fig:evidence}
-\end{figure}
+Retention creates a traceable successor relation $\mathcal O_v\rightarrow\mathcal O_{v+1}$ and records the comparison context. Activation applies the selected revision to new tasks, preserving existing task bindings. A user-requested revision can also be retained through explicit feedback, but that path carries no claim of measured improvement. Selection, installation, and demonstrated learning therefore have distinct evidence.
 
-\subsection{Delivery decisions and responsibility}
-The inspected completion-decision schema records orchestrator session/message identity, tool call/part identity, evidence locators, deliverable locators, accepted slice revision identifiers, workflow binding, and recording time. It includes host-derived references to outputs from terminal workflow nodes. A reader locates the decision for an exact task and terminal time. This makes an acceptance decision inspectable as a particular act with referenced material.
+Table~\ref{tab:algorithm} summarizes one complete improvement cycle. Candidate generation and matched comparison can repeat within the frozen development budget; the independent test partition is opened only after the final selection.
 
-The closure establishes a recorded set and attribution, not a proof that the model judged correctly. An output from a terminal workflow node does not certify that all preceding nodes executed in order. A passing host checker certifies only the tested contract and observed execution context. Visual or domain judgments need their own evidence; tests over unrelated code or a final status label cannot replace them. This boundary permits meaningful accounting when the runtime records completion but an independent evaluator rejects the deliverable.
 
-\section{Implementation and Audit Scope}\label{sec:implementation}
-The source inspection is fixed to commit \code{bd2d6bd18eda05f35326adc231289e56d0a2dfcf}. The manuscript is stored in a later documentation-only state. Product source is not modified for this paper. Table~\ref{tab:implementation} provides the principal source anchors; the accompanying source map records symbols, line spans, and pre-existing claim identifiers. The symbols are preferable to floating line numbers when a reader inspects another revision.
-
-\begin{table}[htbp]\centering\small
-\begin{tabularx}{\linewidth}{@{}YY@{}}
+\begin{table}[htbp]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}rY@{}}
 \toprule
-Module under \code{packages/opencorvus/src/} & Inspected responsibility \\
+Step & One organizational improvement cycle \\
 \midrule
-\path{engine/task-root-ingress-reducer.ts} & Classify ingress facts and wake conditions. \\
-\path{engine/task-control-driver.ts} & Coalesce hints, admit scans, retain wakes, enumerate live tasks. \\
-\path{engine/control-lease.ts} & Acquire, assert, renew, and release exact ownership. \\
-\path{engine/dispatch-lineage.ts} & Bind dispatch to a durable turn descriptor; guarded admission consumption. \\
-\path{engine/task-completion-closure.ts} & Lifecycle-scoped ownership of completion closure. \\
-\path{engine/completion-decision-facts.ts} & Typed acceptance references and terminal-time lookup. \\
-\path{artifact-catalog/index.ts} & Exact reads, resource integrity, source membership at publication. \\
-\path{agent/artifact-provenance-facts.ts} & Scoped complete reads and selected source facts. \\
-\path{tool/artifact-catalog.ts}; \path{tool/plugin-tool-host.ts} & Supply provenance from actual tool/action scope. \\
+1 & Freeze the parent package, development inputs, scorer versions, and total search budget. \\
+2 & Inspect development run evidence; attribute a recurring failure and state a candidate hypothesis. \\
+3 & Generate a text-policy candidate; check the realized diff for text-arm eligibility, then validate the package, inherited capabilities, and frozen files. Charge rejected attempts to search. \\
+4 & Execute matched parent and candidate trials; collect metrics, failures, resource use, and independent integrity review. \\
+5 & Record the comparison. Retain the parent or select an eligible candidate; keep each evaluated revision and its evidence addressable. \\
+6 & Freeze the final selected revision before evaluation on unseen tasks and capability-retention tasks. Start later development with a fresh evaluation partition. \\
 \bottomrule
 \end{tabularx}
-\caption{Inspected implementation anchors. This table reports source responsibilities, not runtime benchmark validation.}\label{tab:implementation}
+\caption{EEO improvement procedure. Steps 1--5 use Evolution Lab's package and evaluation interfaces. Step 6 specifies the research evaluation boundary; reuse of a test partition for subsequent candidate selection invalidates that boundary.}
+\label{tab:algorithm}
 \end{table}
-
-The repository uses TypeScript and database access through its storage abstraction; the lease acquisition wrapper uses an immediate transaction. These are implementation choices rather than prerequisites of the semantic model. The model requires an appropriate transactional boundary and persistent identity, not a particular programming language. Existing architecture documents describe capabilities and package projection, but this manuscript does not count packages, agents, providers, or tools as research contributions. Live provider projection, all production entry points, and full cross-project isolation have not been exercised for this study.
-
-We preserve the repository's earlier evidence package as historical input. Its machine claim matrix remains the original claim authority; the new source map relates paper passages to that package and to inspected source. It does not upgrade old implementation statuses or acceptance receipts. Source inspection can establish that a check exists in a selected path. Establishing that all actual runs traverse the intended checks requires additional execution and coverage evidence.

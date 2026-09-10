@@ -1,6 +1,6 @@
 # OpenCorvus paper materials
 
-- [Non-experimental working manuscript](manuscript/README.md): LaTeX, PDF, editable figures, source mapping, references, and prospective evaluation protocol.
+- [Non-experimental working manuscript](manuscript/README.md): ICLR-format paper on evolving expert organizations, domain specialization, colored scientific figures, source mapping, references, and controlled evaluation design.
 - [Official conference templates](templates/README.md): ICLR 2027 source archive and local extraction instructions.
 - [Research and writing plan](../../records/2026-09/2026-09-10-opencorvus-paper-plan.md).
 - [Historical foundation manifest](integration/foundation-manifest.json) and [material boundaries](integration/material-boundaries.json).

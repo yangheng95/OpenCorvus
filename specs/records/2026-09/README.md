@@ -2,7 +2,7 @@
 
 - [OpenCorvus 学术论文写作计划](2026-09-10-opencorvus-paper-plan.md)
 
-- [OpenCorvus 非实验论文工作稿与研究协议](../../artifacts/opencorvus-paper/manuscript/README.md)
+- [OpenCorvus 专家组织论文：专业化、跨任务演化与严格实验设计](../../artifacts/opencorvus-paper/manuscript/README.md)
 
 - [ICLR 2027 官方 LaTeX 模板下载](../../artifacts/opencorvus-paper/templates/iclr2027/README.md)
 

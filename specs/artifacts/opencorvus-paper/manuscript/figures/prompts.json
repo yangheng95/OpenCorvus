@@ -1,0 +1,59 @@
+{
+  "tool_mode": "built-in image_gen",
+  "documented_model": "gpt-image-2",
+  "model_selection": "Tool exposes no model parameter; user explicitly authorized built-in Image 2. No claim of an exact backend snapshot.",
+  "user_authorization": "2026-09-10: 你先用image2画",
+  "references": [
+    {
+      "title": "AFlow, Figure 3, PDF page 5",
+      "url": "https://proceedings.iclr.cc/paper_files/paper/2025/file/5492ecbce4439401798dcd2c90be94cd-Paper-Conference.pdf"
+    },
+    {
+      "title": "GEPA v2, Figure 3, PDF page 5",
+      "url": "https://arxiv.org/pdf/2507.19457v2"
+    }
+  ],
+  "figures": [
+    {
+      "asset": "architecture.png",
+      "prompt": "Use case: infographic-diagram.\nCreate a NEW original high-resolution color COMPUTER SCIENCE RESEARCH FIGURE, a dense professional architecture plate for a paper about OpenCorvus Research Studio. Use mature scientific typography and technical drafting. White background, flat blue/teal/amber/purple/vermilion categorical accents, dark navy fine lines. Landscape 1536x1024. No cartoons, icons, people, robots, clipart, illustrative charts, gradients, 3D, decorative backgrounds or bubbly UI cards. Words and meaningful structural connectors are the visual content. Refined professional hierarchy, ample legible text, short headings.\n\nTOP TWO THIRDS: panel heading \"(a) Reusable organization\".\nEnclose everything below in a precise thin rectangular package boundary. Inside top left \"Research Studio\", top right \"Package digest h\" (plain single Latin h, NO subscripts).\nOne slim blue band labeled \"Orchestrator\" and smaller \"LLM dispatch from evidence and task context\".\nBelow are FIVE vertical expert modules, aligned left-to-right. Distinct heading colors:\nBLUE \"Planner\", two exact interior lines \"Question and method\" and \"Research charter\".\nTEAL \"Researcher\", interior \"Source collection\" and \"Evidence bundle\".\nAMBER \"Analyst\", interior \"Reproducible computation\" and \"Canonical results\".\nPURPLE \"Fact checker\", interior \"Claim verification\" and \"Review verdict\".\nVERMILION \"Writer\", interior \"Accepted-evidence rendering\" and \"Report model\".\nWithin each module use thin ruled rows separating its procedure and output, no icons.\nOne dashed downward line from Orchestrator to each module.\nExactly four short horizontal ONE-WAY arrows join the five modules from Planner to Writer. Directly below their row, plain centered annotation \"Declared dependencies\". NO long horizontal arrow or double-headed arrows.\nBelow this annotation, three shared thin lightly tinted foundation bands, with exact labels centered:\n\"Procedures and references\"\n\"Declared capability bindings\"\n\"Files and revision identity\"\nNO arrow connects these foundation bands. Their shared extent shows package membership.\n\nBOTTOM THIRD: panel heading \"(b) One package, task-local executions\".\nThree clean workflow lanes separated by fine horizontal rules. Left bracket over all three lanes labeled \"Same digest h\" (plain single h).\nFirst lane label \"Full research\": small colored role modules Planner → Researcher → Analyst → Fact checker → Writer → \"Task-local output\".\nSecond lane label \"Evidence synthesis\": Analyst → Fact checker → Writer → \"Task-local output\".\nThird lane label \"Direct writing\": Writer → \"Task-local output\".\nUse same role colors as above. THESE THREE LANES ARE ALTERNATIVE DECLARED WORKFLOWS and have separate arrows; no connector between lanes.\nFinal tiny but readable footer \"Package reuse preserves procedures; each task has its own execution state.\"\nKeep all quoted text exact, no additional words. Make the organization detailed and research-grade through careful information structure, not decoration. No fake data. All arrowheads and labels perfectly aligned, ample canvas margins.",
+      "review": "Selected regeneration corrects digest typography, removes spurious bidirectional dependency edge, and uses distinct Writer color.",
+      "sha256": "bc13b33c49cabb7d1a2452bb535bec72c8db289f0842125d66f8ee086a53fa94",
+      "pixels": [
+        1536,
+        1024
+      ],
+      "mode": "RGB"
+    },
+    {
+      "asset": "specialization.png",
+      "prompt": "Create an original, polished COLOR scientific methods plate for a computer-science paper on expert organizations. White paper background, refined black SERIF typography, precise thin lines, restrained blue/teal/amber/violet sections. Landscape 1536x1024. All text should be large enough for reading when the image spans one journal text column. Prefer short lines, with large legible procedure steps. The graphic is a worked method example, not a measured result.\n\nTop 40 percent: heading \"Specialization binds expertise to evidence\". Three structural panels.\nLeft heading \"Domain resources\", a typographic file-tree with leaves \"Source hierarchy\", \"Computation procedure\", \"Claim criteria\", \"Report schema\".\nCenter heading \"Professional roles\", four rows \"Researcher: collect sources\", \"Analyst: derive results\", \"Fact checker: verify claims\", \"Writer: render accepted evidence\".\nRight heading \"Artifact contract\", four ruled rows \"claim identity\", \"result revision\", \"table coordinate\", \"review reference\", with sublabel \"Analytical contract\".\nExactly TWO arrows join the WHOLE left, center and right panels. Do not connect individual role rows to individual fields.\n\nBottom 58 percent: heading \"Reorganizing existing obligations at claim construction\".\nLeft panel about 27 percent width, heading \"Illustrative mismatch\": canonical result document and draft report document represented as fine ruled technical records. Titles \"Canonical results\" and \"Draft report\". Highlight one row in each with a thin red connector labeled \"Different revisions\". No numbers. Footer \"Failure hypothesis\".\n\nCentral panel about 43 percent width, heading \"Candidate rewrite\". Top two-line band \"Existing distributed obligations\" with short text below \"Exact reads, claim mappings, report-model validation\". Below it a teal rule-separated section \"At each claim construction\", with FOUR LARGE numbered steps on separate lines:\n\"1. Open accepted result\"\n\"2. Resolve review\"\n\"3. Bind claim coordinate\"\n\"4. Write value and limits\"\nFooter \"Same obligations; explicit local sequence\". This is a procedural reorganization of rules already present in the package, not a claim that the evidence contract is newly invented.\n\nRight panel about 27 percent width, heading \"Evaluation implications\". Teal area titled \"Transfer hypothesis\" with \"Fewer result-report mismatches\". Amber area titled \"Possible cost\" with \"More checking and abstention\". Footer \"Unseen tasks + prior capabilities\".\nArrows connect mismatch → candidate rewrite → evaluation implications.\nBottommost fine-rule footer: \"EEO-text arm: fixed roles, dependencies, capabilities, and executable files\".\n\nUse clear hierarchy, exact labels, organized module interiors and professional academic visual design. All canvas background pure white and all text crisp dark. No cartoon people, robot icons, performance charts, fake result numbers, shadows or dark backgrounds.",
+      "review": "Independent review found per-claim mappings already exist in parent skill. Regenerated as Candidate rewrite: same distributed obligations reorganized into an explicit point-of-use sequence, with larger step text.",
+      "sha256": "bbf244b04fa01039351408704b4508397d2b78fb76acc5fcdf47ecd2307160c1",
+      "pixels": [
+        1536,
+        1024
+      ],
+      "mode": "RGB"
+    },
+    {
+      "asset": "evolution.png",
+      "prompt": "Create a publication-quality color scientific methods figure on a pure white page. Use crisp black serif typography, thin precise navy connectors, and flat pale blue, teal, amber and violet panels. Landscape 1536x1024. Render only scientific modules, text and a trial table.\n\nLEFT TWO THIRDS, title \"(a) Development search\": four modules on a 2 by 2 grid. Top left \"Execution evidence\" with rows Task / Package revision / Trajectory / Scores and cost / Review. Top right \"Candidate construction\" with rows Failure hypothesis / Text revision / Package validity + text-arm eligibility. Bottom right \"Matched trials\": table columns Case / Parent / Candidate; rows x1 / run / run and x2 / run / run. Under the table: \"Same model, inputs, and environment\". Bottom left \"Comparison and retention\" with rows Keep parent / Retain candidate / Revision + evidence.\nConnect them clockwise with four directional arrows: upper left → upper right → lower right → lower left → upper left. Last arrow labeled \"Development feedback\".\n\nRIGHT THIRD separated by vertical dashed line, title \"(b) Independent evaluation\". Top \"Freeze selected revision\". Below it two compact stacked destinations \"Unseen tasks\" and \"Retention tasks\", with subtitles \"Future quality and cost\" and \"Prior capabilities\". Two distinct arrows originate directly at Freeze selected revision, one to each destination. Below them \"Fixed task caps before outcomes\" and \"No test feedback to this search\".\n\nONE export arrow: START at BOTTOM EDGE of Comparison and retention, travel DOWN into the empty horizontal corridor BELOW BOTH development modules, then RIGHT across dashed boundary, then UP in the empty corridor beside the evaluation modules, and finally RIGHT into Freeze selected revision. Label \"End search\" in the bottom corridor. This path never crosses any module or text. Candidate construction has NO direct edge to the freeze module.\n\nBOTTOM FULL WIDTH under the export corridor: \"(c) Complete resource accounting\". Two text lines \"Total cost = candidate construction + rejected attempts\" and \"+ parent and candidate trials + review + future execution\". Footer \"Repeat full searches with fresh partitions for method-level inference.\"\n\nUse an entirely white untextured background. All labels exact and readable; elegant journal typesetting.",
+      "review": "Selected white-background generation routes export from comparison below the development modules; both test branches originate at the frozen revision.",
+      "sha256": "f74f327ba611e3f6efee2e32cf8fa6cfafe71262cbbf5101a7782f7fe9477cf8",
+      "pixels": [
+        1536,
+        1024
+      ],
+      "mode": "RGB"
+    }
+  ],
+  "iteration_log": [
+    "Initial image generations were visually inspected.",
+    "Local-path image editing failed for both CODEX_HOME and workspace paths with Windows sandbox helper ACL error; no API or credential fallback was used.",
+    "New complete figure generations used corrected full prompts. Dark-background evolution variants were rejected after visual review.",
+    "No third-party figures were supplied as generation inputs or copied into final assets.",
+    "Rejected an export-arrow variant whose edge passed through candidate construction. Selected final uses a separate bottom corridor.",
+    "Independent source review corrected Figure 2 from Added procedure to Candidate rewrite; existing per-claim mappings and report-model validation were already present."
+  ]
+}
