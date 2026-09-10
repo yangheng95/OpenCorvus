@@ -5,6 +5,7 @@
 ## Recall
 
 - 用户原始要求：“这样吧，我们来写一篇完善的学术论文，除了实验部分都可以立马写好，请给我你的计划，要是严格的学术论文写作”。本轮交付计划，不运行实验，不提前生成结果。
+- 2026-09-10 正文阶段接管：用户已重建论文 goal，并明确“我让你自己写这边论文，不要用opencorvus弄”。正文由当前助理直接撰写，OpenCorvus 仅作为研究对象和源码材料；不通过该平台创建或运行写作 Task，不委托写作 agent。先前写作委托问题作废。主任务模型切换接口返回 Transport closed，不能声称已切换为 Luna；后续独立复审明确指定 Luna，拟议实验仍固定 Luna 且本阶段不执行。
 - 研究对象默认 OpenCorvus；建议英文、LaTeX 的系统研究论文。投稿场所、作者信息和匿名要求尚未指定，先用独立于模板的结构，确认场所后核对当届官方要求。模型沿用用户指定的 gpt-5.6-luna，运行身份使用规范值 `openai/gpt-5.6-luna`；作者对事实、引用和最终稿负责。
 - 基线：当前已提交源码 bd2d6bd18eda05f35326adc231289e56d0a2dfcf。被中断的案例截图复验仅留下经营方案与临时下载，不构成本论文的新增实验结果。
 - 已读：AGENTS.md；current architecture 索引、控制面、Task control plane、Agent facts/turns、Host verification observations 的相关段落；实际 artifact-catalog 入口；Actual 案例 README/RESULT/manifest/delivery；最新经营记录。
@@ -131,3 +132,23 @@ SWE-EVO 等长任务基准可作为候选，须核读任务、许可、输入污
 本轮不运行案例复验或新模型实验，也不提交论文到外部平台。下一步应按这份计划先交付方法与非结果正文；最终篇幅和格式依据目标投稿场所确定。
 
 本轮验收：`bun run docs:check` 通过（339 operations、25 groups），`git diff HEAD --check` 通过。独立只读 Luna reviewer `review_paper_plan` 第二轮 PASS；既有论文基础包未修改。本记录仅证明计划经审查，不证明正文、形式性质或实验已经完成。用户明确要求重新建立 goal 后，当前目标已切换为非实验论文稿与研究协议交付。
+
+## 正文阶段影响分析与实施依据
+
+- 可观察问题与直接触发点：用户需要完整学术工作稿，现有交付只有写作计划与历史证据包。直接触发是用户要求当前助理亲自写作。此处没有待修复产品缺陷；数据/控制流根因和旧修复路径不适用。历史流程失败仅作为有版本边界的材料。
+- 范围：仅新增 manuscript 稿源、可编辑图、引文核验说明、正文来源映射及 PDF，更新相关索引和本记录；产品代码、配置、历史证据和实验记录只读。公共 API、数据库、调度实现和 UI 不变，无产品测试变更。
+- 已核读代码：冻结版本与 HEAD 的 control-lease、task-control-driver、artifact-catalog 一致；追加检查 root ingress reducer、completion-decision-facts、task-completion-closure、dispatch-lineage、artifact-provenance-facts 及两个真实 publication 调用点。事务内数据库 fencing 与外部副作用边界分开。租约 expiry 可变，不能称全部运行态不可变；周期发现须公平准入与实际 liveTasks 入口等前提，不能证明任务语义成功。
+- 已核读原始文献方法范围：OpenHands SDK v2 第 4.2/4.4/4.5 节，SWE-agent v3 的接口和实验设计，OpenHands v3 的工具/委托，AutoGen v2 会话编程，MetaGPT v7 角色/通信，AIOS v4 调度与上下文，SWE-EVO v1 数据构建；Lamport 的因果次序、Gray/Cheriton 的时钟前提及 PROV-DM。只对实际核读段落作窄范围概括，不声称系统性文献综述。
+- 风险：来源和时钟前提不完整时缩小命题；文献方法与源码现版分开；历史案例不升级为当前有效性。样本数、预算和故障点属于预先设计参数，不是结果。投稿模板、作者署名及执行参数冻结留到相应阶段。
+- 检查：单一 LaTeX 构建，BibTeX/交叉引用/字体/版面检查，逐页 PDF 视觉复核；运行 package.json 中 docs:check 与 diff 检查，再进行独立只读 Luna 审查。此阶段不运行产品、UI 自动化或故障实验。
+- 独立正文反馈：尚无，交付前另行只读委托。
+- 正文首轮复审：Luna reviewer `review_paper_plan` 指出固定任务估计量与任务重采样区间不匹配（P1），以及“未运行 checker”措辞过宽（P2）。已改为逐 task-condition 精确二项区间加同时覆盖的平均差区间，任务 bootstrap 仅作异质性敏感性分析，精度规划同步使用主要区间；来源说明明确仅未运行产品/实验行为 checker。完成重编后再次只读复审。
+- 当前稿题收紧为 **OpenCorvus: Separating Execution Ownership and Delivery Evidence in Long-Horizon Agent Work**，不在标题隐含已验证的广义 durability 效果。正文由当前助理直接完成；主任务切换 Luna 的失败事实已记录，不伪称切换成功。
+- 非实验稿交付：英文 LaTeX 正文、16 条核验书目、三张原创可编辑 TikZ 图、来源映射和研究协议，最终 PDF 为 20 页。已逐页渲染查看，修订页重看；全部字体嵌入，无未解析引用或溢出。三轮独立 Luna 实质复审已闭合统计方法、checker 措辞和来源编号问题；最后按 reviewer 要求关闭复审收据状态。实验、支付与外部投稿均未执行；经验结论与实际作者/投稿要求仍待后续。
+
+## ICLR 模板追加要求
+
+- 用户追加“下载一个iclr的latex模板”。2026-09-10 核对 ICLR 官方 2027 Author Guidelines，采用其当前公开的 2027 ZIP；来源为 https://media.iclr.cc/Conferences/ICLR2027/iclr-2027-style-files.zip 。
+- 此项是官方输入下载，不是产品问题修复。范围为新增 `templates/iclr2027/` 原始压缩包、原样展开的模板及来源/哈希说明，同步索引。现有稿源和 PDF 保持当前版本；迁移到会议版式另行实施，不形成第二份论文正文。产品调用流、公共契约和产品测试不适用。
+- 下载后核对 ZIP 内容、路径边界和文件摘要，阅读模板入口，不执行随包脚本；运行文档和差异检查，并追加独立只读复核。已有论文正文的最终独立 Luna 收据复核已返回 PASS。
+- 下载验收：ZIP SHA-256 为 `0d940dfa9398ae99a18f24a85a8a683f367204b6af6d17d2899e60a67102529e`，七个官方文件已原样解压和逐项计算摘要，入口确认为 `iclr2027_conference.tex`。Git 仅保留原始 ZIP 和说明；`source/` 是可由 ZIP 重建的忽略缓存，避免维护双份模板。未编译官方示例，论文现有稿源和 PDF 未改动。

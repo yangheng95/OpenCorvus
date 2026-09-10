@@ -1,0 +1,11 @@
+\begin{tikzpicture}[font=\small,>=Latex]
+\node (old) at (0,0) {Owner A};\node (db) at (4.3,0) {Database};\node (ext) at (8.7,0) {External service};\node (new) at (13,0) {Owner B};
+\foreach \n in {old,db,ext,new} {\draw[densely dashed,gray] (\n.south)--++(0,-48mm);}
+\draw[->] (0,-.7)--node[above,font=\footnotesize]{acquire lease A}(4.3,-.7);
+\draw[->] (0,-1.5)--node[above,font=\footnotesize]{perform effect}(8.7,-1.5);
+\node[font=\footnotesize,align=center] at (8.7,-2.15) {acknowledgement lost};
+\draw[->] (13,-2.8)--node[above,font=\footnotesize]{acquire after expiry}(4.3,-2.8);
+\draw[->] (0,-3.5)--node[above,font=\footnotesize]{assert stale lease A}(4.3,-3.5);
+\draw[->] (4.3,-4.15)--node[above,font=\footnotesize]{fence conflict}(0,-4.15);
+\node[font=\footnotesize,align=center] at (10.6,-4.1) {Effect outcome needs\\independent reconciliation.};
+\end{tikzpicture}

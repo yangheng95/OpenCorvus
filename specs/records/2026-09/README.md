@@ -2,6 +2,10 @@
 
 - [OpenCorvus 学术论文写作计划](2026-09-10-opencorvus-paper-plan.md)
 
+- [OpenCorvus 非实验论文工作稿与研究协议](../../artifacts/opencorvus-paper/manuscript/README.md)
+
+- [ICLR 2027 官方 LaTeX 模板下载](../../artifacts/opencorvus-paper/templates/iclr2027/README.md)
+
 - [Expert Squad discovery diagnostic overflow](2026-09-08-discovery-diagnostic-overflow.md)
 
 - [First-result communication cards and unsent copy](../../artifacts/2026-09-09-first-result-media/README.md)

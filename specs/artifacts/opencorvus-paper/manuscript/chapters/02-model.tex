@@ -1,0 +1,61 @@
+\section{Problem Formulation}\label{sec:model}
+\subsection{Objects and research unit}
+We use \emph{long-horizon work} to describe work whose acceptance depends on several causally related interactions, revisions, or execution occurrences, with possible interruption between them. Wall-clock duration, token consumption, or the number of agents alone is not a definition of difficulty. A workload should report dependency depth, revision count, tool interactions, and fault exposure separately.
+
+Let a project be an isolation context $p$. A task $\tau$ is a persistent business identity within that context. An epoch $e$ distinguishes lifecycle intervals when a task is reopened. A delivery requirement is represented by a slice revision $s$; revising a requirement produces a distinct reference rather than silently changing the meaning of an earlier acceptance. A session groups conversational state, while a turn identifies a particular unit of agent execution within that session. An occurrence $o$ identifies one execution instance under the relevant task, epoch, and dispatch identity. These are analytical categories: their concrete identifiers occupy different source structures rather than one universal tuple.
+
+An external effect $x$ is a tool-visible operation such as a filesystem write or a service request. Its real-world outcome may become known before, after, or never through a durable observation. An artifact reference $a=(p,\tau,i,r,h)$ denotes context, identity, revision, and payload digest. This is a normalized notation, not the literal wire format: some implementation locators carry project and task authority through their enclosing scope, and resource locators additionally include snapshot, path, media type, and length. A digest binds bytes under an integrity assumption; it is not a truth certificate.
+
+\begin{table}[htbp]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}lYY@{}}
+\toprule
+Symbol & Meaning & Must not be inferred solely from it \\
+\midrule
+$\tau,e$ & Task identity and lifecycle epoch & A particular physical execution \\
+$o$ & Exact execution occurrence & Every run sharing its session \\
+$\ell$ & Lease for a target and owner & Permission for all external effects \\
+$a$ & Exact artifact reference & Correctness or relevance of its contents \\
+$q$ & Observation with scope and lineage & Acceptance of all requirements \\
+$d$ & Acceptance decision over revisions & Independent validation of that judgment \\
+\bottomrule
+\end{tabularx}
+\caption{Distinct identities support distinct forms of evidence.}\label{tab:objects}
+\end{table}
+
+\subsection{State and transition model}
+Let $F_{\leq k}$ be a durable fact prefix under a specified consistent database view. Let $C_k$ be configuration and policy, and $L_k$ the lease records visible in that view. We write
+\begin{equation}\label{eq:projection}
+P_{k,t}=R(F_{\leq k},C_k,L_k,t).
+\end{equation}
+Here $R$ abstracts the relevant implementation reducers; it is not a claim that the repository contains one function with this signature. The time parameter $t$ supports expiry and deadline classification. Durable facts and mutable ownership metadata are explicitly separate. In particular, lease expiry fields are updated by renewal and release. We do not model every runtime variable as immutable.
+
+A hint $h$ requests that the runtime inspect durable state. A hint is not an acceptance fact or an authority grant. A scan computes a projection and may activate eligible work, record a bounded failure, or arrange a later wake. The local driver's revision counter coalesces requests arriving during an owned scan. A periodic enumeration of live tasks provides a second opportunity to discover durable work after a hint is lost. These mechanisms concern control progress; the LLM still chooses domain actions subject to available tools and authorization.
+
+For a target $u$, define $\mathrm{cur}(L,u)$ as the record selected by the implementation's current-lease rule. A lease $\ell$ is valid for owner $o$ at an assertion instant $t$ when
+\begin{equation}\label{eq:lease}
+V(\ell,o,u,t) \iff \ell=\mathrm{cur}(L,u)\ \land\ \ell.\mathrm{owner}=o\ \land\ t<\ell.\mathrm{expiry}.
+\end{equation}
+The rule includes exact lease identity. A worker's remembered expiry does not replace a fresh assertion. The current implementation orders lease rows by activation time and identity; that ordering must be consistent with acquisition order for the intended replacement semantics.
+
+\subsection{Evidence and acceptance}
+Write $\mathrm{Read}(o,a)$ when recorded read windows fully cover the bytes of the exact reference $a$ in the required action scope. Write $\mathrm{Select}(o,a)$ when the same scoped evidence is explicitly selected for use. For an output $b$, let $\mathrm{Sources}(b)$ be its declared source references. A minimal publication condition is
+\begin{equation}\label{eq:evidence}
+\forall a\in\mathrm{Sources}(b):\quad \mathrm{Read}(o,a)\land\mathrm{Select}(o,a).
+\end{equation}
+This condition is about declared references. If the declared set is empty, it holds vacuously. It does not prove that all substantively necessary sources were declared, that the producer understood them, or that $b$ follows from them.
+
+An acceptance decision $d$ binds a task, its relevant lifecycle boundary, selected deliverable references, evidence references, and accepted requirement revisions. We distinguish the runtime's recorded acceptance, $A_{\mathrm{run}}(d)$, from an independent task oracle $A_{\mathrm{ext}}(\tau,b)$. The first establishes what the runtime recorded and attributed. The second tests whether the requested outcome is actually satisfied. The evaluation reports them separately and does not define success using the runtime decision alone.
+
+For a declared dependency graph $G=(N,E)$, a strict dependency condition would require the relevant predecessor occurrence to complete successfully before a dependent dispatch is admitted. This is stronger than reference closure and stronger than eventually collecting all outputs. In the inspected architecture, the orchestrator is responsible for following declared workflow dependencies; the host does not universally enforce that graph as a scheduling frontier. We therefore treat dependency compliance as an observed property to evaluate, not an invariant provided by the runtime.
+
+\subsection{Failure model and assumptions}\label{sec:assumptions}
+The analytical model permits process crashes, lost or repeated hints, delayed results, interrupted model streams, tool timeouts, and a worker continuing after its ownership has expired. It also permits external operations whose outcome is unknown locally. The following assumptions delimit the propositions:
+\begin{enumerate}[label=A\arabic*.]
+\item Guarded database operations use transactions with the isolation required to serialize competing ownership changes and assertions, and committed records survive the considered crashes.
+\item A protected transition checks the exact target, owner, and lease in the same transaction as the transition. A lease supersession requires valid domain authority. Unguarded transitions are outside this proposition.
+\item Lease time observations and row ordering are consistent with the intended acquisition/expiry order. Arbitrary backward clock jumps, inconsistent cross-host clocks, and storage corruption are outside the guarantee. Actual deployments must characterize these assumptions.
+\item Artifact storage retains the referenced version; canonical reads and digests identify its bytes correctly; the scoped read/selection collectors are faithful to actual tool outcomes. Malicious storage and digest collisions are excluded from the byte-integrity argument.
+\item For eventual rediscovery, the database becomes readable, the driver remains live, enumeration repeatedly includes unresolved tasks, timers eventually run, and capacity admission is fair. An operator-gated state additionally requires the relevant operator action.
+\end{enumerate}
+The model provides neither Byzantine fault tolerance nor a claim that arbitrary model decisions satisfy the task. It does not assume atomic commitment across a database and an arbitrary external service. Those exclusions are essential to interpreting recovery behavior.

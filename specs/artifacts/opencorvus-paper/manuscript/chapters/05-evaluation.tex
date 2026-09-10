@@ -1,0 +1,100 @@
+\section{Prospective Evaluation Methodology}\label{sec:protocol}
+This section specifies a study to be executed after the non-experimental manuscript. It is not a completed preregistration or a report of experiments. The parameter choices below are prospective design choices, not measured values. Task eligibility, baseline revisions, provider identity, and pilot-based sample size must be frozen in a dated execution manifest before confirmatory runs. No such runs have been performed for this manuscript.
+
+\subsection{Research questions and units}
+\textbf{RQ1:} Under defined faults, do exact execution and ownership relations recover to the prescribed outcome, and at what delay? The experimental unit is a task--fault scenario; repeated attempts are nested within that unit. The recovery oracle examines facts, exact occurrences, and independently observed effects, rather than process availability alone.
+
+\textbf{RQ2:} At a fixed model and total resource budget, does \oc{} change independently accepted delivery relative to a matched runtime? The unit is an eligible task, with repeated runs per condition. The primary estimand is the task-weighted difference in acceptance probability on the frozen eligible task set. This is not a population claim about arbitrary user work.
+
+\textbf{RQ3:} Which inspected mechanisms contribute to observed behavior, and what overhead accompanies them? The unit and pairing follow RQ1 or RQ2 according to the endpoint. Mechanism-specific ablations should be evaluated against the same frozen full system, not against an independently tuned prompt.
+
+\subsection{Workloads and eligibility}
+We propose two workload families. Controlled fault scenarios exercise real processes, persistent storage, and an isolated external operation with an independent ledger. They include uninterrupted controls and targeted interruptions. Software tasks assess accepted delivery under the same model/tool conditions. SWE-EVO is a candidate source \citep{sweevo}; no task from it has yet been accepted into this study's execution manifest.
+
+Before observing condition outcomes, a task is eligible only if its source and test versions can be retained, its license permits the planned use, its initial state can be reconstructed, and an acceptance oracle can check its stated requirements. Environment installation failures during this pre-screening are recorded as exclusions with reasons. After enrollment, environment or infrastructure failures are outcomes, not retrospectively removable cases. Tasks with previously public maintainer solutions, including the repository's Actual demonstration, are excluded from the primary evaluation. A separately labeled qualitative analysis may discuss them.
+
+We stratify eligible tasks using properties available before runs: repository, dependency depth where explicitly specified, requirement count, and expected interaction categories. We do not stratify on observed completion time or successful agent trajectories. Public benchmark tasks may be represented in model training; a fixed model does not remove that threat. Report the provenance and exposure of every task, and limit interpretations accordingly.
+
+All infrastructure scenarios cover serial and concurrent activity, live and terminal task states, a reopened epoch, and at least two independent project contexts. Shared mechanisms must be checked across their production callers before a local scenario can support a general recovery claim. This coverage requirement is an obligation of the future experiment, not a coverage result of this manuscript.
+
+\subsection{Conditions and fairness}
+The intended comparison has three kinds of condition. A minimal single-agent tool loop establishes a simple reference point. A production runtime with durable state, preferably a pinned OpenHands SDK implementation or another technically compatible system, supplies the principal external comparison. The fixed \oc{} snapshot supplies the treatment. The external baseline is chosen and documented before task outcomes are seen, based on support for the prescribed model and equivalent tool capabilities. If no compatible baseline exists, report that limitation and restrict the claims; do not substitute published scores from a different model.
+
+Each condition receives the same task input, repository snapshot, permitted tool operations, network scope, acceptance oracle, and aggregate resource budget. System-specific interface adapters are documented because exact prompt equivalence can be counterproductive when tool schemas differ. Give every condition the same predeclared development opportunity on disjoint pilot tasks. Freeze prompts and adapters before confirmatory execution. Report native differences, including concurrency and persistence, rather than silently removing them to improve a score.
+
+Proposed ablations isolate (a) periodic rediscovery while retaining direct hints, (b) the selected transaction-scoped ownership checks in a disposable laboratory build, and (c) explicit evidence selection while retaining exact-version reads. These are experimental interventions, not production changes or supported compatibility paths. The ownership ablation must use isolated operations whose duplicate effects are observable and harmless. For each intervention, enumerate affected call sites, prove that the intended mechanism actually changed through a manipulation check, and document any secondary semantic change. If clean separation is impossible, analyze the intervention as a combined change rather than attribute its effect to one mechanism.
+
+\subsection{Model, budget, and execution manifest}\label{sec:budget}
+The intended model is \code{openai/gpt-5.6-luna}. This is the requested catalog identity; an execution manifest must also record the actual provider and request model identifier, interface version, catalog revision, non-secret configuration digest, source commit, and package digest. The experiment may proceed only after confirming that the provider request uses the intended model. This statement does not claim that the manuscript-authoring session used that model.
+
+For planning, use a per-run cap of 100{,}000 total input-plus-output tokens, 100 model requests, and 60 minutes of agent execution, whichever is reached first. These are proposed resource caps, not cost estimates or claims of adequate performance. Aggregate usage across all workers and recovery attempts; count cached input tokens in the token cap and report their billed category separately. Streaming requests are counted on initiation, including failed requests, with provider-reported token usage where available. A run with unknown token usage cannot be certified as budget-compliant and is flagged separately. Up to four simultaneously active workers may be used where supported; serialize operations that require exclusive mutable resources. Report actual concurrency.
+
+The planned confirmatory design uses three fresh runs per task and condition, with condition order randomized within task/repetition blocks. Environment setup and final external evaluation are timed and reported separately from the agent cap. Host downtime from an injected fault remains inside elapsed-time outcomes. No manual debugging is allowed during a primary run. A required human decision is recorded as an intervention and the unassisted endpoint is evaluated at that boundary. Assisted continuations form a separate analysis and do not replace the primary attempt.
+
+The final values may change after a disjoint pilot if the initial caps make the study uninformative or infeasible. Such changes require a dated rationale and a new manifest before confirmatory runs; pilot outcomes are then excluded from the confirmatory estimates. This is a prospective planning rule, not permission to tune budgets after seeing confirmatory results. No model calls or payments are authorized or initiated by this manuscript.
+
+\subsection{Fault injection and outcome oracles}\label{sec:faults}
+Faults are triggered at observable boundaries identified by exact event or transaction markers. A scheduled random wall-clock kill is insufficient unless its actual boundary is subsequently established. Table~\ref{tab:faults} defines the planned scenarios. Fault duration, trigger implementation, affected process, and restart procedure belong in each scenario manifest.
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{@{}lYY@{}}
+\toprule
+Scenario & Trigger and perturbation & Required oracle evidence \\
+\midrule
+F1 & After durable ingress, before local hint; drop hint and restart isolated driver. & Exact ingress retained; later scan discovers it; permitted outcome recorded. \\
+F2 & After lease acquisition, before operation; stop owner and permit expiry. & Replacement identity and occurrence are explicit; old owner cannot commit a guarded transition. \\
+F3 & After child descriptor is durable, before dispatch admission consumption; interrupt owner. & Descriptor, dispatch identity, admission state, and resulting settlement agree. \\
+F4 & After an isolated external effect commits, before its observation; lose response. & Independent effect ledger distinguishes commit, duplication, and unknown local knowledge. \\
+F5 & During a streamed response, before a complete durable outcome; break connection. & Partial output is classified; an unrelated/new occurrence is not credited with its result. \\
+F6 & After a task closes or reopens, before delivery of an old hint/result. & Exact lifecycle boundary is honored; stale ingress receives its defined inapplicable/error outcome. \\
+F7 & Concurrent tasks in two projects with saturated scan capacity. & Project-scoped ownership and fair admission observations; rejected work remains discoverable. \\
+\bottomrule
+\end{tabularx}
+\caption{Planned fault scenarios. Every row requires a real storage/process path and an independent observer; this table contains no executed outcomes.}\label{tab:faults}
+\end{table}
+
+For each enrolled scenario, the oracle specification lists the expected persistent fact set, allowed state transitions, exact occurrence relations, allowed external effect count, and expected terminal or operator-gated outcome. A surfaced ambiguous external result may be the correct safety outcome for F4; it is not scored as completed useful work. Record separately: duplicate physical executions, duplicate durable settlements, duplicate external effects, and outcomes that remain unknown. Their denominators differ and must not be collapsed into one error counter.
+
+Use a monotonic observer clock for duration within one observation host. To infer cross-process precedence, use durable lineage or a common event sequencer. If either is unavailable, classify the ordering as unresolved. Recovery latency begins at restoration of the failed resource and ends when the expected durable outcome is observed; additionally report total disruption time from fault onset. Timeouts are failures for bounded recovery success and right-censored observations for descriptive recovery-time analysis. Report the restricted mean time up to the declared timeout if a time summary is used; do not summarize only successful recoveries.
+
+The independent task oracle combines version-pinned executable checks with a requirement-level rubric prepared before execution. Hidden checks must remain inaccessible to agents. Two reviewers, blinded to condition when feasible, assess criteria that need domain judgment. They record initial ratings before adjudication by a third reviewer. Report raw agreement and an appropriate chance-corrected agreement statistic with its limitations. Automated LLM judgments may assist review but cannot be the sole correctness authority. User-interface outcomes require real interaction and human visual inspection under repository policy, not automated UI assertions.
+
+\subsection{Endpoints and statistical analysis}\label{sec:stats}
+Define $Y_{icr}=1$ only when task $i$, condition $c$, repetition $r$ meets all preregistered mandatory acceptance criteria within budget, without manual rescue. Otherwise $Y_{icr}=0$. A runtime completion label alone cannot set $Y=1$. Let $R_i$ be the planned repetitions and $N$ the eligible task count. The primary contrast against the frozen principal baseline $b$ is
+\begin{equation}\label{eq:estimand}
+\widehat{\Delta}=\frac{1}{N}\sum_{i=1}^N\left(\frac{1}{R_i}\sum_{r=1}^{R_i}Y_{i,\mathrm{OC},r}-\frac{1}{R_i}\sum_{r=1}^{R_i}Y_{i,b,r}\right).
+\end{equation}
+Equal task weighting prevents tasks with more observed retries from receiving additional weight. Planned repetitions, including failures, remain in the denominator. Infrastructure failure, timeout, missing deliverable, and unknown budget compliance count as zero for the strict primary endpoint and receive separate reason codes. Missing evaluator data require worst/best-case bounds as a sensitivity analysis, not silent exclusion or a favorable imputation. Partial satisfaction is a secondary ordinal rubric outcome.
+
+The primary interval conditions on the enrolled tasks. Let $p_{ic}$ be task $i$'s acceptance probability under frozen condition $c$, so that $\Delta=N^{-1}\sum_i(p_{i,\mathrm{OC}}-p_{ib})$. Assume repetitions within each task--condition cell are independent Bernoulli trials with a stable probability. For the $2N$ cells in the principal comparison, construct equal-tailed exact binomial intervals $[L_{ic},U_{ic}]$ by the method of \citet{clopper}, each with error probability $\delta=0.05/(2N)$. With $K_{ic}=\sum_rY_{icr}$, use beta quantiles $L_{ic}=Q_{\delta/2}(K_{ic},R_i-K_{ic}+1)$ and $U_{ic}=Q_{1-\delta/2}(K_{ic}+1,R_i-K_{ic})$; set $L_{ic}=0$ when $K_{ic}=0$ and $U_{ic}=1$ when $K_{ic}=R_i$. Here $Q_q(a,b)$ is the $q$ quantile of a beta distribution with parameters $a,b$.
+\begin{equation}\label{eq:interval}
+I_\Delta=\left[\frac1N\sum_i(L_{i,\mathrm{OC}}-U_{ib}),\quad
+\frac1N\sum_i(U_{i,\mathrm{OC}}-L_{ib})\right].
+\end{equation}
+The union bound gives simultaneous coverage of all $2N$ cell probabilities of at least 95\%; their inclusion implies $\Delta\in I_\Delta$. This construction needs no independence between cells and accommodates paired conditions, although it does not exploit pairing to shorten the interval. It is deliberately conservative and may be very wide with three repetitions. Report the point estimate and this interval in percentage points, with the cell counts and assumptions. If temporal provider drift or dependent repetitions invalidate the binomial model, report descriptive estimates and labeled sensitivity analyses without claiming nominal coverage.
+
+As a separate task-heterogeneity sensitivity analysis, apply task-cluster resampling following the bootstrap principle \citep{efron}: resample whole tasks 10{,}000 times, retaining their paired conditions and repetitions, and report the 2.5th and 97.5th percentile range. This range is not the primary fixed-task probability interval. Also report repository-stratified estimates and leave-one-repository-out contrasts. Neither analysis establishes generalization from the curated set to arbitrary user work, and repetitions are never relabeled as independent tasks.
+
+RQ1 reports correctly classified recovery outcomes, invariant violations by defined opportunity, unresolved effects, and timing distributions for every fault type. Report numerators and denominators explicitly. A zero observed violation count is accompanied by an upper uncertainty bound under a stated sampling model; it is not a proof of safety. RQ3 reports paired changes in acceptance and recovery, aggregate tokens and calls, storage/scan work, elapsed time, and human intervention. Costs are reported only from actual provider usage and contemporaneous billing data, with currency/date and cached-token treatment.
+
+There is one primary comparison in Equation~\ref{eq:estimand}. Secondary confirmatory acceptance comparisons of the three ablations against the full system, if retained, form one family of three and use Holm-adjusted $p$-values at family-wise level 0.05 \citep{holm}. For each, compute a two-sided paired randomization test by swapping full-system and ablation labels jointly across all repetitions within each task. Enumerate all task-level swaps when feasible, otherwise use 10{,}000 random swaps and the plus-one Monte Carlo correction. This test requires the corresponding exchangeability null; it is not justified merely by repeated runs. Recovery-only interventions and cost endpoints remain descriptive. Effect sizes and intervals remain central; a non-significant result does not establish equivalence. Any additional baseline, subgroup, or interaction analysis is labeled exploratory. No post-hoc choice of the best repetition or successful subset enters the primary endpoint.
+
+Sample size planning must use Equation~\ref{eq:interval}, not a task-bootstrap variance. First freeze an eligible task set without observing condition outcomes, then evaluate candidate repetition counts using the exact binomial interval widths over all possible cell counts. Use the worst-case combined half-width to assess the prespecified five-percentage-point precision target; a disjoint pilot may additionally provide a labeled expected-width projection, but cannot replace the conservative calculation. Three repetitions are the initial planning setting, not a claim that the precision target is feasible. Increasing only the number of tasks does not remove wide cell-wise uncertainty in this conservative construction. If the authorized budget cannot support sufficient repetitions, freeze a feasible count before confirmatory execution and report the achievable precision and unmet target. Do not append runs until a favorable interval or significance threshold appears.
+
+\section{Results: Reserved for Empirical Evidence}\label{sec:results}
+\pending{No confirmatory or pilot experiment has been run for this manuscript.}
+The final results section will answer RQ1--RQ3 using the protocol above. Table~\ref{tab:results} is a reporting specification, not a numeric result table. It contains no zeroes that could be mistaken for measured failure-free performance.
+\begin{table}[H]\centering\small
+\begin{tabularx}{\linewidth}{@{}lYY@{}}
+\toprule
+Question & Required result fields & Current state \\
+\midrule
+RQ1 & Scenario opportunities; correct outcomes; duplicate/unknown effects; recovery intervals & Not run \\
+RQ2 & Eligible tasks; planned runs; accepted counts; paired difference and uncertainty & Not run \\
+RQ3 & Intervention fidelity; paired effects; tokens, time, storage, human effort & Not run \\
+Failures & All reason codes; representative trace IDs; excluded/pilot manifests & No study traces \\
+\bottomrule
+\end{tabularx}
+\caption{Reserved reporting fields. Historical demonstrations and website constants are not substituted for these missing observations.}\label{tab:results}
+\end{table}
+\pending{The abstract's empirical sentence, the interpretation of comparative effects, and the final empirical conclusion must be written after these results exist.}

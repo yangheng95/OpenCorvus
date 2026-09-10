@@ -1,0 +1,22 @@
+\section{Artifact, Sources, and Reproduction}\label{sec:artifact}
+\subsection{Source snapshot and evidence map}
+The analyzed source snapshot is available in the public repository \citep{ocsource}. The manuscript artifact contains LaTeX source, BibTeX references, editable TikZ figures, citation verification notes, and a passage-to-source map. The map references the pre-existing claim matrix rather than creating a second implementation-status registry. It also distinguishes source facts from definitions, conditional deductions, hypothetical counterexamples, historical observations, and proposed experiments.
+
+The earlier foundation directories for evidence, cases, experiments, figure inputs, and integration are unchanged by manuscript authoring. Their presence supports auditability of retained material, not full historical replay. Future experimental traces require a separate execution manifest and preserved environment; rebuilding this document does not run the system or reproduce a benchmark.
+
+\subsection{Document build}
+From the manuscript directory, build the single source tree with:
+\begin{quote}\small\ttfamily
+latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
+\end{quote}
+The document uses pdfLaTeX, BibTeX, and standard TeX packages. TikZ figure sources are included directly in the manuscript. The build must resolve citations and cross-references. Inspect page rendering, embedded fonts, table/figure boundaries, and extraction order before delivery. Document checks are not evidence of runtime effectiveness.
+
+\subsection{Future execution record}
+Each run record must identify the task, condition, repetition, randomized order, source commit, environment image or dependency lock digest, model request identity, prompt and package digests, tool permissions, start/end observer times, budget consumption, manual interventions, and raw trace locations. Fault records add the exact boundary marker, affected process, fault duration, recovery procedure, expected facts, observed facts, and external effect ledger. Preserve a hash manifest over the non-secret artifacts.
+
+The acceptance record must include the oracle version, checked requirement revisions, executable-check outputs, blinded initial ratings, adjudicated result, and failure reasons. Analysis scripts must implement the frozen estimand and denominator rules. Publish unsuccessful and missing outcomes alongside accepted ones. Credentials, private user data, and access tokens do not belong in prompts, traces, figures, manifests, or the repository.
+
+\subsection{Authorship and disclosure}
+Author names, affiliations, contribution statements, and a target venue have not been supplied. They must be supplied by the actual authors; no affiliation or human contribution is inferred. This working manuscript was drafted with an AI assistant and requires accountable author review of its sources, arguments, and eventual results. The final disclosure should describe the actual assistance and comply with the selected venue's policy at submission time. A model name in the future experimental protocol does not identify the model used for every authoring step.
+
+No new agent experiment, payment, external effect benchmark, user study, or paper submission was performed as part of document creation. An experimental result can only be added after the corresponding execution and evaluation artifacts exist.

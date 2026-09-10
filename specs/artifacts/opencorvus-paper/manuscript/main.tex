@@ -1,0 +1,45 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=25mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype,amsmath,amssymb,amsthm}
+\usepackage{booktabs,tabularx,longtable,array,enumitem,float}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{xcolor,tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\urlstyle{same}
+\setlength{\emergencystretch}{2em}
+\setlength{\parskip}{3pt}
+\setlist{nosep,leftmargin=*}
+\newtheorem{proposition}{Proposition}
+\newtheorem{definition}{Definition}
+\newcommand{\oc}{OpenCorvus}
+\newcommand{\src}{\texttt{bd2d6bd18eda}}
+\newcommand{\pending}[1]{\textit{[Pending empirical evidence: #1]}}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\title{OpenCorvus: Separating Execution Ownership and Delivery Evidence in Long-Horizon Agent Work}
+\author{Non-experimental working manuscript\\\small Author names and affiliations to be supplied}
+\date{10 September 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+Long-horizon agent work can span multiple execution attempts, tools, participants, and process failures. A completed conversation is consequently an insufficient description of what ran, who retained authority to commit a transition, and which outputs informed delivery acceptance. This paper studies these distinctions in \oc{}, an open-source agent runtime. We develop an analytical model that separates business identity, execution occurrences, physical ownership, and revision-specific evidence. We map the model to a fixed source snapshot, focusing on fact reduction, transaction-scoped lease checks, and artifact read--selection--publication relations. Conditional propositions characterize stale-owner rejection within guarded database transitions, evidence-reference closure, and eventual rediscovery under explicit availability and fairness assumptions. Counterexamples delimit these properties: database fencing does not establish exactly-once external effects, complete reading does not establish semantic correctness, and final delivery does not establish dependency-order compliance. We provide a prospective evaluation protocol for fault recovery, independently accepted task outcomes, and mechanism costs. \pending{comparative outcomes, effect estimates, and any claim of practical improvement await experiments.} This manuscript reports a design analysis and protocol, not an empirical validation of the runtime.
+\end{abstract}
+\noindent\textbf{Keywords:} agent runtimes; execution identity; durable state; artifact provenance; recovery; software engineering.
+
+\input{chapters/01-introduction}
+\input{chapters/02-model}
+\input{chapters/03-design}
+\input{chapters/04-analysis}
+\input{chapters/05-evaluation}
+\input{chapters/06-discussion}
+\bibliographystyle{plainnat}
+\begingroup\small\raggedright
+\bibliography{references}
+\endgroup
+\appendix
+\clearpage
+\input{chapters/07-artifact}
+\end{document}

@@ -2,6 +2,10 @@
 
 Current paper plan: [OpenCorvus academic research and writing plan](records/2026-09/2026-09-10-opencorvus-paper-plan.md).
 
+Current non-experimental paper: [manuscript, source map and evaluation protocol](artifacts/opencorvus-paper/manuscript/README.md).
+
+Paper template input: [ICLR 2027 official LaTeX package](artifacts/opencorvus-paper/templates/iclr2027/README.md).
+
 Real-project case result: [Luna import repair, patch and acceptance evidence](artifacts/2026-09-10-import-case/RESULT.md).
 
 Prepared case distribution: [LinkedIn and Xiaohongshu copy, not submitted](artifacts/2026-09-10-import-case/SOCIAL.md).

@@ -1,0 +1,39 @@
+\section{Conditional Properties and Counterexamples}\label{sec:properties}
+The following propositions are elementary consequences of the abstract contracts and their stated assumptions. They delimit claims about the design; they are not novel distributed algorithms, machine-checked proofs, or a whole-program verification of \oc{}.
+
+\begin{proposition}[Stale identity at a guarded transition]\label{prop:fence}
+Under A1--A3, after a replacement lease becomes current for target $u$, a transaction asserting a different lease identity for $u$ cannot successfully perform a transition guarded by that assertion.
+\end{proposition}
+\begin{proof}
+Consider the serial position of the protected transaction after the replacement transaction. A1 makes the replacement visible in its consistent view. Under A3 the current-lease rule selects the replacement. The exact-identity conjunct in Equation~\ref{eq:lease} is therefore false for the older identity. A2 places assertion and transition in the same transaction, so the failed assertion prevents that guarded transition. A transaction serialized before replacement is outside the stated temporal case.\end{proof}
+
+This statement does not assert that the lease remains unexpired at physical commit time after an earlier check; it concerns the check's serialized view. It also does not prove that unguarded operations, arbitrary plugin actions, or external services observe the lease. The conditional guarantee must be instantiated for each protected path. A clock anomaly that changes which row is current invalidates A3 and requires a deployment-specific analysis.
+
+\begin{proposition}[Declared-source reference closure]\label{prop:closure}
+Assume A4 and that a publication reaches the inspected membership checks with faithful observed and selected locator sets. If the publication is accepted through those checks, every declared source has a complete read and selection in the caller's required scope.
+\end{proposition}
+\begin{proof}
+Suppose an accepted publication declared a source $a$ without a complete scoped read or without a selection. Faithful collectors would omit $a$ from at least one supplied set. The publication loop checks membership in both sets for each declared locator and raises an error on either failure. The assumed acceptance therefore contradicts the corresponding membership check. Exact locator equality and A4 keep this argument tied to the same revision.\end{proof}
+
+The proposition is intentionally limited to declared sources. Consider a report requiring evidence from documents $a_1$ and $a_2$. A producer may read and select $a_1$, omit $a_2$, and publish a plausible but unsupported conclusion. Equation~\ref{eq:evidence} still holds. Even declaring and reading both documents would not prove the inference valid. The oracle must therefore inspect substantive evidence coverage and reasoning separately from transport closure.
+
+\begin{proposition}[Eventual opportunity for rediscovery]\label{prop:discovery}
+Under A5, an unresolved task that remains eligible and repeatedly appears in the live-task enumeration eventually receives an admitted scan, even if its original hint was lost.
+\end{proposition}
+\begin{proof}
+Repeated enumeration provides further admission requests independently of the original hint. Capacity-rejected entries remain eligible for subsequent requests. Fair admission in A5 gives an admission after finitely many such opportunities. A live driver and eventually readable storage allow the scan to occur. Without fair admission or continued inclusion in the enumeration, this conclusion does not follow.\end{proof}
+
+An admitted scan is not task completion. It may correctly identify an operator-gated condition, produce another bounded failure, or dispatch an agent that makes no useful progress. Neither the proof nor the implementation inspection gives a latency bound. A bound would additionally require quantitative limits on enumeration, backoff, admission, storage response, and scan duration. This is why the evaluation measures discovery, recovery, and acceptance separately.
+
+\subsection{External effects and indistinguishable local states}\label{sec:effects}
+Consider two executions of an external operation $x$. In execution $H_1$, the service commits $x$ and the acknowledgement is lost before a local observation is durable. In execution $H_2$, the request never commits and the same local observation is absent. If the only available durable local facts are identical, a recovery algorithm using those facts alone cannot distinguish $H_1$ from $H_2$. Retrying may duplicate $x$ in $H_1$; refusing to retry may leave $x$ undone in $H_2$.
+
+Consequently, an exactly-once claim for an arbitrary external effect requires information beyond local lease checks: for example, a service-supported idempotency key and queryable result, a shared transaction, or a domain-specific reconciliation procedure. We do not assert that \oc{} supplies these for every tool. The protocol records the distinct states ``confirmed committed'', ``confirmed not committed'', and ``unknown'', and inspects the external operation independently. Local idempotent artifact publication does not resolve this general ambiguity.
+
+\subsection{Completion and causal compliance}
+A second counterexample separates output closure from dependency compliance. Let a workflow require $n_1\rightarrow n_2$, where $n_2$ must review the accepted result of $n_1$. If $n_2$ starts on an early artifact and $n_1$ later publishes a final revision, a task may eventually contain both outputs. A final decision referring to an output set does not retroactively establish that $n_2$ consumed the final predecessor result. The dependency property needs exact occurrence and artifact-revision relations, not only timestamps or node names.
+
+The historical seven-role record is compatible with this distinction, but the counterexample is a logical construction and does not depend on estimating a failure probability from that record. In future execution traces, a dependency oracle must compare predecessor success, dependent dispatch, and consumed references. When cross-process order cannot be established by lineage or a common sequencer, the event order is reported as unresolved rather than inferred from unsynchronized clocks.
+
+\subsection{What these properties leave open}
+The propositions do not establish global linearizability, arbitrary-process isolation, complete application-level idempotency, or semantic task success. Their practical value is to expose obligations that can be checked: transaction placement, exact identity, scoped read collectors, live-task coverage, and external effect oracles. If an obligation fails, an implementation-level claim must be narrowed or the implementation investigated. The analysis does not reinterpret a failing run as a success because another layer happened to produce a deliverable.
