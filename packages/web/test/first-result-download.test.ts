@@ -22,7 +22,7 @@ test("sample download contains canonical files and runs as an extracted project"
     for (const entry of entries) {
       if (entry.directory || !entry.getData) throw new Error(`Expected file: ${entry.filename}`)
       const bytes = await entry.getData(new Uint8ArrayWriter())
-      expect(Buffer.from(bytes)).toEqual(await readFile(path.resolve("../../examples", entry.filename)))
+      expect(Array.from(bytes)).toEqual(Array.from(await readFile(path.resolve("../../examples", entry.filename))))
       const target = path.join(temp, entry.filename)
       await mkdir(path.dirname(target), { recursive: true })
       await writeFile(target, bytes)
