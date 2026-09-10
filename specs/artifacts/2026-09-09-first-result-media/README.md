@@ -218,12 +218,14 @@ there is no application UI automation or screenshot comparison in this package.
 
 ## Revised pilot invitation — adoption cycle, 10 September 2026
 
-Status: reviewed draft, not submitted to issue #30. The Actual Budget wording
-below was committed in 621caa86; the previous Parcel Notes invitation remains
-live. Anonymous GitHub reads at 2026-09-10T05:34:55Z confirmed that distinction.
+Status: published to [issue #30](https://github.com/yangheng95/opencorvus/issues/30)
+after the user's explicit confirmation on 10 September 2026. GitHub updated it
+at 2026-09-10T06:03:24Z; the complete body was read back at 06:03:26Z and matched
+the reviewed Actual Budget wording below. The issue title remains unchanged.
+The SHA-256 digest of the trimmed body with LF line endings is
+`176b02e2dfa40505b4eecb6e704f106723c356f886c6de12a4eb32c6690683a5`.
 The earlier publication/readback receipt in the operating ledger belongs to the
-Parcel Notes wording. The issue-edit confirmation remains pending; mark this
-replacement published only after its exact body is submitted and read back.
+previous Parcel Notes wording. This receipt establishes publication, not adoption.
 The initial publication above is historical. Existing cards remain sample
 illustrations; the withdrawn social posts remain withdrawn.
 

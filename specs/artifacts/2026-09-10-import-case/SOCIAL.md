@@ -3,7 +3,8 @@
 Status: prepared copy only, 10 September 2026. Neither post below has been
 submitted. These drafts replace the withdrawn Parcel Notes campaign as candidate
 copy; they do not establish account access, publication approval or adoption.
-The pending issue #30 edit is a separate action.
+The separate [issue #30 invitation](https://github.com/yangheng95/opencorvus/issues/30)
+was updated and read back on 10 September 2026; neither social draft was submitted.
 
 The [accepted result](RESULT.md) is the factual source. Public links below pin
 its existing evidence commit, so a future edit cannot silently change what a
