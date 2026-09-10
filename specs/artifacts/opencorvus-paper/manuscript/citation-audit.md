@@ -1,6 +1,6 @@
 # Citation verification and reading scope
 
-Verified on 2026-09-10 against primary papers and versioned source records. This is a targeted related-work analysis. The bibliography contains the 12 works actually cited by the current EEO manuscript; audit-centric references from the superseded draft were removed. No source's benchmark numbers or copied figures are imported.
+Verified on 2026-09-10 against primary papers and versioned source records. This is a targeted related-work analysis. The bibliography contains the 14 works actually cited by the current EEO manuscript; audit-centric references from the superseded draft were removed. No source's benchmark numbers or copied figures are imported.
 
 | BibTeX key | Fixed source | Material used / limit |
 | --- | --- | --- |
@@ -16,5 +16,7 @@ Verified on 2026-09-10 against primary papers and versioned source records. This
 | adas | [ICLR 2025 official paper](https://proceedings.iclr.cc/paper_files/paper/2025/file/36b7acf6f6010652b3f2a433774a66fe-Paper-Conference.pdf) | Section 3: Meta Agent Search programs agent forward functions using an archive and execution evaluation. Section 4.3 explicitly studies transfer across tasks/domains/models. Authors Shengran Hu, Cong Lu, Jeff Clune; title and conference checked. Cross-task reuse is not claimed novel to EEO. |
 | sirius | [arXiv v1 record](https://arxiv.org/abs/2502.04780v1), [full text](https://arxiv.org/html/2502.04780v1) | Section 2.2 and Algorithm 1: successful trajectories and augmentation feed supervised fine-tuning of agent parameters. Four authors, full title and 2025 date verified. It must not be described as only prompt memory or retrieval. |
 | gepa | [arXiv v2 metadata](https://arxiv.org/abs/2507.19457v2), [paper](https://arxiv.org/pdf/2507.19457v2) | Sections 2–3 and Algorithm 1: fixed-weight module prompt optimization, trajectory feedback, candidate retention, budget and held-out evaluation. All 17 authors verified. Direct text-optimization comparator; source boundary retained as v2. |
+| legomem | [arXiv v1](https://arxiv.org/abs/2510.04851v1), [method](https://arxiv.org/html/2510.04851v1) | Sections 3.1–3.3 and Algorithm 1: role-aware memory construction and retrieval. Six authors and original 2025 date checked. Direct procedural-reuse prior work; no performance numbers used. |
+| agentdevel | [arXiv v1](https://arxiv.org/abs/2601.04620v1), [method](https://arxiv.org/html/2601.04620v1) | Sections 2.1–2.4: blueprint revisions, executable diagnosis, regression-based selection and independent final test. Di Zhang, 2026, verified. Direct versioned-improvement prior work; no results imported. |
 
 ArXiv entries cite the exact inspected version and initial submission year, with revision notes where relevant. Formal proceedings entries use the verified conference version. The companion source map states implementation boundaries. Original colored figures visualize the paper's constructs and declared workflow, not fabricated observations.

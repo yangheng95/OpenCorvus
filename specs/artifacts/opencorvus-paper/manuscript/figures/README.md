@@ -15,8 +15,10 @@ The author searched and actually viewed [AFlow Figure 3, PDF page 5](https://pro
 
 ## Meaning and review
 
-Colors encode categorical responsibilities and method regions. Document marks, trial cells and connecting lines depict method structure, not measured data. Figure 2 is a worked hypothesis, not an empirical case or a verbatim source diff. Its artifact contract is analytical notation. Figure 3 does not imply that selection guarantees improvement.
+Colors encode categorical responsibilities and method regions. Revision labels, trial cells and connecting lines depict method structure, not measured data. Figure 2 is a worked hypothesis, not an empirical case or a verbatim source diff. Its artifact contract is analytical notation. Figure 3 does not imply that selection guarantees improvement.
 
 All labels and directed connections were manually checked before integration. Independent review established that the parent already contains claim mappings and report-model validation. Figure 2 was regenerated to depict an explicit local reorganization of these obligations, with larger step text. Initial incorrect digest typography, a spurious double-headed dependency arrow, role-to-field misalignment, poor-background variants and an ambiguous export route were rejected and regenerated. Local-path image editing failed with the Windows sandbox helper ACL error for both generated-image and workspace paths; complete corrected prompts were used for new generations. No pixel-editing substitute or credential fallback was used. Final PDF and independent review status is recorded in [validation](../validation.md).
 
 The older recovery/evidence filenames and all superseded TikZ drawings were replaced, not kept as parallel current implementations.
+
+A fresh independent review found that the prior figures required enlargement to read several labels. All three current assets were regenerated with larger type and reduced duplicate annotations while preserving the substantive mechanism. Final PDF-width review, rather than readability of the original enlarged PNG alone, determines acceptance. The selected prompts and hashes identify this replacement round.
