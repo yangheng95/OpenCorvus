@@ -1,7 +1,9 @@
 # First-result communication cards
 
-Prepared media and unsent posts for the Parcel Notes onboarding exercise.
+Prepared media and withdrawn posts for the Parcel Notes onboarding exercise.
 These cards show expected outputs, not an application screenshot or model-run evidence.
+
+**Campaign status — withdrawn, 10 September 2026:** the user rejected this example as too simple to demonstrate product value. Do not publish the cards or drafts below as the LinkedIn/Xiaohongshu campaign. Retain the sample for onboarding diagnostics and the original Task files as narrow evidence. Neither social post was submitted; Xiaohongshu received an editor preview only. New campaign positioning and evidence requirements are in the operating ledger's Product marketing v1 section.
 
 ## Inspect the actual result / 查看真实交付
 
@@ -76,23 +78,26 @@ Segoe UI, Microsoft YaHei and a generic sans-serif font; no font files are embed
 or redistributed. Font availability can change a rebuild's appearance. Use the
 visually reviewed PNGs for the prepared posts.
 
-## English draft — not sent
+## Withdrawn LinkedIn draft — do not publish
 
-Trying an agent workbench? Start with a result you can check yourself.
+We’re building OpenCorvus, an open-source agent workbench, and looking for five independent developers to try one small coding task.
 
-We added Parcel Notes to OpenCorvus: a three-file source project, a request to
-explain it with source references, and a follow-up in the same task to change one
-input. Then inspect whether the code, test and explanation agree.
+The workflow we want to make useful: understand an existing project, make a scoped change, and inspect the files and test results yourself.
 
-The expected totals are 750 g before the change and 800 g after it. This is an
-onboarding exercise, not a benchmark or a claim about a model's success rate.
-Running the sample needs Node.js 22+; running agent tasks also needs OpenCorvus
-and a configured model, whose costs depend on your provider.
+For a small first exercise, we provide a three-file project:
 
-[Try the pinned sample and bilingual guide](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples).
-If you try it, optional feedback in the [first-task pilot issue](https://github.com/yangheng95/opencorvus/issues/30) is welcome:
-which check passed, needed correction or was blocked? Share only information you
-are comfortable making public.
+1. Ask for a project explanation with exact source references.
+2. Change one input and update the existing test.
+3. Check that the code, test and explanation agree: 750 g before, 800 g after.
+
+One maintainer Luna Task produced inspectable files, which we have published. That run needed tool-input corrections. This is early onboarding evidence, not a benchmark or proof that every installation or model will succeed.
+
+You’ll need Node.js 22+ for the sample, OpenCorvus and a configured model for agent work. Model charges depend on your provider; a setup blocker is useful feedback too.
+
+Start with the [pilot instructions and actual result](https://github.com/yangheng95/opencorvus/issues/30).
+Tell us what you tried and which check passed, needed correction or blocked you. Please keep credentials and private code out of public replies.
+
+#OpenSource #DeveloperTools #AIAgents
 
 **Image:** `first-result-en.png`
 
@@ -100,20 +105,33 @@ are comfortable making public.
 125, 250 and 375 grams, expected total 750 grams. Change the third weight to 425,
 expected total 800 grams. Verify the code, test and explanation.
 
-## 中文文案 — 未发送
+## 已撤回的小红书草稿 — 禁止发布
 
-体验 Agent 工作台，可以先从一份自己能核对的交付开始。
+**标题：** 做了个开源 Agent，找5人试用
 
-我们为 OpenCorvus 加入了 Parcel Notes：一个只有三个文件的小项目，先请求模型
-解释代码并引用来源，再在同一任务中修改一个输入，最后检查代码、测试和说明是否一致。
+**正文：**
 
-修改前的预期总重是 750 克，修改后是 800 克。这是首次使用练习，不是基准测试，
-也不代表模型成功率。运行样例需要 Node.js 22 或更新版本；执行 Agent 任务还需要
-OpenCorvus 和已配置的模型，费用取决于你的 Provider。
+我们在做 OpenCorvus，一个开源 Agent 工作台。
 
-[查看固定版本的样例与双语指南](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples)。
-如愿意反馈，可在[首次任务试用 issue](https://github.com/yangheng95/opencorvus/issues/30) 告诉我们：哪项核对通过了、需要修改，或遇到了什么
-阻塞？只分享适合公开的信息。
+想解决的具体问题：接手一个项目时，先读懂代码，再完成一项小改动，最后能亲自核对交付。
+
+这轮想找 5 位独立开发者，试一次最小流程：
+
+① 让 Agent 阅读三文件样例，写一份带源码路径的说明。
+② 修改一个输入，同时更新原有测试。
+③ 自己打开源码、测试和说明，检查三者是否一致。
+
+样例修改前应输出 750 g，修改后应输出 800 g。配图展示的是这个练习的预期结果。
+
+我们已经公开过一次维护者 Luna Task 的原始交付，过程中也发生过工具输入纠正。它只是小样例记录，还不能代表真实业务项目、不同安装环境或所有模型的效果。
+
+样例需要 Node.js 22+；执行 Agent 工作还需要安装 OpenCorvus、配置可用模型，模型费用由所选服务决定。
+
+GitHub 搜索「yangheng95/opencorvus」，进入 Issues #30，就能看到试用步骤和原始交付。试完可以直接说：做了什么、结果是否可接受、卡在哪一步。安装或模型配置卡住也欢迎反馈，请勿公开密钥和私有代码。
+
+#开源项目 #独立开发者 #AI编程 #开发工具
+
+**编辑备注（不发布）：** 试用入口为 https://github.com/yangheng95/opencorvus/issues/30 。发布时仅复制标题和正文，不复制本备注、配图路径或替代文字。根据实际编辑器填写话题，不承诺链接或话题必然可点击。
 
 **配图：** `first-result-zh.png`
 
