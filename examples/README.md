@@ -51,7 +51,7 @@ prerequisite before asking the model to run the project.
 ### 2. Ask for a source-backed overview
 
 Use the copied directory with the [quickstart](https://opencorvus.com/start/quickstart/).
-Choose a configured model and send this request as a Code task in the workbench,
+Choose a configured model and send this request in a Code Chat in the workbench,
 or as the quickstart's Task `request` with `productPillar` set to `code`:
 
 > Inspect this project and create docs/first-result.md. Explain what the program
@@ -78,8 +78,8 @@ an overview should not invent one.
 
 ### 3. Continue the same task
 
-After accepting the overview, send this follow-up in the same Task, using the
-workbench conversation or the quickstart's continuation request:
+After accepting the overview, send this follow-up in the same Chat (or the same Task for API use), using the
+workbench conversation or the quickstart's API continuation request:
 
 > Change the third parcel weight from 375 to 425 grams. Update the existing output
 > test to the new expected total, run the program and test, and update
@@ -131,7 +131,7 @@ Parcel Notes 是一个输入固定、内容公开的小项目，用于体验 Ope
 ### 2. 请求有来源的项目说明
 
 按[快速开始](https://opencorvus.com/zh-cn/start/quickstart/)使用复制出的项目目录。
-选择已配置的模型，在工作台创建 Code 任务并发送下面的请求；也可将其作为快速开始中
+选择已配置的模型，在工作台创建 Code Chat 并发送下面的请求；也可将其作为快速开始中
 Task 的 `request`，将 `productPillar` 设为 `code`：
 
 > 检查这个项目并创建 docs/first-result.md。说明程序用途、入口、输入和单位，以及启动
@@ -154,7 +154,7 @@ Task 显示完成不等于以上核对已通过。如果模型没有执行命令
 
 ### 3. 在同一任务中继续
 
-接受首次说明后，在同一 Task 的对话中发送以下请求，或使用快速开始里的继续任务接口：
+接受首次说明后，在同一 Chat 中（API 使用者在同一 Task 中）发送以下请求，或使用快速开始里的继续任务接口：
 
 > 把第三个包裹的重量从 375 改成 425 克。更新现有输出测试的预期总重，运行程序和测试，
 > 并在 docs/first-result.md 中更新观察到的结果。保持另外两个重量不变。说明修改了哪些

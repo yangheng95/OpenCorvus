@@ -1,11 +1,76 @@
 ---
 title: Quickstart
-description: Configure a model, start a Task, and inspect your first repository deliverable.
+description: Open a project, choose a model, and inspect your first workbench result.
 ---
 
-Start with a small result you can check: a repository overview with source paths.
-You need an [installed runtime](../install/), a project directory, and access to a
-model provider. Completion time and model cost depend on your repository and model.
+Start with a result you can check: explain a small project, then make one scoped
+change. Prepare a project copy you can modify and access to a model provider.
+Time and cost depend on the project and model.
+
+Need a project? Use the [three-file Parcel Notes sample](https://github.com/yangheng95/opencorvus/tree/main/examples#english).
+Follow its copy and initial-output steps, then return here to open the workbench.
+That guide contains the complete requests and `750 g → 800 g` acceptance checks.
+Running the sample requires Node.js 22 or newer.
+
+## Open the workbench
+
+Choose a package for your platform on the [download page](/download/) and follow
+the [installation guide](../install/). With a desktop installer, launch OpenCorvus.
+With a complete command-line runtime package, run this from your prepared project directory:
+
+```bash
+opencorvus serve --hostname 127.0.0.1 --port 7878
+```
+
+Keep the terminal running and open [the local workbench](http://127.0.0.1:7878/ui/).
+Use the printed address if you choose another port. Source startup and API instructions
+are in the expandable section below.
+
+## Choose the project and model
+
+1. Select your directory in the sidebar's project area; use its create-project entry to add a directory on first use. For the sample, select the copied `parcel-notes` directory, not the whole OpenCorvus repository.
+2. Start a new Chat for that project and select **Code** and **Chat**. Chat is a direct conversation; Mission supports ongoing orchestration. Use Chat for this exercise.
+3. Open the model selector beside the message input. If no provider is configured, choose **Configure Provider…**, complete your provider's connection setup, then return to select an available model. You can select an already configured model directly.
+
+A model appearing in the list does not prove the connection works; check the actual
+response after sending. For environment variables or custom gateways, see the
+[provider guide](../../providers/).
+
+## Send the first request
+
+For Parcel Notes, send the [sample guide's first request](https://github.com/yangheng95/opencorvus/tree/main/examples#english).
+For your own small project, try:
+
+> Inspect this project and create docs/first-result.md. Explain its purpose, entry point, main modules, and existing start and test commands with exact source paths. Run suitable existing checks and record the observed results, or explain what prevented execution. Keep application source and tests unchanged. Distinguish facts from assumptions.
+
+Follow progress in the same conversation. When permission is requested, read the
+specific action before deciding. If the model returns an error, resolve that connection
+error; work that did not execute is still incomplete.
+
+## Inspect and continue
+
+Open `docs/first-result.md` in your project and compare its claims with the source
+and actual command results. For Parcel Notes, verify `750 g`, then send the guide's
+follow-up in the same Chat: change the third weight to 425 grams and check that the
+source, test and explanation all agree on `800 g`. For your own project, choose a
+similarly small change with an explicit expected result.
+
+Inspect actual files and differences even after the conversation reports completion.
+You can [inspect a real Task's output files](https://github.com/yangheng95/opencorvus/tree/main/specs/artifacts/2026-09-09-first-result-media#inspect-the-actual-result--查看真实交付)
+to see what checkable delivery looks like. This is a maintainer Task sample record,
+not an execution report for this page's Chat flow.
+
+Whether you finish or get stuck, the [trial feedback entry](https://github.com/yangheng95/opencorvus/issues/30)
+welcomes your version, operating system, model and concrete outcome. Keep credentials
+and private project content out of public feedback.
+
+## Optional: Task API
+
+The following creates a separate Task for script or service integrations. Chat above
+sends messages directly in the workbench and does not require these HTTP commands.
+
+<details>
+<summary>Show model configuration, startup and Task request examples</summary>
 
 ## 1. Choose a model
 
@@ -150,3 +215,5 @@ is not a completed correction.
 Continue with the [Mission and Task API](../../reference/mission-task/) for integration
 details, [Slack](../../channels/slack/) for channel setup, or
 [troubleshooting](../../troubleshooting/) for diagnosis.
+
+</details>
