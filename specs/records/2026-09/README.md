@@ -1,5 +1,7 @@
 # 2026-09 Records
 
+- [OpenCorvus 学术论文写作计划](2026-09-10-opencorvus-paper-plan.md)
+
 - [Expert Squad discovery diagnostic overflow](2026-09-08-discovery-diagnostic-overflow.md)
 
 - [First-result communication cards and unsent copy](../../artifacts/2026-09-09-first-result-media/README.md)

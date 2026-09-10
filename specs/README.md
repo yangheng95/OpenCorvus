@@ -1,5 +1,7 @@
 # Specs Storage Index
 
+Current paper plan: [OpenCorvus academic research and writing plan](records/2026-09/2026-09-10-opencorvus-paper-plan.md).
+
 Real-project case result: [Luna import repair, patch and acceptance evidence](artifacts/2026-09-10-import-case/RESULT.md).
 
 Prepared case distribution: [LinkedIn and Xiaohongshu copy, not submitted](artifacts/2026-09-10-import-case/SOCIAL.md).
