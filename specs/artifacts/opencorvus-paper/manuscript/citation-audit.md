@@ -1,6 +1,6 @@
 # Citation verification and reading scope
 
-Verified on 2026-09-10 against primary papers and versioned source records. This is a targeted related-work analysis. The bibliography contains the 14 works actually cited by the current EEO manuscript; audit-centric references from the superseded draft were removed. No source's benchmark numbers or copied figures are imported.
+Verified on 2026-09-10 against primary papers and versioned source records. This is a targeted related-work analysis. The bibliography contains the 17 works actually cited by the current EEO manuscript; audit-centric references from the superseded draft were removed. No source's benchmark numbers or copied figures are imported.
 
 | BibTeX key | Fixed source | Material used / limit |
 | --- | --- | --- |
@@ -18,5 +18,8 @@ Verified on 2026-09-10 against primary papers and versioned source records. This
 | gepa | [arXiv v2 metadata](https://arxiv.org/abs/2507.19457v2), [paper](https://arxiv.org/pdf/2507.19457v2) | Sections 2–3 and Algorithm 1: fixed-weight module prompt optimization, trajectory feedback, candidate retention, budget and held-out evaluation. All 17 authors verified. Direct text-optimization comparator; source boundary retained as v2. |
 | legomem | [arXiv v1](https://arxiv.org/abs/2510.04851v1), [method](https://arxiv.org/html/2510.04851v1) | Sections 3.1–3.3 and Algorithm 1: role-aware memory construction and retrieval. Six authors and original 2025 date checked. Direct procedural-reuse prior work; no performance numbers used. |
 | agentdevel | [arXiv v1](https://arxiv.org/abs/2601.04620v1), [method](https://arxiv.org/html/2601.04620v1) | Sections 2.1–2.4: blueprint revisions, executable diagnosis, regression-based selection and independent final test. Di Zhang, 2026, verified. Direct versioned-improvement prior work; no results imported. |
+| automationbench | [arXiv v1](https://arxiv.org/abs/2604.18934v1), [original paper](https://arxiv.org/html/2604.18934v1) | Shepard and Salimans, 2026. Read dataset, API interface, end-state scoring and limitations. Original paper's historical scores are not current benchmark performance claims. |
+| automationbenchcode | [immutable public source](https://github.com/zapier/AutomationBench/tree/4a8e1061254004d9dac807054eed33fad7d1ff14) | Verified package 1.0.6, domain registry, API tool surface, CLI 50-response cap, rubric free/excluded-assertion semantics, and task-contract hashing. The scorer description concerns the inspected code; its exact use in the historical 100-case run is not established. |
+| starharness | [arXiv v1](https://arxiv.org/abs/2608.24804v1), [method](https://arxiv.org/html/2608.24804v1) | Seven authors and version/date checked; §§3.1–3.4 read. Broad harness edits, full-set baseline stratification, ledger, development check and hidden selection. Related-work boundary distinguishes broader harness edits from the present text method; no published scores imported. |
 
 ArXiv entries cite the exact inspected version and initial submission year, with revision notes where relevant. Formal proceedings entries use the verified conference version. The companion source map states implementation boundaries. Original colored figures visualize the paper's constructs and declared workflow, not fabricated observations.

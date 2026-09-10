@@ -1,4 +1,5 @@
 \section{Analysis: What Constitutes Improvement?}\label{sec:analysis}
+\input{figures/evolution}
 \subsection{Resource closure and revision isolation}
 The inherited-reference constraint composes across retained revisions. If every transition satisfies Equation~\ref{eq:capability}, then, by transitivity of set inclusion, $\operatorname{Cap}(\mathcal O_v)\subseteq\operatorname{Cap}(\mathcal O_0)$ and likewise for base roles. Together with the frozen-file comparison, this bounds the resources an accepted candidate can introduce through this update path. It does not imply semantic safety: a changed instruction can misuse an existing tool, and a remote tool or externally resolved capability set can change without changing its reference.
 

@@ -291,3 +291,73 @@ SWE-EVO 等长任务基准可作为候选，须核读任务、许可、输入污
 - 新reviewer最终独立复审18项完整差异与cfda6bea最终PDF，16页4469226bytes。其实际覆盖全16页及最终变化11–14页，其余页字节一致；三图正常页宽可读。六项P2、追加GEPA观测措辞、引用表断行及重复编辑问题闭合。P1的近邻定位部分已修，但组织包/约束的科学增量价值仍需真实公平比较，明确未通过创新充分性认证。
 - 最终PDF SHA-256 cfda6beaf6da05b289bbc08f16323352aacddc8d2547d20371bdd0fcf3e2ac49。14条引文解析，13种字体嵌入，两个underfull留白警告经实际查看可接受，无溢出或未定义引用。七个官方模板文件保持原字节。docs:check与完整diff检查通过，独立reviewer另行执行diff检查通过。
 - 当前只交付审查及其文稿修正；GEPA adapter/映射、研究资格检查、各组配置、数据/模型/预算/评分冻结及真实实验仍需后续工作，持续积累另需纵向证据。保留原稿“大修”与P1未证价值，不将本轮收据或提交视为学术/长期项目目标完成。按仓库第六节范围提交并自动同步当前main到origin/main。
+
+
+## 2026-09-10 AutomationBench 主实验与消融设计
+
+### Recall
+
+- 用户要求“帮我设计主实验和消融实验，用automationbench测试”，随后询问此前100例结果。当前先完成严谨且可执行的实验设计与论文集成；真实Provider运行仍受此前停止/非支付边界约束，本轮不调用模型、不读取凭据、不重启旧WSL任务。
+- 已核对用户确认的历史先导值：OpenCorvus Mission Base / gpt-5.6-luna，100例，34%；原始Luna基线8.07%。25.93个百分点及4.21倍是数值比较；同一100例配对关系、版本、原始输出尚未知。优先恢复原始case manifest，历史暴露任务不能当作未参与开发的测试。
+- 原要求：主agent直接写英文论文，ICLR2027原模板，科研彩色图，无自行篇幅上限，不编造结果；独立默认模型审稿已授权。开始main=a5c96e14、upstream一致、git status为空。
+- 已读唯一05-evaluation协议、方法/讨论/附录、最新Recall与验证、历史AutomationBench audit/2026-08-25结果记录、2026-09-08停止运行边界、inspect-benchmark README/catalog/scoring。相关全仓检索及.scratch/specs文件名检索未找到100例逐项原始结果；不等于设备上不存在。
+- 已核验官方GitHub main的不可变commit 4a8e1061254004d9dac807054eed33fad7d1ff14、pyproject版本1.0.6/Python>=3.13/verifiers>=0.2.0、六公开域和simple分离；阅读runner、CLI、task_contract、rubric、domain registry、API工具注册以及任务构造的静态结构。没有执行上游代码/模型。API_TOOLS目前为api_search/api_fetch/base64_encode，默认CLI50模型响应，不能给予每个专家各50步。
+- 原文核读AutomationBench arXiv2604.18934v1（Shepard/Salimans）、StarHarness arXiv2608.24804v1（方法§3及原始分层/隐藏选择协议）。后者已在Finance做harness演化，须进入近邻定位和有明确改动边界的比较，不能声称首次。
+- 独立agent反馈：本轮无；在编译/文档和人工PDF验证后委托未参与写作agent只读审查，不得再次委托。
+
+### 修改前问题与影响分析
+
+- 现象：旧协议只写分析报告/软件维护，无法指定AutomationBench最终状态判分、样本ID、工具状态生命周期或实际实验矩阵。直接触发为用户指定基准。根因是之前设计停留在抽象任务族；通用Inspect Task-completed scorer和Apodex目录并未实现AutomationBench世界状态oracle，不能包装成已可直接运行的适配。
+- 旧协议另要求跨episode独立source clusters，却未给有限600公开任务中的样本分配，不能把相同划分三次搜索当独立数据集复现。改为公开集条件下的配对结果和搜索seed稳定性，外推/独立episode另立证据条件。
+- 评分必须调用固定上游partial_credit后task_completed_correctly：预先满足且保持的断言通常不计分，破坏仍罚；显式excluded/scored字段有专门语义，零有效分母得0。不能按README一句话重写为裸all(assertions)，也不能用任务生命周期代替业务正确性。
+- 仅改唯一实验章、必要的讨论/摘要/附录、参考文献/溯源/README、PDF与验收记录，以及本计划。历史实验值、产品公共API、调度/持久化、测试工具实现、模板和三幅方法图不改；无产品代码/数据库迁移/UI影响。不把未来适配器设计说成已实现。
+
+### 落盘实施方案
+
+- 设计版本锁定、先导100例复核与暴露清单、按工作流相关簇分割的开发/选择/未来/保留集合；给无暴露和恰100暴露的明确名义数量，最终membership受恢复manifest/cluster审计约束，不虚构冻结清单。
+- 明确7个主实验arm及2个附加消融，复用主对照作去专业化/去更新消融；公平的模型、程序知识、工具和全组织预算。设置GEPA及StarHarness文本适配与过程记忆基线，说明忠实范围和剩余实现需求。
+- 给主指标、领域宏平均/总体微平均、配对统计、三seed条件性分析、多重比较、失败处理、全部搜索/推理成本、预算曲线及连续三轮扩展。给试验数量公式和阶段优先级，均不是支付或执行授权。
+- 添加官方文献与不可变源码溯源；构建PDF、查看变化页、核验引用/字体/溢出、docs:check、独立只读复审，修复有效问题再审。最后范围提交、fetch/merge/检查待推集合和自动push，不宣布实证或长期目标完成。
+
+
+### 首轮独立反馈核验与修正
+
+- reviewer发现Python默认本地编码读取既有UTF-8文档导致六处范围符号乱码，git diff证实。已对本轮所有文本差异扫描并按原字节语义恢复citation-audit/source-map，后续读写显式UTF-8；没有重新生成或改动原始文献。
+- 核验评分对照定义遗漏：EEO写strict，但GEPA/Memory/StarHarness目标与tie-break不明；尤其StarHarness原评分并非本稿strict。新增共同domain-macro strict目标、GEPA二元Pareto坐标/终选、Memory接纳、StarHarness严格test-flip和无辅助tie-break，并列出相对原论文的评分/分层适配，不称原法复现。
+- 核验簇bootstrap在singleton strata可能零宽的问题：仅披露不能阻止错误NI推断。新增每占用stratum>=10簇、每报告domain>=20簇的预定适用条件，不满足只报告描述效果、不给确认区间或NI。仍明确近似而非有限样本定理。
+- 核验lineage在主矩阵先披露后可能重复用F/R：现要求所有共享测试的main/ablation/sweep/lineage版本及超参在首次披露前一并冻结，后启动研究必须新簇；lineage从搜索前O0/干净上下文开始，不接收main全D搜索产物。历史暴露簇只入round1，后两轮只使用新开发块。图3图注同步区分理论fresh-episode条件与本轮同split三seed的条件稳定性。
+
+
+### 最新 Recall：用户要求不重复（覆盖前述运行设计）
+
+- 用户明确“不要做重复”。取消三seed/三rep、独立预算扫描与本轮连续三轮执行；每个有效方法配置×任务契约仅一次。相同基线结果供不同因果对照共用，已有匹配且证据完整的物理执行直接复用。旧100例尚无完整配置/状态/逐case记录时仅保留为先导，不为凑结果默认重跑或把aggregate当逐例结果。
+- 影响面是实验设计的预算、重复/统计、失败重试、共享基线、GEPA等试验缓存、图3解释、讨论/README/溯源及PDF。产品实现与旧证据不动。原三rep的8100/23100和lineage运行上限是被新指令覆盖的历史方案；当前改为9个方法/消融×|F∪R|一次，名义2700最终slot（实际配置相同去重），最多5000开发新执行。统计只描述本次冻结revision对任务簇的条件差异，无搜索稳定性结论。
+- 缓存按task contract、package/记忆/资源暴露、工具/世界/依赖、全部有效模型/推理/预算/超时/评分配置与原始证据匹配，严禁只按task ID复用；修订/配置变化才构成新对照。失败不自动重新rollout，记录评分/缺失及全部消耗。
+
+
+## 2026-09-11 最终任务收敛：已有结果实验章节
+
+### Recall
+
+- 用户先要求不重复、先轻量拿初步结论，随后明确“你先别跑了，按照现在的实验结果先做一版实验章节，如实描述限制就行了”，并对临时工作树审批回复“先不跑”。当前唯一目标是用已有100例结果写实验章；取消所有真实运行、工作树创建和环境安装。本轮至此没有启动Provider实验、没有新建工作树、没有安装依赖或绑定/复制凭据。
+- 可用结果是用户确认且2026-08-25仓库记录保留的100例、Mission Base、openai/gpt-5.6-luna、34% strict pass；8.07%是原始Luna历史参考，样本、版本、预算及配对关系未恢复。34成功/66未严格通过可由整数分母推算；不能推导逐域、failure原因、消融、成本、CI、显著性或EEO进化效益。
+- 只读Git历史发现原批量脚本确实存在于origin/codex/automation-workbuddy-benchmark（本地ref 17bc3f63fc2ed0e2d4953e50811ee106882fd8fe），不在main且不是HEAD祖先。已有run-luna-mission-base-cases-51-600.sh、run-luna-mission-advanced-50.sh、run-automationbench-batch.ts、run-automationbench.ts和官方评分bridge。之前“没有脚本”只覆盖main，现已纠正；当前Inspect目录没有AB注册依然成立。不能将该分支最新commit当作原100例精确执行版本。
+- WSL Ubuntu存在但旧/var/lib/opencorvus-benchmark不存在；只读检查Python3.13.9可用、未装AutomationBench/Verifiers/datasets，Bun尚未发现。Windows模型目录仅核验OpenAI auth.type=oauth、Luna投影存在，未显示密钥、token或原始配置。没有Provider连接请求。此检查不证明登录仍可用或可运行基准。
+- independent reviewer已指出完整矩阵过度扩展，最小真实结论应只覆盖现有可证观测。本轮将其评分身份/统计限制建议保留，重复统计/lineage矩阵撤去。当前无需解决环境、旧runner移植或取样实现。
+
+### 当前修改范围与实施
+
+- 将05从未来大矩阵替换为已有初步结果：环境/指标说明、100例记录及8.07参考表、可支持观察、证据与外推限制；明确这是Mission Base执行评价，不是保留组织更新的消融结果。
+- 摘要、贡献、讨论、附录、README与溯源同步；图3仍为方法信息流，移入分析章并在图注区分其设计和旧100例执行。历史audit/网站数据不改，不新增结果数字或重建丢失日志。
+- 编译、实际PDF视觉复查、docs:check/差异/引用/字体检查、原只读独立reviewer复审并修复；范围提交，按现有upstream拉取合并与自动push。原七组/三rep/单次7700等规模均是被用户最终指令撤销的设计历史，不作为当前协议或待执行计划。
+
+
+### 最终稿复审反馈与排版修正分析
+
+- 已核验 reviewer 两项一致性问题：正文将仅历史分支存在的 runner 概称 repository implementation，容易被读成当前主源码；citation-audit 导语仍为14篇而当前实际引用17篇。分别明确历史分支/历史 harness 和17条引用，不变更历史运行身份或结果。
+- 作者实际查看新版 PDF 发现图3虽从实验章源文件移入分析章，却因浮动体位于分析章末尾仍排到实验正文。根因是 LaTeX 浮动队列而非图内容；将图源移到分析章开头，使信息流图随分析出现，重新编译和实际查看，不改官方模板或图像。
+
+
+- 最终编译稿 16 页、4472337 bytes、SHA-256 7fb7ff656cdb85971e53920a81c604da203f039008500cf6cc34e38edb6371c5。作者已实际查看全16页，实验章10–11页，三图4/8/9页；尾空行修正后全部最终渲染逐字节一致。17条引用解析、13字体嵌入、七模板文件及三图身份不变；四处underfull经视觉确认是可接受留白。两项独立编辑反馈已修，完整结果边界和验收落盘validation，等待最终身份复审后范围提交并推送。
+
+- academic_review_round2最终独立确认7fb7ff65 PDF身份、14项完整差异及原始记录，实际看1–3/9–16页并重看最终9–10；确认其余渲染身份与delivery/final全页一致。来源措辞、引用计数和尾空行三项闭合，无阻止已有结果工作稿交付的未解决文稿问题。精确任务/轨迹/配置和配对基线仍缺，不认证可复现成绩、EEO增量或创新充分性。完整收据已写validation。fetch确认上游与本轮开始HEAD一致；按当前分支提交、合并核验与推送，不启动新实验。
