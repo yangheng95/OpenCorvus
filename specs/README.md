@@ -1,6 +1,6 @@
 # Specs Storage Index
 
-Qualified real-project case input: [import preview consistency and successful control](artifacts/2026-09-10-import-case/README.md).
+Real-project case result: [Luna import repair, patch and acceptance evidence](artifacts/2026-09-10-import-case/RESULT.md).
 
 Current website promotional video: [bilingual delivery story and production source](artifacts/2026-09-10-website-story/README.md).
 

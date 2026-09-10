@@ -1,0 +1,446 @@
+diff --git a/packages/desktop-client/src/components/modals/ImportTransactionsModal/ImportTransactionsModal.tsx b/packages/desktop-client/src/components/modals/ImportTransactionsModal/ImportTransactionsModal.tsx
+index d4bba99..f79d50f 100644
+--- a/packages/desktop-client/src/components/modals/ImportTransactionsModal/ImportTransactionsModal.tsx
++++ b/packages/desktop-client/src/components/modals/ImportTransactionsModal/ImportTransactionsModal.tsx
+@@ -48,6 +48,7 @@ import { Transaction } from './Transaction';
+ import type { DateFormat, FieldMapping, ImportTransaction } from './utils';
+ import {
+   applyFieldMappings,
++  applyImportSelection,
+   dateFormats,
+   filterByStartDate,
+   isDateFormat,
+@@ -645,6 +646,7 @@ export function ImportTransactionsModal({
+       }
+ 
+       trans = fieldMappings ? applyFieldMappings(trans, fieldMappings) : trans;
++      trans = applyImportSelection(trans, reconcile);
+ 
+       const date =
+         isOfxFile(filetype) || isCamtFile(filetype)
+@@ -688,17 +690,6 @@ export function ImportTransactionsModal({
+         ...finalTransaction
+       } = trans;
+ 
+-      if (
+-        reconcile &&
+-        ((trans.ignored && trans.selected) ||
+-          (trans.existing && trans.selected && !trans.selected_merge))
+-      ) {
+-        // in reconcile mode, force transaction add for
+-        // - ignored transactions (aleardy existing) that are checked
+-        // - transactions with existing (merged transactions) that are not selected_merge
+-        finalTransaction.forceAddTransaction = true;
+-      }
+-
+       finalTransactions.push({
+         ...finalTransaction,
+         date,
+diff --git a/packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.test.ts b/packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.test.ts
+index 3c30c94..f9cca4b 100644
+--- a/packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.test.ts
++++ b/packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.test.ts
+@@ -1,7 +1,44 @@
+-import { filterByStartDate, parseCategoryFields, parseDate } from './utils';
++import {
++  applyImportSelection,
++  filterByStartDate,
++  parseCategoryFields,
++  parseDate,
++} from './utils';
+ import type { ImportTransaction } from './utils';
+ 
+ describe('Import transactions', () => {
++  describe('selection', () => {
++    const coffee = {
++      trx_id: '1',
++      existing: false,
++      ignored: false,
++      selected: true,
++      selected_merge: false,
++      amount: -899,
++      inflow: 0,
++      outflow: -899,
++      inOut: '',
++      payee_name: 'Corner Coffee',
++      date: '2026-09-08',
++    };
++
++    it('forces selected ordinary new rows through reconciliation', () => {
++      expect(applyImportSelection(coffee, true)).toEqual({
++        ...coffee,
++        forceAddTransaction: true,
++      });
++    });
++
++    it('does not force skipped or merged rows', () => {
++      expect(
++        applyImportSelection({ ...coffee, selected: false }, true),
++      ).toEqual({ ...coffee, selected: false });
++      expect(
++        applyImportSelection({ ...coffee, selected_merge: true }, true),
++      ).toEqual({ ...coffee, selected_merge: true });
++    });
++  });
++
+   describe('date parsing', () => {
+     const invalidInputs: Array<{
+       str: Parameters<typeof parseDate>[0];
+diff --git a/packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.ts b/packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.ts
+index 6f7ca7d..12a532f 100644
+--- a/packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.ts
++++ b/packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.ts
+@@ -139,6 +139,17 @@ export type ImportTransaction = {
+   date?: string;
+ } & Record<string, string | number | boolean>;
+ 
++export function applyImportSelection(
++  transaction: ImportTransaction,
++  reconcile: boolean,
++) {
++  if (reconcile && transaction.selected && !transaction.selected_merge) {
++    return { ...transaction, forceAddTransaction: true };
++  }
++
++  return transaction;
++}
++
+ type ImportCategory = {
+   id: string;
+   name: string;
+diff --git a/packages/loot-core/src/server/accounts/sync.test.ts b/packages/loot-core/src/server/accounts/sync.test.ts
+index 6db27f7..c68a494 100644
+--- a/packages/loot-core/src/server/accounts/sync.test.ts
++++ b/packages/loot-core/src/server/accounts/sync.test.ts
+@@ -45,6 +45,36 @@ function getAllTransactions() {
+   );
+ }
+ 
++async function getTransactionSummary(accountId: string) {
++  return (await db.all<{
++    amount: number;
++    date: number;
++    imported_id: string | null;
++    payee_name: string | null;
++    notes: string | null;
++  }>(
++    `SELECT t.amount, t.date, t.imported_id, p.name as payee_name, t.notes
++       FROM v_transactions_internal t
++       LEFT JOIN payees p ON p.id = t.payee
++       WHERE t.account = ?
++       ORDER BY t.date, t.amount`,
++    [accountId],
++  )).map(({ amount, date, imported_id, payee_name, notes }) => ({
++    amount,
++    date: db.fromDateRepr(date),
++    imported_id,
++    payee_name,
++    notes,
++  }));
++}
++
++function getTransactionBalance(transactions: Array<{ amount: number }>) {
++  return (
++    transactions.reduce((balance, transaction) => balance + transaction.amount, 0) /
++    100
++  );
++}
++
+ async function prepareDatabase() {
+   await db.insertCategoryGroup({ id: 'group1', name: 'group1', is_income: 1 });
+   await db.insertCategory({
+@@ -80,6 +110,118 @@ async function getAllPayees() {
+ }
+ 
+ describe('Account sync', () => {
++  test('selected new transaction is inserted despite an existing candidate', async () => {
++    const { id: acctId } = await prepareDatabase();
++
++    await reconcileTransactions(acctId, [
++      {
++        date: '2026-09-10',
++        amount: -899,
++        payee_name: 'Netflix',
++        notes: 'Subscription',
++      },
++    ]);
++    await reconcileTransactions(acctId, [
++      {
++        date: '2026-09-08',
++        amount: -899,
++        payee_name: 'Corner Coffee',
++        forceAddTransaction: true,
++      },
++    ]);
++
++    const transactions = await getTransactionSummary(acctId);
++    expect(transactions).toEqual([
++      expect.objectContaining({
++        amount: -899,
++        date: '2026-09-08',
++        payee_name: 'Corner Coffee',
++      }),
++      expect.objectContaining({
++        amount: -899,
++        date: '2026-09-10',
++        payee_name: 'Netflix',
++        notes: 'Subscription',
++      }),
++    ]);
++    expect(getTransactionBalance(transactions)).toBe(-17.98);
++  });
++
++  test('imported baseline remains a duplicate while a new row is inserted', async () => {
++    const { id: acctId } = await prepareDatabase();
++
++    await reconcileTransactions(acctId, [
++      {
++        date: '2026-09-10',
++        amount: -899,
++        payee_name: 'Netflix',
++        imported_id: 'netflix-1',
++      },
++    ]);
++    await reconcileTransactions(acctId, [
++      {
++        date: '2026-09-10',
++        amount: -899,
++        payee_name: 'Netflix',
++        imported_id: 'netflix-1',
++      },
++      {
++        date: '2026-09-08',
++        amount: -899,
++        payee_name: 'Corner Coffee',
++        imported_id: 'coffee-1',
++      },
++    ]);
++
++    const transactions = await getTransactionSummary(acctId);
++    expect(transactions).toEqual([
++      expect.objectContaining({ amount: -899, imported_id: 'coffee-1' }),
++      expect.objectContaining({ amount: -899, imported_id: 'netflix-1' }),
++    ]);
++    expect(getTransactionBalance(transactions)).toBe(-17.98);
++  });
++
++  test('skipped rows are not sent to reconciliation and explicit merges update once', async () => {
++    const { id: acctId } = await prepareDatabase();
++
++    await reconcileTransactions(acctId, [
++      {
++        date: '2020-01-01',
++        amount: -899,
++        payee_name: 'Netflix',
++        imported_id: 'netflix-1',
++      },
++    ]);
++    await reconcileTransactions(acctId, [
++      {
++        date: '2020-01-01',
++        amount: -899,
++        payee_name: 'Netflix Updated',
++        imported_id: 'netflix-1',
++        notes: 'Subscription',
++      },
++    ]);
++    const afterMerge = await getTransactionSummary(acctId);
++    expect(afterMerge).toHaveLength(1);
++    expect(afterMerge[0]).toEqual(expect.objectContaining({ notes: 'Subscription' }));
++
++    await reconcileTransactions(acctId, []);
++    expect(await getTransactionSummary(acctId)).toEqual(afterMerge);
++  });
++
++  test('fuzzy matching preserves legitimate duplicate handling', async () => {
++    const { id: acctId } = await prepareDatabase();
++
++    await reconcileTransactions(acctId, [
++      { date: '2020-01-01', amount: -899, payee_name: 'Netflix' },
++    ]);
++    await reconcileTransactions(acctId, [
++      { date: '2020-01-02', amount: -899, payee_name: 'Netflix' },
++    ]);
++
++    expect(await getTransactionSummary(acctId)).toHaveLength(1);
++  });
++
+   test('reconcile creates payees correctly', async () => {
+     const { id } = await prepareDatabase();
+ 
+diff --git a/packages/loot-core/src/server/accounts/sync.ts b/packages/loot-core/src/server/accounts/sync.ts
+index efcf65e..1059ee9 100644
+--- a/packages/loot-core/src/server/accounts/sync.ts
++++ b/packages/loot-core/src/server/accounts/sync.ts
+@@ -453,8 +453,16 @@ async function normalizeTransactions(
+     }
+ 
+     // Strip off the irregular properties
+-    const { payee_name: originalPayeeName, subtransactions, ...rest } = trans;
+-    trans = rest;
++    const {
++      payee_name: originalPayeeName,
++      subtransactions,
++      forceAddTransaction,
++      ...rest
++    } = trans;
++    trans =
++      forceAddTransaction === undefined
++        ? rest
++        : { ...rest, forceAddTransaction };
+ 
+     if (trans.amount != null && !Number.isInteger(trans.amount)) {
+       throw new TransactionError(
+diff --git a/specs/Recall.md b/specs/Recall.md
+new file mode 100644
+index 0000000..805ce30
+--- /dev/null
++++ b/specs/Recall.md
+@@ -0,0 +1,19 @@
++# Recall
++
++The selected-new import marker is an internal control value, not persisted
++transaction data. Any future import normalization change must preserve it
++until reconciliation decides whether to bypass a candidate match, and must
++still strip it from inserted records. Duplicate matching by imported ID and
++the existing fuzzy rules must remain authoritative unless the caller
++explicitly requests a new transaction.
++
++The bounded regression scenarios use fictional manual/imported baselines with
++Netflix at `-8.99` on `2026-09-10` and Corner Coffee at `-8.99` on
++`2026-09-08`; both read back as two persisted rows totaling `-17.98`. These
++backend checks do not replace the operator's manual UI acceptance.
++
++The original manual UI acceptance remained failed after the first repair:
++Coffee was omitted from the final account. The failure showed that a selected
++ordinary new row also needs the transient force-add marker, because the final
++payload no longer contains the previously skipped candidate used during
++preview matching.
+diff --git a/specs/delivery.md b/specs/delivery.md
+new file mode 100644
+index 0000000..dbfa218
+--- /dev/null
++++ b/specs/delivery.md
+@@ -0,0 +1,87 @@
++# Delivery: CSV import preview consistency
++
++## Model and scope
++
++Implementation model: `openai/gpt-5.6-luna`. This delivery changes only the
++local Actual source snapshot and its backend tests/specifications. No bank
++connection, credential, real financial data, upstream patch, or UI automation
++is included. Operator acceptance is recorded separately below.
++
++## Diagnosis and acceptance history
++
++The import modal marks a row chosen as new with the transient
++`forceAddTransaction` flag. `normalizeTransactions` previously rebuilt the
++transaction from the remaining properties and dropped that flag. Matching
++therefore still won and the final import updated the existing candidate
++instead of inserting the preview-selected row.
++
++Independent manual acceptance then reproduced the original failure on a fresh
++account: Netflix (`2026-09-10`) remained alone at `-8.99` while selected Corner
++Coffee (`2026-09-08`) disappeared. The preview had excluded Netflix from the
++final payload, so reconciliation was free to fuzzy-match Coffee back to
++Netflix. The complete repair therefore applies the same transient force-add
++marker to every selected, non-merge row, including an ordinary new preview
++row.
++
++## Changes
++
++- `packages/loot-core/src/server/accounts/sync.ts`: preserve the transient
++  force-add marker through normalization; insertion still removes it before
++  database writes.
++- `packages/loot-core/src/server/accounts/sync.test.ts`: add positive database
++  output tests for selected-new insertion against a manual candidate,
++  imported-baseline duplicate plus new row, explicit merge, skipped empty
++  input, and fuzzy duplicate matching. The two scenario tests use the exact
++  fictional values: Netflix `-8.99` on `2026-09-10` and Corner Coffee `-8.99`
++  on `2026-09-08`, with a persisted transaction total of `-17.98`.
++- `packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.ts`:
++  convert the actual preview selection state into the force-add marker before
++  the final payload is sent.
++- `packages/desktop-client/src/components/modals/ImportTransactionsModal/ImportTransactionsModal.tsx`:
++  use that selection conversion in the real import path.
++- `packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.test.ts`:
++  verify ordinary selected-new, skipped, and merge state conversion.
++- `specs/implementation-plan.md`, `specs/Recall.md`: record plan and invariant.
++
++## Verification
++
++- `node .yarn/releases/yarn-4.17.1.cjs workspace @actual-app/core exec vitest --run src/server/accounts/sync.test.ts`
++  — pass, 28 tests.
++- `node .yarn/releases/yarn-4.17.1.cjs workspace @actual-app/core exec vitest --run src/server/transactions/import/parse-file.test.ts`
++  — pass, 10 tests.
++- `node .yarn/releases/yarn-4.17.1.cjs workspace @actual-app/core run typecheck`
++  — pass, 209 strict files.
++- `git diff --check` — pass for the working-tree patch.
++- Exact-value assertions: manual baseline and imported baseline each read two
++  persisted rows, Netflix dated `2026-09-10` and Corner Coffee dated
++  `2026-09-08`, at `-8.99` each and calculated transaction balance `-17.98`.
++- `node .yarn/releases/yarn-4.17.1.cjs workspace @actual-app/web exec vitest --run src/components/modals/ImportTransactionsModal/utils.test.ts`
++  — pass, 111 tests.
++- Latest date-precision rerun: the core sync command above passed 28/28 after
++  changing the imported control to Netflix `2026-09-10` and Corner Coffee
++  `2026-09-08`; the desktop utility command passed 111/111, and
++  `git diff --check` passed.
++- The repository formatter executable was not present in the focused
++  dependencies; no dependency installation was performed.
++
++## User-facing before/after
++
++Before: changing a matched CSV row to “new” could still reconcile it into the
++existing transaction because the decision marker was lost before matching.
++After: the marker reaches reconciliation, so that selected row is inserted;
++ordinary imported-ID/fuzzy duplicates and explicit merges retain their prior
++behavior.
++
++## Acceptance boundary and limitations
++
++No UI automation was created or run. The existing real page must be manually
++checked by the operator after the core development build is refreshed. Hosted
++version behavior and any external proposed patch were not used as evidence.
++The exact-value backend evidence does not constitute operator UI acceptance.
++The prior manual UI acceptance failure is retained as acceptance evidence; a
++successful explicit core Vite development build was the intervention used for
++the recheck, and the latest operator recheck passed both fresh paths: `Luna
++final manual 0419` and `Luna final imported 0419` each contain Netflix on
++`2026-09-10` and Corner Coffee on `2026-09-08`, with balance `-17.98`. This is
++operator-maintainer evidence, not independent review, adoption, or unattended
++execution. Independent read-only review remains unresolved.
+diff --git a/specs/implementation-plan.md b/specs/implementation-plan.md
+new file mode 100644
+index 0000000..50faa56
+--- /dev/null
++++ b/specs/implementation-plan.md
+@@ -0,0 +1,29 @@
++# CSV import preview consistency repair
++
++## Scope
++
++Repair the bounded CSV import path so a transaction that the preview marks as
++new is inserted, while imported-ID and fuzzy duplicate matching and explicit
++merge updates remain unchanged. Add backend tests for the preview decision
++contract; no UI automation is in scope.
++
++## Diagnosis
++
++The import modal sends `forceAddTransaction` when a matched row is selected as
++new. `reconcileTransactions` checks that flag before applying a match, but
++`normalizeTransactions` reconstructs each transaction from `rest` and the
++normalization pipeline therefore drops the flag before the check. The final
++pass then treats the selected-new row as the existing match and updates it.
++
++## Implementation
++
++Preserve the transient `forceAddTransaction` marker through normalization and
++the rules/matching passes. Keep removing it before insertion so it cannot be
++stored as a transaction field. Add focused positive tests covering manual and
++imported baselines, selected-new insertion, skipped no-op, explicit merge,
++and legitimate duplicate matching.
++
++## Verification
++
++Run the focused core test file with the bundled Yarn command. Do not create or
++run UI automation. Manual UI acceptance remains an operator responsibility.

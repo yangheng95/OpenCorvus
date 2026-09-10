@@ -2,7 +2,7 @@
 
 Selected current operating deliverables; this is not an exhaustive inventory of historical artifacts.
 
-- [2026-09-10 import preview case input](2026-09-10-import-case/README.md): real hosted-app reproduction, successful control and fictional CSV inputs; no model repair claimed.
+- [2026-09-10 real import repair result](2026-09-10-import-case/RESULT.md): Luna patch, actual failed/passed page acceptance, independent review and intervention boundaries; includes original fictional inputs.
 
 - [2026-09-10 website product story](2026-09-10-website-story/README.md): bilingual narrated workflow, editable script, renderer and retained narration.
 

@@ -1,6 +1,6 @@
 # Import preview consistency — qualified case input
 
-Status: the reported failure and successful control were reproduced manually in both Actual's official hosted v26.9.0 application and local source revision `12f4b6e22dd54e0a66324271235454f450cbbf99`. This is an input for a future OpenCorvus workflow, **not an OpenCorvus repair or model success**.
+Status: a real OpenCorvus Luna run has now produced a repair that passed both original local page paths and independent source review. [Inspect the result, patch, failures and interventions](RESULT.md). The qualification observations below describe the earlier input stage; they are not model-run evidence.
 
 ## Problem and user value
 

@@ -1,0 +1,44 @@
+{
+  "upstreamRevision": "12f4b6e22dd54e0a66324271235454f450cbbf99",
+  "taskID": "tsk_g00VUmZqP600uM3c6JmE",
+  "model": "openai/gpt-5.6-luna",
+  "localCheckpoint": "8ab6c65",
+  "localFinalCommit": "b001402b944559d6a130867ff6202d467105278b",
+  "changedPaths": [
+    "packages/loot-core/src/server/accounts/sync.ts",
+    "packages/loot-core/src/server/accounts/sync.test.ts",
+    "packages/desktop-client/src/components/modals/ImportTransactionsModal/ImportTransactionsModal.tsx",
+    "packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.ts",
+    "packages/desktop-client/src/components/modals/ImportTransactionsModal/utils.test.ts",
+    "specs/Recall.md",
+    "specs/implementation-plan.md",
+    "specs/delivery.md"
+  ],
+  "files": [
+    {
+      "name": "delivery.md",
+      "bytes": 4872,
+      "sha256": "021a6438d64fbcb7e5538ed2dde79ec8d33e4b088cf27fbe4061b8d8cd6d29f5"
+    },
+    {
+      "name": "implementation-plan.md",
+      "bytes": 1252,
+      "sha256": "714e2d3fff392d15d2bc3acb5c32f329b810a7c29fff716e5b2e3300d544d597"
+    },
+    {
+      "name": "Recall.md",
+      "bytes": 1028,
+      "sha256": "672a2c53ac4d50a2af59a32060faa15ac5b012608a36d2b3e00f2ed8a01b8f0e"
+    },
+    {
+      "name": "repair.patch",
+      "bytes": 17584,
+      "sha256": "1e316683112bbc1bdc29916273b73b7e3e8b5cfe634c2f8e49d3870d242b254b"
+    },
+    {
+      "name": "UPSTREAM-LICENSE",
+      "bytes": 1045,
+      "sha256": "71e4b3053e4622e1f5fc5d8aa5336350de32ead39247924c596d659b89b47b6f"
+    }
+  ]
+}
