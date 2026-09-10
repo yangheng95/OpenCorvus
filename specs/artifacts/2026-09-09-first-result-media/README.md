@@ -218,11 +218,14 @@ there is no application UI automation or screenshot comparison in this package.
 
 ## Revised pilot invitation — adoption cycle, 10 September 2026
 
-This is the published replacement for issue #30. The initial publication
-above is historical. The existing cards remain sample illustrations, not a new
-real-project demo. Independent review passed before publication; the live issue
-body was read back and matched this copy. Publication is recorded in the founder
-operating ledger.
+Status: reviewed draft, not submitted to issue #30. The Actual Budget wording
+below was committed in 621caa86; the previous Parcel Notes invitation remains
+live. Anonymous GitHub reads at 2026-09-10T05:34:55Z confirmed that distinction.
+The earlier publication/readback receipt in the operating ledger belongs to the
+Parcel Notes wording. The issue-edit confirmation remains pending; mark this
+replacement published only after its exact body is submitted and read back.
+The initial publication above is historical. Existing cards remain sample
+illustrations; the withdrawn social posts remain withdrawn.
 
 <!-- pilot-current-start -->
 ## Start with a result you can inspect

@@ -4,6 +4,9 @@ Status: a real OpenCorvus Luna run has now produced a repair that passed both or
 
 ## Problem and user value
 
+Prepared distribution copy: [English LinkedIn and Chinese Xiaohongshu drafts](SOCIAL.md).
+These drafts have not been posted and do not count as adoption.
+
 A user excludes a duplicate and imports a row explicitly displayed as new. The account should contain that new transaction. In the reproduced manual-baseline path, the new row disappears and the account remains unchanged. A useful delivery must restore agreement between preview and actual results while preserving legitimate duplicate handling.
 
 Original report: [Actual issue8464](https://github.com/actualbudget/actual/issues/8464). There is an existing [open WIP PR8468](https://github.com/actualbudget/actual/pull/8468); this issue is not our discovery. Do not copy its patch and describe the result as an independently solved model challenge. Actual is the input project, not a customer or endorsement.

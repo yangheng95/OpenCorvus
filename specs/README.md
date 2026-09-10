@@ -2,6 +2,8 @@
 
 Real-project case result: [Luna import repair, patch and acceptance evidence](artifacts/2026-09-10-import-case/RESULT.md).
 
+Prepared case distribution: [LinkedIn and Xiaohongshu copy, not submitted](artifacts/2026-09-10-import-case/SOCIAL.md).
+
 Current website promotional video: [bilingual delivery story and production source](artifacts/2026-09-10-website-story/README.md).
 
 Current first-result demo: [actual Luna deliverable, runnable verification and bilingual media](artifacts/2026-09-09-first-result-media/README.md).

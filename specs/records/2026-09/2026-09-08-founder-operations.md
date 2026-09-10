@@ -1407,3 +1407,32 @@ Independent review: the uninvolved `review_adoption_entrypoint_2` Luna agent ret
 ### Pre-push index closure
 
 The first authorized push ran all repository hooks and reached `check:architecture-index`, which reported 12 existing current-architecture files absent from `specs/current/architecture/README.md`; `origin/main` had the same index state. The files are present and are already current fact sources, so the minimal repair adds links for them to the existing index without changing any contract. This is a pre-existing delivery/toolchain closure, not an adoption result or a new architecture decision. The index checker must pass, the complete pre-push hook must pass, and the post-fix diff must receive a fresh independent read-only review before retrying the push.
+
+## Case distribution preparation and publication evidence — 2026-09-10
+
+### Recall
+
+- User requirement: continue autonomous operations toward real value, independent adoption and community impact with gpt-5.6-luna, non-payment authorization and credential privacy. Individual deliveries do not complete the goal.
+- Previous cycle: progress, with 621caa86 and b1b85a08 committed and pushed after hooks passed. This cycle starts clean; local main and origin/main point to b1b85a08.
+- Read: AGENTS.md, latest operating Recall, preceding root entry-point differences, retained Actual RESULT.md, current/historical pilot copy, and anonymous GitHub issue/comment responses. Searches for published replacement, pilot-current-start, PILOT_BODY_READBACK_MATCH and participant comments identified the affected claim and historical receipt. Withdrawn toy social drafts remain withdrawn.
+- Independent pre-edit feedback: none. The preceding PASS missed the publication-status paragraph; obtain fresh read-only Luna review of the complete correction and new copy.
+- Acceptance: correct false publication status; prepare concise English LinkedIn and Chinese Xiaohongshu copy grounded in the case and interventions; verify links, run documentation checks, independently review, commit and push this scope.
+- Boundaries: the previous concrete issue-edit confirmation is still unanswered. No issue/social submission, private outreach, upload, new model request, credential access, user-process operation or payment. Application contracts and UI tests are outside scope. Drafts count as preparation only.
+
+### Diagnosis and plan
+
+At 2026-09-10T05:34:55Z, anonymous GitHub API (Application Programming Interface) reads showed issue #30 open, updated 2026-09-10T00:29:29Z, with the old Parcel Notes invitation and one comment by owner yangheng95. That comment reports a website update. Total comments = 1; independent reporting accounts, accepted first tasks and different-task reuse = 0 / 0 / 0 in this channel; reports elsewhere remain unknown. A rendered page omitting comments cannot establish zero total comments.
+
+Commit 621caa86 replaced the marked pilot body but retained the claim that it was published and read back. That receipt belongs to the previous Parcel Notes wording, not the new Actual wording. Correct this documentation provenance error in place, preserve historical receipts, and record future publication only against the exact submitted body. Do not resolve the inconsistency by posting while confirmation is pending.
+
+Prepare channel copy under the existing Actual case artifact. Lead with the observable import problem; describe the first repair passing backend checks but failing operator page acceptance, precise same-Task feedback, accepted second repair and separate review. Attribute source preparation and page acceptance to the operator. No unattended-success, customer, upstream-contribution, savings or superiority claims. Link the pinned result and invite a comparable task with an observable acceptance condition. Update artifact/root indexes, verify claims against retained evidence and independently review before commit.
+
+The public English quickstart now renders workbench-first steps and an optional Task API section at https://opencorvus.com/start/quickstart/. This supersedes the old-page observation for that page only; it does not prove installer acceptance or full website deployment. Further onboarding rewrites without a reported blocker are not this cycle's priority.
+
+### Validation and next evidence
+
+The two channel drafts are in `specs/artifacts/2026-09-10-import-case/SOCIAL.md`, linked from the case, artifact and root indexes. `bun run docs:check` passed (339 operations, 25 groups), `git diff --check` passed, and the case, result and patch link targets exist. At 2026-09-10T05:51:24Z, an anonymous read of the public RESULT.md at commit 9482c811 returned HTTP 200 and matched the local source after newline normalization. This verifies the evidence link, not a new repair execution or user acceptance.
+
+The one owner comment is [the website update receipt](https://github.com/yangheng95/opencorvus/issues/30#issuecomment-5604996474). Neither that receipt nor these drafts adds an independent trial. The next adoption evidence should be a public-safe report from an independent participant with a concrete accepted outcome or blocker; publication, if confirmed, needs its own exact-body readback. Do not start another onboarding rewrite solely because adoption is still unobserved. The long-term objective remains active.
+
+Independent read-only review: `review_case_distribution`, running gpt-5.6-luna, returned PASS with no actionable findings after examining all six changed files, retained result and original delivery/Recall, publication status outside the marked pilot block, evidence chronology and index targets. It performed no external write. The final documentation and whitespace checks passed again. This cycle provides reviewed distribution material and corrects an evidence error; independent adoption remains 0 / 0 / 0 in the inspected pilot channel.
