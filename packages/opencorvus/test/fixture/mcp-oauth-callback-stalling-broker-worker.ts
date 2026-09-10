@@ -16,18 +16,17 @@ if (!root || !output || !stallTrigger || !stallStarted || !stallRecovered || !Nu
 const binding = await Global.provideRoot(root, () => McpOAuthCallback.ensureRunning())
 await publishJSONBarrier(output, binding)
 
-let stalled = false
-setInterval(async () => {
-  if (stalled) return
+while (true) {
   try {
     await readFile(stallTrigger, "utf8")
-  } catch {
-    return
+    break
+  } catch (error) {
+    if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") throw error
+    await Bun.sleep(25)
   }
-  stalled = true
-  await publishJSONBarrier(stallStarted, { started: true })
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, stallDurationMs)
-  await publishJSONBarrier(stallRecovered, { recovered: true })
-}, 25)
+}
+await publishJSONBarrier(stallStarted, { started: true })
+Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, stallDurationMs)
+await publishJSONBarrier(stallRecovered, { recovered: true })
 
 setInterval(() => {}, 1_000)

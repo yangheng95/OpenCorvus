@@ -258,6 +258,8 @@ describe("the durable MCP OAuth callback broker", () => {
     const stallRecovered = path.join(root, "stall-recovered.json")
     const refusalObserved = Promise.withResolvers<void>()
     const owner = spawnStallingHolder(root, ownerOutput, stallTrigger, stallStarted, stallRecovered, 4_000)
+    const stdout = new Response(owner.stdout).text()
+    const stderr = new Response(owner.stderr).text()
     try {
       const binding = await waitForJson<{ redirectUrl: string; generation: string }>(ownerOutput)
       expect(await Global.provideRoot(root, () => McpOAuthCallback.ensureRunning())).toEqual(binding)
@@ -281,6 +283,12 @@ describe("the durable MCP OAuth callback broker", () => {
         await Bun.sleep(100)
       }
       expect(await Global.provideRoot(root, () => McpOAuthCallback.ensureRunning())).toEqual(binding)
+    } catch (error) {
+      await stopChild(owner)
+      throw new Error(
+        `Owner-stall checker failed (child exit ${owner.exitCode}).\nstdout:\n${(await stdout).slice(-16_384)}\nstderr:\n${(await stderr).slice(-16_384)}`,
+        { cause: error },
+      )
     } finally {
       McpOAuthCallback.TestHooks.setAfterUnreachableTakeoverRefusal(undefined)
       if (owner.exitCode === null) await stopChild(owner)
