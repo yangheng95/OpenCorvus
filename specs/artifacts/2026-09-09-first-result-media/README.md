@@ -144,9 +144,8 @@ Destination: `yangheng95/opencorvus` GitHub issue tracker.
 Posting account: `yangheng95`.
 Published as [issue #30](https://github.com/yangheng95/opencorvus/issues/30) after
 the user's authorization for non-payment operations. The title and body were
-read back and checked against the initial text below. The live issue now also
-contains subsequent maintainer acceptance and website updates; use that issue
-for current progress and voluntary feedback.
+read back and checked against the initial text below. The live issue is the
+public invitation; use that issue for current progress and voluntary feedback.
 Scope: one text-only issue with the exact title and body below; no labels,
 assignments, comments on other issues, direct messages or attached uploads.
 The issue seeks early validation, not endorsement
@@ -226,31 +225,33 @@ body was read back and matched this copy. Publication is recorded in the founder
 operating ledger.
 
 <!-- pilot-current-start -->
-## Try a small project task with OpenCorvus
+## Start with a result you can inspect
 
-We are looking for **five early testers** who want an agent to explain a project, make a small change, and leave files and tests they can inspect.
+OpenCorvus carried a reported import-preview bug in a pinned Actual Budget source snapshot from reproduction through a source patch, page acceptance, and independent review. [Inspect the case result](https://github.com/yangheng95/opencorvus/blob/main/specs/artifacts/2026-09-10-import-case/RESULT.md) before setting up a model. It shows the before/after, actual interventions, source patch and review boundaries. This is one maintainer demonstration, not a customer endorsement or an upstream contribution.
 
-[Inspect the actual retained Luna deliverable](https://github.com/yangheng95/opencorvus/tree/main/specs/artifacts/2026-09-09-first-result-media#inspect-the-actual-result--查看真实交付) before setting up a model: generated explanation, changed files and runnable checks.
+We are looking for **five early testers** who want to try a small, public-safe task in a project they care about and leave files and tests they can inspect.
+
+[The Parcel Notes three-file exercise](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples#english) remains available as an optional setup walkthrough. It needs Node.js 22+ and the expected sample output changes from `750 g` to `800 g` after the follow-up.
 
 1. [Set up OpenCorvus and a model](https://opencorvus.com/start/quickstart/).
-2. Follow the [three-file Parcel Notes exercise](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples#english). It needs Node.js 22+. The expected program output changes from `750 g` to `800 g` after the follow-up.
-3. Reply here with **your version, OS, model, and where you got to**: setup blocked / first result accepted / needs correction. One concrete blocker or useful result is enough. If you later use OpenCorvus for a different task, tell us what you used it for.
+2. Try a bounded task in your own project, or use the optional Parcel Notes walkthrough if you only want to validate setup.
+3. Reply here with **your version, OS, model, task type, and where you got to**: setup blocked / first result accepted / needs correction. One concrete blocker or useful result is enough. If you later use OpenCorvus for a different task, tell us what you used it for.
 
 Already have an appropriate project? You can instead describe a small, non-sensitive task you want to try. Share only public-safe details. Model access and any provider charges are your choice.
 
-**What is verified:** one maintainer run using `openai/gpt-5.6-luna` in an isolated Windows source environment completed the sample and follow-up, with files and commands checked. This does not establish released-installer acceptance or independent user success. [Evidence and limits](https://github.com/yangheng95/opencorvus/blob/96668bfd15c8267be874a59cfc1cd5ff499bcea4/specs/records/2026-09/2026-09-08-founder-operations.md).
+**What is verified:** one maintainer run using `openai/gpt-5.6-luna` in an isolated Windows source environment completed the Actual Budget repair after a failed first attempt and explicit feedback, with page states, files, commands and independent review checked. This does not establish released-installer acceptance or independent user success. [Evidence and limits](https://github.com/yangheng95/opencorvus/blob/main/specs/artifacts/2026-09-10-import-case/RESULT.md).
 
-## 用一个小项目，试一次实际交付
+## 先看真实结果，再试一次实际交付
 
-寻找 **五位早期试用者**：让 OpenCorvus 读懂项目、完成一处修改，再亲自核对文件和测试。
+OpenCorvus 在固定版本的 Actual Budget 源码快照中，把一个已报告的导入预览问题从复现推进到源码修复、页面验收和独立复审。请先[查看案例结果](https://github.com/yangheng95/opencorvus/blob/main/specs/artifacts/2026-09-10-import-case/RESULT.md)，了解前后差异、实际介入、源码补丁和复审边界。这是一次维护者演示，不是客户背书，也不是向上游提交的补丁。
 
-配置模型前，可以先[查看保留的真实 Luna 交付](https://github.com/yangheng95/opencorvus/tree/main/specs/artifacts/2026-09-09-first-result-media#inspect-the-actual-result--查看真实交付)：原始生成说明、修改后的文件和可运行的验收命令。
+寻找 **五位早期试用者**：在自己关心的项目中试一项小而适合公开的任务，让 OpenCorvus 读懂项目、完成一处修改，再亲自核对文件和测试。
 
 1. [安装 OpenCorvus 并配置模型](https://opencorvus.com/zh-cn/start/quickstart/)。
-2. 按[三文件 Parcel Notes 指南](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples#中文)试一次。需要 Node.js 22+，续作前后的预期输出分别为 `750 g` 和 `800 g`。
-3. 在此回复 **版本、系统、模型，以及做到哪一步**：配置卡住 / 首次交付可接受 / 需要修正。一个具体卡点或有用结果就够了。之后若用它完成另一项任务，也欢迎告诉我们用途。
+2. 试一项范围明确、适合公开的项目任务；如果只想验证设置，可选用[三文件 Parcel Notes 指南](https://github.com/yangheng95/opencorvus/tree/c6b429b8e1ac70d0d5539658c0f44605a9510f2a/examples#中文)，其预期输出从 `750 g` 变为 `800 g`。
+3. 在此回复 **版本、系统、模型、任务类型，以及做到哪一步**：配置卡住 / 首次交付可接受 / 需要修正。一个具体卡点或有用结果就够了。之后若用它完成另一项任务，也欢迎告诉我们用途。
 
 也可以提出你自己项目中一项小而明确的任务，只分享适合公开的信息；不要贴密钥、私人路径或私有代码。模型访问及可能产生的费用由你选择。
 
-目前已有一次维护者在 Windows 隔离源码环境中使用 `openai/gpt-5.6-luna` 完成样例和续作的验收，并核对了文件与命令输出。这不代表发布安装包或独立用户已经验收通过，详见上方证据链接。欢迎真实反馈，成功和卡住都值得记录。
+目前已有一次维护者在 Windows 隔离源码环境中使用 `openai/gpt-5.6-luna` 完成 Actual Budget 案例的实现、失败反馈后的修订和页面验收，并核对了文件、命令输出和独立复审。这不代表发布安装包或独立用户已经验收通过，详见上方案例链接。欢迎真实反馈，成功和卡住都值得记录。
 <!-- pilot-current-end -->

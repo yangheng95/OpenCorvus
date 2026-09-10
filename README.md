@@ -40,12 +40,17 @@
 
 ---
 
-**Try one result you can inspect.** Ask OpenCorvus to explain a small project, make
-one change, and check the resulting files and tests. Start with the
-[three-file guided exercise](./examples/README.md#english), or
-[set up OpenCorvus](https://opencorvus.com/start/quickstart/) first.
-We are looking for five early testers: [join the first-task pilot](https://github.com/yangheng95/opencorvus/issues/30).
-A setup blocker is useful feedback too. The exercise needs Node.js 22+ and a configured model for agent tasks.
+**Start with a result you can inspect.** OpenCorvus carried a reported import-preview
+bug in a pinned Actual Budget source snapshot from reproduction through a source patch,
+page acceptance, and independent review. Read the [case result](./specs/artifacts/2026-09-10-import-case/RESULT.md)
+to see the before/after and the intervention record. It is one maintainer demonstration,
+not a customer endorsement or an upstream contribution.
+
+Then try a small, public-safe task in a project you care about and check the resulting
+files and tests. [Set up OpenCorvus](https://opencorvus.com/start/quickstart/) first;
+the [three-file Parcel Notes exercise](./examples/README.md#english) is an optional setup
+walkthrough. We are looking for five early testers: [join the first-task pilot](https://github.com/yangheng95/opencorvus/issues/30).
+A setup blocker is useful feedback too. Agent tasks need a configured model and reachable provider.
 
 An **agent harness** is the runtime that turns a model into an agent: the loop, tool
 routing, context management, memory, permission enforcement, and recovery. Long-horizon

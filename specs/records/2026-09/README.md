@@ -8,6 +8,8 @@
 
 - [Founder operations and adoption work](2026-09-08-founder-operations.md)
 
+- [Adoption entry-point correction](2026-09-08-founder-operations.md#adoption-entry-point-correction--2026-09-10)
+
 - [Interrupted task reconciliation](2026-09-08-interrupted-task-reconciliation.md)
 
 - [0.0.63-beta release repair and publication](2026-09-06-v0.0.63-beta-release-repair.md)
