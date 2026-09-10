@@ -1,5 +1,7 @@
 # Specs Storage Index
 
+Qualified real-project case input: [import preview consistency and successful control](artifacts/2026-09-10-import-case/README.md).
+
 Current website promotional video: [bilingual delivery story and production source](artifacts/2026-09-10-website-story/README.md).
 
 Current first-result demo: [actual Luna deliverable, runnable verification and bilingual media](artifacts/2026-09-09-first-result-media/README.md).
