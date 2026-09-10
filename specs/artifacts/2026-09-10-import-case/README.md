@@ -1,6 +1,6 @@
 # Import preview consistency — qualified case input
 
-Status: the reported failure was reproduced manually in Actual's official hosted application, which identified itself as v26.9.0. This is a candidate input for a future OpenCorvus workflow, **not an OpenCorvus repair or model success**.
+Status: the reported failure and successful control were reproduced manually in both Actual's official hosted v26.9.0 application and local source revision `12f4b6e22dd54e0a66324271235454f450cbbf99`. This is an input for a future OpenCorvus workflow, **not an OpenCorvus repair or model success**.
 
 ## Problem and user value
 
@@ -28,7 +28,7 @@ The real page screenshots and readbacks were reviewed in the operating task. The
 
 ## Future delivery acceptance
 
-- Pin the isolated source revision and reproduce the manual-baseline problem there. The hosted v26.9.0 build has not been source-mapped to the previously inspected12f4b6e2 snapshot.
+- Local baseline now qualified at `12f4b6e22dd54e0a66324271235454f450cbbf99`: both paths match the observations above. Repeat in fresh accounts for the actual model run; prior failed imports can mutate matching metadata. The hosted v26.9.0 build has not been mapped to an exact source commit.
 - Requirements must explicitly cover both manual and imported existing transactions, selected/skipped rows, and legitimate merge behavior.
 - After repair, the manual-baseline path must show Netflix and Corner Coffee with account balance-17.98. The imported-baseline control must retain the same correct result.
 - Verify backend transaction outputs with positive checks and inspect the actual UI manually. No UI automated tests are authorized by this repository's workflow.
@@ -36,3 +36,23 @@ The real page screenshots and readbacks were reviewed in the operating task. The
 - Name the actual model, interventions and unresolved items. Quantify savings only if a real baseline was measured. A maintainer demonstration does not count as independent adoption.
 
 No model run, patch, upstream message, paid service or bank connection was performed during qualification. The original issue remains open. [Operating record](../../records/2026-09/2026-09-08-founder-operations.md).
+
+## Prepared local environment
+
+Source archive SHA-256: `9367411f32f5ca2b3cf9f0ae1887faa8f15452eb8c19ba08339e20cf27c8c4de`.
+
+After installation, builds and manual reproduction, all 4,111 regular files in the original archive were compared by SHA-256 against the extracted source: zero changed and zero missing. Generated dependencies/build outputs are additional local files and are not covered by that source comparison.
+
+Windows source directory: `%TEMP%/opencorvus-actual-case-12f4b6e2/source/actual-12f4b6e22dd54e0a66324271235454f450cbbf99`. It is a plain extracted source snapshot, not a Git worktree. Node24.16.0 and bundled Yarn4.17.1 were used. Run all commands below from that source root.
+
+```powershell
+node .yarn/releases/yarn-4.17.1.cjs workspaces focus @actual-app/web @actual-app/core plugins-service
+node .yarn/releases/yarn-4.17.1.cjs workspace plugins-service run build-dev
+node .yarn/releases/yarn-4.17.1.cjs workspace @actual-app/core exec vite build --config vite.config.mts --mode development
+$env:REACT_APP_BACKEND_WORKER_HASH = 'dev'
+node .yarn/releases/yarn-4.17.1.cjs workspace @actual-app/web run start --mode=browser --host 127.0.0.1 --port 46421 --strictPort
+```
+
+The existing Windows frontend launcher logs `spawn yarn ENOENT` for its automatic core child. The explicit core build above produces the same development worker through the existing build entry and allowed the real page to initialize. This is a prepared snapshot, not a repaired upstream launcher: after modifying core source, rerun that build before checking the page, or use its existing `--watch` mode in a separate terminal. Do not infer that the failed automatic child is watching changes. Do not alter any pre-existing user process to start the preview.
+
+The two local accounts are named `Pinned source manual baseline` and `Pinned source imported control`, with final observed balances-8.99 and-17.98 respectively. They contain only the fictional inputs above. Keep qualification, model implementation and acceptance evidence separate.
