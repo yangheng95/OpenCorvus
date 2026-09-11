@@ -1,5 +1,7 @@
 # 2026-09 Records
 
+- [v0.0.64-beta binary publication](2026-09-11-v0.0.64-beta-release.md).
+
 - [Compiled PoC paper website publication](2026-09-11-website-poc-paper.md).
 
 - [Expert Squad discovery diagnostic overflow](2026-09-08-discovery-diagnostic-overflow.md)
