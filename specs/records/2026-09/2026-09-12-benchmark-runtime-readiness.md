@@ -104,3 +104,5 @@ Recall：用户要求实际修复，停止只解释。最新 readiness 首5例�
 验证收敛：主运行时组合25项120断言通过（82.34秒），包括单一完整Mission故障恢复、准备中取消、producer先提交副作用而consumer未读到时的unsafe retry、真实快照、数据库清理与schema重开/transfer。独立agent另跑4文件19项98断言全部通过（61.06秒）；2项执行身份与18项Python条件测试也独立通过。两个执行入口强制显式case-set，批次计划与单例分别验证同一commit/bundle/manifest。原始100例manifest不改动。旧静态报告截图显示固定50和历史榜单，未作为当前结果页面交付，已删去这轮新引入的报告及其专用刷新/只写状态，现有8765–8767页面不动。
 
 检查脚本曾错误等待常驻Mission Session owner退出，实际执行轮次和Task调度已结束；最终改用SessionStatus的精确input/owner执行轮次结算，断言idle和scheduler delivery审计通过，再按process.shutdown释放隔离测试的常驻会话。没有把长驻会话误报成新的生产死锁。全程无外部模型调用；目前仍不能声称TLS原始根因已闭合、真实模型批次有效或冗余调用已减半。
+
+2026-09-13 安装收敛：修复提交b463c413已推送，pre-push全部检查通过。检查3个历史批次租约均为空、旧runner Git干净且无进程以其目录为cwd后，将原安装移入retired/opencorvus-runner-84a09194；同一opencorvus-runner路径从当前论文分支完整重新安装，不再维护旧runtime backport。干净检出最初因SDK的dist未构建无法加载manifest-v2，已完成现有SDK标准build，构建后源码无差异。Linux8项21断言通过，完整Mission恢复22.3秒，真实bridge/官方scorer replay通过；[完整安装回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-installation.json)记录提交、树、manifest和日志digest。没有新模型调用，旧页面不刷新/重启。
