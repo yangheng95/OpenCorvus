@@ -76,3 +76,10 @@
 - 真实CLI缺配置检查生成带run ID的 `unscored_infrastructure_failure` / `native_setup_error:ENOENT` 结果，证明初始化失败账本路径；未用空配置或stub冒充模型成功。
 - 当前待办：用户回复具体OpenAI凭据使用请求；固定Base运行时并完成共享修复和真实链路预检；统一双方推理配置、执行200个一次性slot、完整验收；据实际新结果更新论文正文/PDF。本轮不声称实验或论文完善已完成。
 - 现有WSL runner在确认工作区干净、未使用其进程后，以 `git merge --ff-only --no-stat 17bc3f63fc2ed0e2d4953e50811ee106882fd8fe` 从e8cdd1be快进到既有远端benchmark冻结版本，完成后HEAD精确一致、status为空；未创建额外branch/worktree，也未启动旧supervisor。该步骤只固定待运行源码，不替代共享机制/模型预检。
+
+### 推送检查器发现的既有索引故障
+
+- 首次提交 `ed9c9844` 后，fetch/merge显示上游已是最新，待推送集合只有本任务这一提交。push的类型、路由、文档、租约owner检查通过，但 `check:architecture-index` 报告12个失效链接。
+- 根因：论文分支保留了旧架构索引的12项条目，而对应文档已在当前源码删除；对比 `origin/v0.0.55beta` 的完整差异，索引恰好多出这12条。当前架构目录全量搜索也只在README找到这些目标。修改前该文件没有用户差异。
+- 修复范围仅当前架构入口README的失效链接，保持现存全部文档可达；不重建旧文档、兼容索引、产品接口或公共契约。原checker实际验证每个现存文档有入口且全部链接指向真实文件，因此复跑它作为此删除的验收；同步记录/root索引并进行只读复审后提交。
+- 索引修复独立只读复审通过，无未解决发现；reviewer确认只删除12条失效链接，修复后与当前beta索引完全一致，16个现存文档全部可达；独立复跑架构、文档和差异检查均通过。package topology（包拓扑）与release mutation topology（发布变更拓扑）检查也通过。
