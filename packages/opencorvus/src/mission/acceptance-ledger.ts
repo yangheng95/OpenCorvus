@@ -452,7 +452,7 @@ export function dispatchConsumesAcceptanceCriterion(input: {
   binding: SelectedWorkflowBinding
   responsibility: MissionAcceptanceCriterionResponsibility
   candidateWorkflowNodeID: string | null
-  sourceDispatchLineageArtifactID: string
+  sourceDispatchLineageArtifactID: string | undefined
   targetAgentID: string
 }): boolean {
   if (input.responsibility.kind === "workflow_node") {

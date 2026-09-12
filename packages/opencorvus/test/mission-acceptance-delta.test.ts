@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { PersistedDispatchCollectionMemberInputSchema } from "@/engine/dispatch-collection-contract"
 import { afterEach, describe, expect, test } from "bun:test"
 import {
   materializeMissionAcceptanceGap,
@@ -332,6 +333,46 @@ describe("Mission acceptance baseline readiness", () => {
         targetAgentID: "builder",
       }),
     }).toEqual({ admitted: responsibility, exact: true, foreign: false })
+  })
+
+  test("projects current acceptance obligations onto a previously unstarted downstream verifier", () => {
+    const criterion = openCriterion({ observation: [secondLocator] })
+    const turn = DispatchTurnSchema.parse({
+      kind: "initial",
+      current_dispatch_id: "dispatch_tester_first",
+      workflow_binding: workflowBinding,
+      workflow_node_id: "tester",
+      workflow_occurrence_id: "occ_tester",
+      delivery_slice_revision_ids: [],
+      evidence_locators: [secondLocator],
+      task_authority: {
+        task_id: "tsk_acceptance", root_session_id: "ses_task_root", request_sha256: "c".repeat(64),
+        initial_user_message_id: "msg_task_request",
+        initial_control_text_parts: [{ part_id: "prt_task_request", text_sha256: "d".repeat(64) }],
+      },
+      acceptance_repair: {
+        gap_id: "gap-builder-r2", ledger_revision_artifact_id: "art_acceptance_ledger_r2",
+        execution_epoch: 3, criteria: [criterion], checkpoint_required: false,
+      },
+    })
+    const collection = PersistedDispatchCollectionMemberInputSchema.parse({ dispatch: {
+      target: "tester", work_scope: { kind: "task" }, turn: {
+        kind: "initial", workflow_subject: { kind: "virtual_workflow", workflow_id: "repair", node_id: "tester" },
+        use_worktree: false, input: { instruction: "Verify the repaired outcome." },
+        acceptance_gap_id: "gap-builder-r2", criterion_ids: [criterion.criterion_id],
+      },
+    } })
+    expect({
+      kind: turn.kind, obligation: turn.acceptance_repair?.gap_id,
+      collectionTurn: collection.dispatch.turn,
+      consumes: dispatchConsumesAcceptanceCriterion({ binding: workflowBinding, responsibility: criterion.responsibility,
+        candidateWorkflowNodeID: "tester", sourceDispatchLineageArtifactID: undefined, targetAgentID: "tester" }),
+      prompt: renderDispatchContinuationTurn({ turn, guidance: "Verify the repaired outcome." }),
+    }).toMatchObject({
+      kind: "initial", obligation: "gap-builder-r2", consumes: true,
+      collectionTurn: { kind: "initial", acceptance_gap_id: "gap-builder-r2", criterion_ids: [criterion.criterion_id] },
+      prompt: expect.stringContaining("Initial workflow node with acceptance obligation"),
+    })
   })
 
   test("renders an open criterion continuation and applies the exact canonical Task delta", () => {

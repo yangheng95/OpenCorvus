@@ -447,6 +447,28 @@ export function createDispatchAgentTool(input: {
       })
       .strict(),
   ])
+  const acceptanceRepairShape = input.acceptanceRepair
+    ? {
+        acceptance_gap_id: z
+          .literal(input.acceptanceRepair.revision.gap.gap_id)
+          .describe("Exact current Mission acceptance gap consumed by this worker Turn."),
+        criterion_ids: z
+          .array(
+            z
+              .string()
+              .refine(
+                (criterionID) =>
+                  input.acceptanceRepair!.revision.gap.criteria.some(
+                    (criterion) => criterion.criterion_id === criterionID,
+                  ),
+                "Criterion is not open in the current Mission acceptance gap.",
+              ),
+          )
+          .min(1)
+          .max(64)
+          .describe("Only current gap criteria this worker Turn must consume."),
+      }
+    : {}
   const continuationTurnSchema = z
     .object({
       kind: z.literal("continuation"),
@@ -459,28 +481,7 @@ export function createDispatchAgentTool(input: {
       evidence_locators: EvidenceLocatorInputListSchema.default([]).describe(
         "Exact new durable evidence identities selected for this successor Turn. Name each Artifact by its exact revision or snapshot path only; the Host reads the digest, byte count, and media type itself, so never restate a content digest here. A session_message locator must be Task-owned and pair the Message with its actual producing Session; for a Mission acceptance-repair Task-root message, use the Task root Session authority and never missionSessionID.",
       ),
-      ...(input.acceptanceRepair
-        ? {
-            acceptance_gap_id: z
-              .literal(input.acceptanceRepair.revision.gap.gap_id)
-              .describe("Exact current Mission acceptance gap consumed by this continuation."),
-            criterion_ids: z
-              .array(
-                z
-                  .string()
-                  .refine(
-                    (criterionID) =>
-                      input.acceptanceRepair!.revision.gap.criteria.some(
-                        (criterion) => criterion.criterion_id === criterionID,
-                      ),
-                    "Criterion is not open in the current Mission acceptance gap.",
-                  ),
-              )
-              .min(1)
-              .max(64)
-              .describe("Only current gap criteria this worker continuation must consume."),
-          }
-        : {}),
+      ...acceptanceRepairShape,
     })
     .strict()
     .describe("Exact persisted continuation Turn authority and new guidance.")
@@ -524,6 +525,7 @@ export function createDispatchAgentTool(input: {
           kind: z.literal("initial"),
           workflow_subject: workflowSubjectSchema,
           use_worktree: useWorktreeSchema,
+          ...acceptanceRepairShape,
           input: publicAdapterInputSchema.describe(
             `Exact immutable ${agentID} adapter input for the initial worker Turn.`,
           ),
@@ -565,7 +567,7 @@ export function createDispatchAgentTool(input: {
     description:
       "Single scheduler agent dispatch tool. In dispatch, use target to select an exact projected worker identity. Use turn.kind=initial with workflow_subject and target-specific turn.input for a first node occurrence. Use turn.kind=continuation with one explicit lineage authority, guidance, and evidence_locators only for a successor Turn. " +
       "A Task has one immutable workflow binding: after the first virtual-workflow initial dispatch commits, every later initial dispatch must use a node from that same workflow; never switch to direct. Direct initial dispatches are only for a Task that has not selected a virtual workflow. " +
-      "Every call must declare use_worktree. Concurrent write-capable Task dispatches use managed worktrees when repository ownership requires isolation; read-only or proven-disjoint dispatches may use false. " +
+      "Every initial Turn must declare turn.use_worktree. Concurrent write-capable Task dispatches use managed worktrees when repository ownership requires isolation; read-only or proven-disjoint dispatches may use false. " +
       "A newly started worker returns accepted as soon as its durable lineage and Session exist; continue the root control Turn without waiting for that worker. A fast worker may instead return terminal_success, domain_incomplete, domain_blocked, partial, infrastructure_failure, or a coordination request. domain_incomplete carries the exact durable but incomplete domain Artifact and never opens workflow successors. domain_blocked carries the exact domain Artifact and unanswered blocker Question occurrence and also keeps successors closed. terminal_success is already terminal: never call wait for it; discover persisted domain facts through artifact_search, read each artifact_locator_ref completely, and select semantic sources with artifact_read_ref. " +
       "This replaces separate visible worker-stage tools such as requirements, architect, build, visual_qa, integrity, fact_check, research, workload, intent analysis, and explore.",
     inputSchema: providerInputSchema,
@@ -580,6 +582,8 @@ export function createDispatchAgentTool(input: {
                 kind: "initial"
                 workflow_subject: unknown
                 use_worktree: boolean
+                acceptance_gap_id?: string
+                criterion_ids?: string[]
                 input: Record<string, unknown>
               }
             | {
@@ -608,22 +612,17 @@ export function createDispatchAgentTool(input: {
       const continuationGuidance = continuationTurn?.guidance
       const continuationEvidenceLocators = continuationTurn?.evidence_locators
       const acceptanceRepair = input.acceptanceRepair
-        ? continuationTurn?.acceptance_gap_id && continuationTurn.criterion_ids
+        ? turn.acceptance_gap_id && turn.criterion_ids
           ? {
-              gap_id: continuationTurn.acceptance_gap_id,
+              gap_id: turn.acceptance_gap_id,
               ledger_revision_artifact_id: input.acceptanceRepair.artifactID,
               execution_epoch: input.acceptanceRepair.executionEpoch,
-              criterion_ids: continuationTurn.criterion_ids,
+              criterion_ids: turn.criterion_ids,
             }
           : undefined
         : undefined
       if (input.acceptanceRepair && !acceptanceRepair) {
-        throw new Error(`dispatch_agent acceptance-repair continuation is missing its current gap or criteria.`)
-      }
-      if (input.acceptanceRepair && initialTurn) {
-        throw new Error(
-          `dispatch_agent must continue an existing workflow occurrence while acceptance gap ${input.acceptanceRepair.revision.gap.gap_id} is active.`,
-        )
+        throw new Error(`dispatch_agent acceptance-repair Turn is missing its current gap or criteria.`)
       }
       const workflowSubject = initialTurn?.workflow_subject
       const targetInput = initialTurn?.input ?? {}

@@ -28,7 +28,7 @@ export function createNoActionTool(input: { activeAcceptanceGapID?: string } = {
         execute: async ({ reason }) => {
           if (input.activeAcceptanceGapID) {
             throw new Error(
-              `Acceptance gap ${input.activeAcceptanceGapID} requires a scoped continuation or an evidence-backed Task terminal decision; no_action cannot settle it.`,
+              `Acceptance gap ${input.activeAcceptanceGapID} requires a scoped repair Turn or an evidence-backed Task terminal decision; no_action cannot settle it.`,
             )
           }
           return {

@@ -2574,10 +2574,14 @@ export function createOrchestratorTools(input: {
       let canonicalAcceptanceRepair: AcceptanceRepairDispatch | undefined
       let acceptanceEvidenceLocators: EvidenceLocator[] = []
       if (activeAcceptanceRepair) {
-        if (!existingSessionID || !sourceDispatchLineageArtifactID || !acceptanceRepair) {
+        if (!acceptanceRepair || (existingSessionID && !sourceDispatchLineageArtifactID)) {
           throw new Error(
-            `Acceptance gap ${activeAcceptanceRepair.revision.gap.gap_id} requires an existing dispatch-lineage continuation.`,
+            `Acceptance gap ${activeAcceptanceRepair.revision.gap.gap_id} requires the current acceptance obligation and exact dispatch authority.`,
           )
+        }
+        if (!existingSessionID && (exactWorkflowBinding?.kind !== "virtual_workflow" ||
+            !sameSelectedWorkflowBinding(exactWorkflowBinding, activeAcceptanceRepair.workflowBinding))) {
+          throw new Error("Initial acceptance repair must belong to the Task's selected virtual workflow.")
         }
         if (
           acceptanceRepair.gap_id !== activeAcceptanceRepair.revision.gap.gap_id ||
@@ -2681,8 +2685,9 @@ export function createOrchestratorTools(input: {
               workflow_node_id: origin.workflowNodeID,
               workflow_occurrence_id: origin.workflowOccurrenceID,
               delivery_slice_revision_ids: origin.deliverySliceRevisionIDs ?? [],
-              evidence_locators: [],
+              evidence_locators: exactEvidenceLocators,
               task_authority: authority,
+              ...(canonicalAcceptanceRepair ? { acceptance_repair: { ...canonicalAcceptanceRepair, checkpoint_required: false } } : {}),
             },
       )
       if (signal?.aborted) throw new Error(`dispatch_agent ${targetAgentID} aborted before lineage preparation`)
