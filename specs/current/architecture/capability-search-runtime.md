@@ -183,6 +183,17 @@ second definition owner.
   loader-name alias or consult a replacement live catalog. Selecting another
   Skill rebuilds the loader from the selected identities even when that loader
   already exists; its existence does not imply the new Skill is active.
+  Projected loader availability comes from the same resolved Skill surface for
+  schedulers and workers. A scheduler's runtime-owned loader placeholder is
+  finalized by the specialized Registry loader; the Registry-only subset of
+  Tool grants cannot stand in for the role's complete projected authority.
+  Every loader finalization applies the current Message Tool switches and merged
+  Agent/Session capability rules to both loader visibility and required tools.
+  The same merged rules govern exact Skill eligibility. A newly selected denied
+  Skill returns `CapabilityRevealAuthorizationError` with `execution_not_granted`;
+  a previously recorded activation that current policy cannot reconstruct retires
+  through `StaleCatalogOccurrenceError`. Finalization cannot restore a disabled
+  loader from its broader Harness grants.
 - A direct Conversation or Mission publishes callable MCP children only from
   its exact Host Session owner. The project/config inventory remains status and
   metadata authority; it is not a second executable owner for the same

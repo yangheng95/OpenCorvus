@@ -282,6 +282,18 @@ describe("native Mission transport base", () => {
           toolInput,
           output,
         })
+        await expect(resolveTestCapabilityTools({
+          ...common,
+          tools: { mission_skill: false },
+        })).rejects.toBeInstanceOf(StaleCatalogOccurrenceError)
+        await Session.setPermission({
+          sessionID: common.session.id,
+          permission: [{ permission: "mission_skill", pattern: "*", action: "deny" }],
+        })
+        await expect(resolveTestCapabilityTools({
+          ...common,
+          session: await Session.get(common.session.id),
+        })).rejects.toBeInstanceOf(StaleCatalogOccurrenceError)
       },
     })
   }, 30_000)

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Config } from "../../src/config/config"
+import { StaleCatalogOccurrenceError } from "../../src/capability/catalog-binding"
 import { Identifier } from "../../src/id/id"
 import { Instance } from "../../src/project/instance"
 import { Session } from "../../src/session"
@@ -155,6 +156,17 @@ describe("search-native Skill reveal", () => {
           toolInput: { name: "research-report" },
           output: report,
         })
+        await expect(resolveTestCapabilityTools({ ...common, tools: { skill: false } })).rejects.toBeInstanceOf(
+          StaleCatalogOccurrenceError,
+        )
+        await Session.setPermission({
+          sessionID: session.id,
+          permission: [{ permission: "skill", pattern: "research-report", action: "deny" }],
+        })
+        await expect(resolveTestCapabilityTools({
+          ...common,
+          session: await Session.get(session.id),
+        })).rejects.toBeInstanceOf(StaleCatalogOccurrenceError)
       },
     })
   }, 30_000)

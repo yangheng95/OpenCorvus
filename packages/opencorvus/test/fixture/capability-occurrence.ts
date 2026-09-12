@@ -63,12 +63,17 @@ export async function bindTestCapabilityOccurrence(input: {
     input.config,
     registryIDs,
   )
-  const executionToolIDs = [
-    ...projectableRegistryIDs,
-    ...executableRefs
-      .filter((ref) => ref.kind === "mcp_tool" || (ref.kind === "tool" && ref.owner_ref !== "tool-registry"))
-      .map((ref) => ref.local_ref),
-  ]
+  const permission = CapabilityRules.merge(input.agent.permission, input.session.permission)
+  const executionToolIDs = visibleExecutionToolIDs({
+    toolIDs: [
+      ...projectableRegistryIDs,
+      ...executableRefs
+        .filter((ref) => ref.kind === "mcp_tool" || (ref.kind === "tool" && ref.owner_ref !== "tool-registry"))
+        .map((ref) => ref.local_ref),
+    ],
+    permission,
+    switches: input.tools,
+  })
   const materializationScope = await CatalogOccurrenceBinding.materializationScope({
     model: input.model,
     config: input.config,
@@ -85,11 +90,7 @@ export async function bindTestCapabilityOccurrence(input: {
   } else {
     const permanentRefs = routineToolRefs({
       harness: grants,
-      visibleToolIDs: visibleExecutionToolIDs({
-        toolIDs: executionToolIDs,
-        permission: CapabilityRules.merge(input.agent.permission, input.session.permission),
-        switches: input.tools,
-      }),
+      visibleToolIDs: executionToolIDs,
     })
     const permanentProviderBaseDefinition = await SessionLoop.resolvePermanentProviderBaseDefinition({
       model: input.model,
@@ -106,7 +107,8 @@ export async function bindTestCapabilityOccurrence(input: {
       agentID: input.agentID,
       executionToolIDs,
       harnessGrants: grants,
-      permission: [],
+      permission,
+      toolSwitches: input.tools,
     })
     payload = CatalogOccurrenceBinding.payload({
       snapshot: catalog.snapshot,

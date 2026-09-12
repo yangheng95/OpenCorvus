@@ -144,6 +144,7 @@ import {
 import { RuntimeCapabilityCatalog } from "@/tool/capability-runtime-catalog"
 import {
   CAPABILITY_REVEAL_OWNER_EXTRA_KEY,
+  CapabilityRevealAuthorizationError,
   capabilityRevealOccurrenceParts,
   createCapabilityRevealOwner,
   exactOccurrenceCapabilityDescriptor,
@@ -4421,13 +4422,24 @@ export namespace SessionLoop {
       activation?: { productionSkillNames?: readonly string[]; missionSkillNames?: readonly string[] },
     ) => {
       const { SkillMount } = await import("@/skill/mounts")
-      const providerToolNameSet = new Set(availableToolNames)
+      const providerToolNameSet = new Set(
+        visibleExecutionToolIDs({
+          toolIDs: [...availableToolNames],
+          permission: executionPermission,
+          switches: input.tools,
+        }),
+      )
       const eligibilityToolNameSet = new Set(
-        harnessGrantedRefs(executionHarnessProjection, "execute")
-          .filter((ref) => ref.kind === "tool" || ref.kind === "mcp_tool")
-          .map((ref) => ref.local_ref),
+        visibleExecutionToolIDs({
+          toolIDs: harnessGrantedRefs(executionHarnessProjection, "execute")
+            .filter((ref) => ref.kind === "tool" || ref.kind === "mcp_tool")
+            .map((ref) => ref.local_ref),
+          permission: executionPermission,
+          switches: input.tools,
+        }),
       )
       for (const name of providerToolNameSet) eligibilityToolNameSet.add(name)
+      const skillRuntime = { ...input.agent, permission: executionPermission }
       const runtimeIdentity = runtimeContract?.identity
       if (!runtimeIdentity) {
         const nativeMissionSurface = input.agentID === "mission" && input.session.kind === "mission"
@@ -4436,7 +4448,7 @@ export namespace SessionLoop {
           const surface = await MissionSkillRuntime.resolve({
             agentID: input.agentID,
             sessionKind: input.session.kind,
-            runtime: input.agent,
+            runtime: skillRuntime,
             scope: "session",
             availableToolNames: eligibilityToolNameSet,
             activeSkillNames: activation?.missionSkillNames ?? activeMissionSkillNames,
@@ -4469,7 +4481,7 @@ export namespace SessionLoop {
           const surface = await ConversationCapability.resolveSkillSurface({
             agentID: input.agentID,
             config: input.config,
-            runtime: input.agent,
+            runtime: skillRuntime,
             scope: "session",
             availableToolNames: eligibilityToolNameSet,
             explicitSkillNames: visibleChatSkillNames(input.messages),
@@ -4500,13 +4512,6 @@ export namespace SessionLoop {
         return undefined
       }
       delete tools[MissionSkillTool.id]
-      if (!projectedRegistryToolIDs) {
-        throw new Error(
-          `Projected skill owner ${runtimeIdentity.agentID} session ${input.session.id} is missing projectedRegistryToolIDs.`,
-        )
-      }
-      const exposeSkillTool = projectedRegistryToolIDs.has(SkillTool.id) && providerToolNameSet.has(SkillTool.id)
-      if (!exposeSkillTool) delete tools[SkillTool.id]
       const skillProjection = runtimeContract.skillProjection
       if (!skillProjection) {
         throw new Error(
@@ -4521,7 +4526,7 @@ export namespace SessionLoop {
       }
       const surface = await SkillMount.resolve({
         identity: runtimeIdentity,
-        runtime: input.agent,
+        runtime: skillRuntime,
         scope: "session",
         projectDirectory,
         skillProjection,
@@ -4529,6 +4534,8 @@ export namespace SessionLoop {
         activeSkillNames: activation?.productionSkillNames ?? activeProductionSkillNames,
       })
       resolvedToolSkillSurfaces.set(tools, surface)
+      const exposeSkillTool = surface.tool_available && providerToolNameSet.has(SkillTool.id)
+      if (!exposeSkillTool) delete tools[SkillTool.id]
       if (exposeSkillTool) {
         const skillTool = await SkillTool.init({ config: input.config, skillSurface: surface })
         const output = {
@@ -4574,11 +4581,18 @@ export namespace SessionLoop {
       if (requestedRef.kind === "skill" || requestedRef.kind === "mission_skill") {
         const candidateNames = new Set(Object.keys(tools))
         candidateNames.add(providerName)
-        await finalizeSkillSurface(candidateNames, {
+        const selectedName = exactSkillName(requestedRef)
+        const surface = await finalizeSkillSurface(candidateNames, {
           ...(requestedRef.kind === "skill"
-            ? { productionSkillNames: [...new Set([...activeProductionSkillNames, exactSkillName(requestedRef)])] }
-            : { missionSkillNames: [...new Set([...activeMissionSkillNames, exactSkillName(requestedRef)])] }),
+            ? { productionSkillNames: [...new Set([...activeProductionSkillNames, selectedName])] }
+            : { missionSkillNames: [...new Set([...activeMissionSkillNames, selectedName])] }),
         })
+        if (!surface?.tool_available || !surface.skills.some((skill) => skill.name === selectedName && skill.enabled)) {
+          throw new CapabilityRevealAuthorizationError(
+            "execution_not_granted",
+            `Current execution projection does not permit Skill ${selectedName} through ${providerName}.`,
+          )
+        }
         executable = tools[providerName]
         source = toolSources.get(providerName)
         if (executable) materializedCandidates[providerName] = executable
@@ -4708,7 +4722,14 @@ export namespace SessionLoop {
       materialize: materializeRevealCandidate,
     })
     for (const activation of revealState.definitions) {
-      const materialized = await materializeRevealCandidate(activation.requested_ref, activation.executable_ref)
+      const materialized = await materializeRevealCandidate(activation.requested_ref, activation.executable_ref).catch(
+        (error) => {
+          if (error instanceof CapabilityRevealAuthorizationError) {
+            throw new StaleCatalogOccurrenceError([`receipt.${activation.provider_name}.execution_policy`])
+          }
+          throw error
+        },
+      )
       const definition = normalizedProviderToolDefinition(materialized.providerName, materialized.tool)
       const mismatches = [
         ...(providerToolDefinitionDigest(definition) !== activation.definition_digest
