@@ -90,3 +90,12 @@ The native model runner's initial real path has passed the official checker on o
 
 
 [base-workflow-subject-clarification.patch](base-workflow-subject-clarification.patch) records the Base 2026.09.12.3 prompt clarification against runner 470d129d: use the declared Developer workflow node followed by independent Tester. Package projection checks passed; model adherence is still unverified and new benchmark admission remains paused. The public direct binding contract is unchanged.
+
+
+## Outcome-first evidence revalidation
+
+[Execution condition audit](outcome-first-execution-condition-audit.json) retains all five cases: only cases 2 and 4 satisfy the declared executor/verifier condition. Cases 1 and 5 used direct dispatch; case 3 failed. This is a condition-compliance metric with a fixed denominator, not a replacement score or a reason to discard failed cases. [Official score audit](outcome-first-score-audit.json) and [per-case results](outcome-first-score-cases.jsonl) independently recompute all four sealed scores: partial 0.8, 0.5, 0.631578947368421, 1.0 for cases 1, 2, 4, 5; case 5 is the only strict pass. The score utility retains its historical audit label; all four source revisions in this invocation are 3f9cb474 and no model was invoked.
+
+Reproduce condition verification with `python script/benchmark/audit_execution_condition.py --root <outcome-first/base> --manifest <case-manifest.json> --cases 1,2,3,4,5 --runtime-commit 3f9cb474b577f6e313492ed48b5b4bbf1bfa4f1f --workflow execution-verification --executor base-developer --verifier base-tester --output <new-report.json>`. Official replay uses `recover-automationbench.py --root <outcome-first/base> --manifest <case-manifest.json> --harness <checker-directory> --harness-revision 84a0919412616bbd76213ee1715a7e8b8a54f5ac --output <new-audit-directory>`. Both commands preserve original evidence.
+
+Current controlled diagnostic revalidation: [localhost:8767/ui](http://localhost:8767/ui), source84a09194/Base.3, batch3ab2a1e3-a714-4dad-90bc-e3547468d7f5, first five only. Old 8765/8766 viewers retain their prior roots. New scores and actual condition compliance remain pending.

@@ -44,3 +44,22 @@ Recall补充：第5例82abc8df与第1例一样，原始dispatch.workflow_subject
 [Base节点表述补丁](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/base-workflow-subject-clarification.patch)记录相对470d的4文件完整增量。没有新模型运行；此为声明歧义修正和零模型加载验收，不是两角色真实遵守率或官方评分实效验收。新benchmark继续暂停。
 
 独立只读复核通过：主仓20/142、冻结20/134独立复跑；6条版本摘要复算匹配；冻结补丁逐字节一致，无未解决的本次改动发现。冻结提交84a0919412616bbd76213ee1715a7e8b8a54f5ac，父470d129d；补丁5783bytes，SHA-256 790b1a62b5cc6ffaa011349bf9166b981c56564c0a5a10a392dbb4dc9888d8e0。模型遵守及实效仍未验证。
+
+## 实际执行条件审计（继续修复）
+
+Recall：用户要求继续修复所有问题；继续处理已知验收漏洞，先不扩跑。已读冻结auditMissionRunBinding、automationBenchRunValidity、真实terminal-board.executionProjection、task-transcripts、失败快照、主仓密封输入计量与dashboard。配置审计只核对Base包身份，不核对实际角色与依赖执行，导致direct仍被视作双角色实效证据；这不是公共direct执行本身非法。此前仅口头指出第1/5例不满足，缺少可重复的正向条件checker。
+
+实施：新增离线条件审计工具，复用现有密封字节检查，按明确预注册的执行者/验证者/工作流参数读取同Task真实dispatch与执行轮次事件；验证独立会话、执行者最新轮次成功后验证者才开始且成功完成（覆盖repair后的再次验证），公开缺失/不一致原因。输入哈希、run身份、重复case、固定样本集合均校验。官方分数保持原值；固定分母保留所有失败，不因条件违规删除样本或把条件符合当业务得分。直接包公共契约、业务提示、运行时流程无改动。聚焦正向测试包括完整双角色、缺失验证、过早/过期验证、错误终态、密封篡改错误；对现首5例运行真实只读checker，独立review后提交。
+
+此工具验证执行条件与已有证据，不能替代官方世界checker，也不能证明任务业务质量；原始流缺失不要求虚构恢复。下一步以清晰条件报告和已修运行时为基础评估受控复验资格。
+
+
+条件checker实现：既有密封输入读取参数化复用；固定manifest核对病例hash/身份，snapshot的message、dispatch_lineage、dispatch_settlement和workflow node occurrence验证每轮真实执行，涵盖continuation前驱、独立会话、完成绑定及terminal_success的精确final。三轮独立review发现的伪造/遗漏轮次、错误前驱、未关联final、病例改标、时间逆序均已纳入修复与测试。当前18条件+5计量+2恢复共25项通过；实际完整首5例条件通过2/5，全部分母保留。
+
+官方复算初因当前root没有旧600例manifest路径失败；增加显式--manifest参数，保持原命令默认路径语义，避免复制输入到证据目录。使用当前冻结100例manifest进入真实checker，4个完成candidate全部复算一致。分数与条件报告存档于[实验README](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/README.md#outcome-first-evidence-revalidation)。当前仍未进行新模型运行，源runner84a09194干净；评分复算不证明业务质量已修好。
+
+
+受控真实复验的准入边界：共享调度send死锁修复e03f、语义进展观察器470d、Base节点表述84a均已有各自聚焦测试与独立审查；本轮条件checker对真实原始首5例及官方4个score完成复核。当前剩余的不确定性是模型是否遵守声明及真实质量/调用改善，不能用更多静态测试证明，也不能把不存在的旧原始流恢复当永久阻塞。仅在本轮checker所有有效独立发现关闭后，恢复同一冻结首5例的受控诊断复验：同Luna、官方任务/评分、600秒无活动、并发2，单独输出到reproduction-20260912-readiness；保留3f9全部结果、不择优重试、不扩到6–100。此复验用于检验已修路径，任何无效执行/条件违规继续按根因修复，不把开始运行表述成验收完成。先成对投影已授权auth/models并核验实际gpt-5.6-luna，所有日志禁止凭据内容；旧UI和进程不动，长运行由现有定时任务检查。新模型启动前须记录独立审查结论，未通过则不启动。
+
+
+最终独立审查无未解决的有效发现，25项聚焦测试通过；原伪造continuation、跨workflow、伪造final、错误权限和病例改标复现均被明确拒绝，合法prior_dispatch与coordination_action保持。2026-09-12 12:11 UTC按上述边界启动受控首5例诊断，source84a09194、Base.3；成对auth/models投影及真实流式预检HTTP200、实际请求gpt-5.6-luna确认。batch3ab2a1e3-a714-4dad-90bc-e3547468d7f5，并发2，root /var/lib/opencorvus-benchmark/reproduction-20260912-readiness/base；Windows自建host416，viewer19012，独立结果页http://localhost:8767/ui。原8765/8766不动。首2run已落盘：case1 7191cee0-b511-4bca-8d68-f12097ddef01；case2 f406c3f6-4269-4a77-b29e-73faf8406405。6–100与任何追加批次继续暂停；未宣称全部问题修好，后续按score、condition、调用和耗时四项真实结果决定下一步。

@@ -53,6 +53,7 @@ def check_seal(directory: Path, manifest: dict) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path, help="Explicit frozen case manifest; defaults to the evidence root case set")
     parser.add_argument("--harness", type=Path, required=True)
     parser.add_argument("--harness-revision", required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -64,7 +65,7 @@ def main() -> None:
     output.mkdir(parents=True, exist_ok=False)
     catalog_path = root / "evidence-catalog.json"
     catalog = json.loads(catalog_path.read_text())
-    manifest_path = root / "automationbench-case-set-600.json"
+    manifest_path = args.manifest.resolve() if args.manifest else root / "automationbench-case-set-600.json"
     manifest = json.loads(manifest_path.read_text())
     cases = {row["case_index"]: row for row in manifest["cases"]}
     sys.path.insert(0, str(args.harness.resolve()))

@@ -19,7 +19,7 @@ def strings(value):
             yield from strings(item)
 
 
-def measurement_inputs(directory, manifest):
+def measurement_inputs(directory, manifest, names=("result.json", "opencorvus-transcript.json", "runtime-database-snapshot.json")):
     directory = directory.resolve()
     sealed = {}
     for entry in manifest["files"]:
@@ -27,7 +27,7 @@ def measurement_inputs(directory, manifest):
             raise ValueError("duplicate_sealed_file_identity")
         sealed[entry["path"]] = entry
     verified = {}
-    for name in ["result.json", "opencorvus-transcript.json", "runtime-database-snapshot.json"]:
+    for name in names:
         path = (directory / name).resolve()
         if not path.is_relative_to(directory):
             raise ValueError("measurement_input_outside_evidence_directory")
