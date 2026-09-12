@@ -2,6 +2,8 @@
 
 Current Luna versus Luna + Base reproduction: [protocol and recovered evidence](records/2026-09/2026-09-12-luna-base-reproduction.md).
 
+Local live comparison: [results page and viewer instructions](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/README.md#local-results-page).
+
 Current paper plan: [OpenCorvus academic research and writing plan](records/2026-09/2026-09-10-opencorvus-paper-plan.md).
 
 Current ICLR-format paper on evolving expert organizations: [manuscript, source map and evaluation protocol](artifacts/opencorvus-paper/manuscript/README.md).

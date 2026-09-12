@@ -2,6 +2,22 @@
 
 Protocol and current execution status: [dated record](../../../../records/2026-09/2026-09-12-luna-base-reproduction.md).
 
+## Local results page
+
+Open [the current comparison](http://localhost:8765/ui) on the experiment machine. It updates every 30 seconds from the native results and Base's existing catalog/leases. It shows scored denominators, running/awaiting states, per-case results, and comparisons only for completed pairs. The localhost viewer exposes only selected summary fields and does not serve raw files, prompts, logs or credentials.
+
+The independent viewer uses the real WSL evidence root; no product UI or benchmark process is restarted:
+
+```bash
+/var/lib/opencorvus-benchmark/evaluator-venv/bin/python -B \
+  /mnt/d/myhexin-local/opencorvus/script/benchmark/reproduction_dashboard.py \
+  --root /var/lib/opencorvus-benchmark/reproduction-20260912 \
+  --manifest /mnt/d/myhexin-local/opencorvus/specs/artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/case-manifest.json \
+  --port 8765
+```
+
+The viewer's backend projection tests run with `python -B -m unittest discover -s script/benchmark -p test_reproduction_dashboard.py`. Visual acceptance uses actual browser interaction and screenshots; no UI automation tests are used.
+
 ## Frozen sample
 
 `case-manifest.json` contains the first 100 identities from the existing 600-case manifest, in its original order. SHA-256: `43ca54925db11d7dc6d9c5b80bbd32aed9b6c93ea92a2d1b8225a0858036ff42`. Before the first new case, the retained official dataset-index digest was added to the metadata; membership and order are unchanged.
