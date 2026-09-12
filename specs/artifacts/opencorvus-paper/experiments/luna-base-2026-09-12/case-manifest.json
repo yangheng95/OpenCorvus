@@ -9,6 +9,7 @@
   "selection": {
     "algorithm": "first 100 cases in the pre-existing immutable 600-case order; no outcome filtering",
     "source_manifest_sha256": "939a5f0340fdf2a24d7981632bbb76e266903fe06218e0307dc5052788b4420c",
+    "dataset_index_sha256": "3f98894f1fa871dd27516c549e028d5651104d41a44b8f02a5cd00da39e11f37",
     "count": 100,
     "domain_counts": {
       "marketing": 15,

@@ -4,7 +4,7 @@ Protocol and current execution status: [dated record](../../../../records/2026-0
 
 ## Frozen sample
 
-`case-manifest.json` contains the first 100 identities from the existing 600-case manifest, in its original order. SHA-256: `d2ebf899b3314d996c084be70d55ce3c5defc07277f56b12643b26aedb051c21`.
+`case-manifest.json` contains the first 100 identities from the existing 600-case manifest, in its original order. SHA-256: `43ca54925db11d7dc6d9c5b80bbd32aed9b6c93ea92a2d1b8225a0858036ff42`. Before the first new case, the retained official dataset-index digest was added to the metadata; membership and order are unchanged.
 
 | Domain | Tasks |
 | --- | ---: |
@@ -23,7 +23,11 @@ Both conditions use these exact identities. This is a historically exposed repro
 
 Of those candidates, 95 were members of the original completed-batch leaderboard; their 27 strict passes were recomputed. This 27/95 snapshot is distinct from the previously reported operator-confirmed 34/100 aggregate. The audit does not recover the missing identity of that exact historical aggregate, validate all runtime eligibility conditions, or create a native Luna baseline. Stateful tool effects are checked through the retained hash chain and final-world scoring, not by replaying each mutation.
 
-No new model result is reported here. `native-world-check.json` records an actual official `simple`-domain transport/scoring check with zero model calls. Its strict zero is an expected diagnostic result because the check only exercises base64 encoding and API search. Simple cases are excluded from the scored 100-case experiment.
+`native-world-check.json` records an actual official `simple`-domain transport/scoring check with zero model calls. Its strict zero is an expected diagnostic result because the check only exercises base64 encoding and API search. Simple cases are excluded from the scored 100-case experiment.
+
+## New execution checkpoint
+
+After the user reauthenticated and authorized execution, `provider-preflight.json` records a real streaming connection to exact `openai/gpt-5.6-luna`. The first new native case has completed: `native-case-001-receipt.json` records strict/partial score 1, official replay pass, 23 response steps, 46 tool calls and 133,417 ms. Every recorded request uses `gpt-5.6-luna`, with explicit medium reasoning. The receipt hashes all 11 raw evidence files and records credential-scan acceptance. This is a single-case chain validation, not the 100-case aggregate or an observed paired advantage. Base's first five-case batch is running with two concurrent case slots; its paired outcomes remain pending.
 
 ## Reproduce the preparation checks
 
@@ -40,4 +44,4 @@ bun build script/benchmark/run-native-automationbench.ts --target bun --packages
 bun run docs:check
 ```
 
-The native model runner is under implementation review. Build success and the world check do not establish live model-path acceptance. Exact runtime identity, shared reasoning settings, actual Provider model, inference budgets, full receipts, and the Base launch path must be verified before publishing a paired result.
+The native model runner's initial real path has passed the official checker on one case. The first-case evidence is undergoing independent review before expansion. Base launch and both arms' final receipts, actual settings and inference budgets must be verified before publishing a paired aggregate. The historical Base protocol uses its original 50-case manifest/shell for cases 1–50 and the extended manifest/shell for 51–100; both preserve the same case identities as the native 100-case manifest. The primary reasoning setting is medium; organization-specific helper settings and the native 50-step versus Base uncapped budget remain explicit differences.

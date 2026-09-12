@@ -2,6 +2,8 @@
 
 ## Recall
 
+- 最新授权（重新认证后）：用户明确“我auth了，开始”，授权使用重新安装后 `C:/Users/hengu/AppData/Local/OpenCorvus/data` 的新OpenAI登录与模型目录执行已确认的两个条件。旧安装目录已按用户确认移到同级备份（永久递归删除被自动审批阻止）；不使用该备份或旧WSL凭据。新auth采用generation/info结构，须用Auth公开读取契约，不能以顶层缺少type误报未登录。
+
 - 用户原始要求：“你现在正要做的是完善论文和benchmark的分支，需要你自己运营实验，把论文完善好，首先要做的复刻luna和base专家团的实验”。随后确认“原生 Luna 与 Luna + Base 对照”。
 - 当前交付来源为 `codex/paper-preliminary-results`，起点 `443a614e`；论文和本次实验交付仅提交、推送此分支，不合并 main。开始时只有三个原有未跟踪路径，保留不动。
 - 验收：同一不可变 AutomationBench 任务清单、同一精确 Luna 模型的两个执行条件；官方世界状态评分；逐任务身份、原始对话、工具事件、初末世界、评分复算、版本与实际资源消耗可追溯；据实更新唯一论文稿源并独立复核。运行完成不是通过，严格零分也是有效实验结果。
@@ -83,3 +85,21 @@
 - 根因：论文分支保留了旧架构索引的12项条目，而对应文档已在当前源码删除；对比 `origin/v0.0.55beta` 的完整差异，索引恰好多出这12条。当前架构目录全量搜索也只在README找到这些目标。修改前该文件没有用户差异。
 - 修复范围仅当前架构入口README的失效链接，保持现存全部文档可达；不重建旧文档、兼容索引、产品接口或公共契约。原checker实际验证每个现存文档有入口且全部链接指向真实文件，因此复跑它作为此删除的验收；同步记录/root索引并进行只读复审后提交。
 - 索引修复独立只读复审通过，无未解决发现；reviewer确认只删除12条失效链接，修复后与当前beta索引完全一致，16个现存文档全部可达；独立复跑架构、文档和差异检查均通过。package topology（包拓扑）与release mutation topology（发布变更拓扑）检查也通过。
+
+## 重新认证后的执行阶段
+
+- Windows新认证文件和新模型目录分别于2026-09-12 13:03与13:02更新；原生Luna模型条目存在。不得记录凭据值。
+- 使用新的root私有目录 `/var/lib/opencorvus-benchmark/reproduction-20260912`，原始历史证据保持只读；源凭据/模型从新安装投影到此处，记录成功布尔值与非秘密模型身份。
+- Base及原生登录传输使用固定源码 `17bc3f63fc2ed0e2d4953e50811ee106882fd8fe`；论文/新原生runner交付分支为 `codex/paper-preliminary-results`。尚需验证环境依赖和双方实际请求参数，不能仅凭构建即扩展运行。
+- 先执行准确Luna的流式连接诊断，再各自运行同一小批；官方checker和完整运行证据通过后扩展。任何共享队列、恢复、并发或终态异常按完整横向范围审计，不通过改样本/更换模型/消除失败记录规避。
+- 新登录与模型目录已同时投影到新的root私有环境（目录0700，文件0600）。运行时按新Auth的generation/info公开契约读取oauth；最初只读探针顶层type为空是探针字段选择错误，不是登录失败。
+- 首次Provider预检遇到missing proper-lockfile依赖，`bun install --frozen-lockfile`补齐8个包，锁文件不变；原预检重跑通过，`status=200, ok=true, connected, providerID=openai, modelID=gpt-5.6-luna`，投影api.id亦完全一致。
+- 双方主推理档位固定medium，对应Base现有Provider默认；Base内部helper的smallOptions档位是原组织实现的一部分，实际调用参数需随证据披露，不能声称所有内部调用资源相等。原生明确50个response steps；Base保留原历史无总步骤上限/600秒无活动窗口。
+- Base历史checker对前50例使用原50例manifest/受限shell，对51–100使用扩展manifest/shell。新100例的身份与前缀逐项相同；这是保留的历史运行协议分段，并非依据本次结果选配置。新增100例manifest遗漏了原数据集index哈希；在任何正式模型case前补入原官方数据集index身份，任务membership和顺序不变，并更新字节哈希。
+- 新100例manifest字节哈希为 `43ca54925db11d7dc6d9c5b80bbd32aed9b6c93ea92a2d1b8225a0858036ff42`；数据集index为原官方 `3f98894f1fa871dd27516c549e028d5651104d41a44b8f02a5cd00da39e11f37`。
+- 隐藏Windows host启动原生case1和Base batch1；启动时host PID分别22352和28112。Base batch ID `653d3b52-eace-48d5-adc1-2b102118cdf7`，初始case1/2的run ID分别 `5e03f280-d1b5-466e-a355-5fc2ffe51cce` / `f1f0fdd2-5308-42de-8b09-cc879dc41f3f`，物理并发上限2。后续以run身份/lease而非可能复用的PID判断所有权。
+- 原生case1/run `7b65e085-edc2-42c4-af2d-b266e294a2ba`已自然完成：133417ms、23个response steps、46次官方工具调用、strict=1、partial=1、官方replay通过。实际每步request model均为gpt-5.6-luna；累计365061输入token（含91648 cache-read）、3278输出token。11个原始文件的SHA-256和凭据扫描收据写入新产物；这是首例链路验收，不是100例总体结果。
+- Base两例已创建真实Mission和child Task；只读provider_usage_event账本证实Luna连接及session调用。当前part表不存tool调用，真实工具事实在tool_part_request/outcome/progress；不能把part中没有tool字段误判为未调用工具。当前观察到正常planner产物发布与后继控制轮次，尚无已确认共享调度缺陷，保持运行。
+- 已通过app工具创建30分钟线程定时唤醒 `luna-base`，只在实质进展、完成、失败或需用户操作时通知；普通状态不变保持安静。自动化使用此Recall与真实证据继续小批验收、扩展和论文更新，不重复请求已获授权。
+- 本轮独立只读复审通过，无扩展前必须修复的问题。reviewer逐项核对11个原始文件哈希、已审代码及固定runtime、23步真实Luna/medium/三工具请求、官方prompt/工具输入输出、自然终止、45成功+1失败工具事件、官方replay、token与耗时一致；敏感响应头已脱敏，常见凭据标记扫描0。结论允许保持配置继续原生case2–5，不代表Base或双方100例完成。
+- 原生case2–5已按同一medium/50steps配置启动顺序一次执行，输出分别为 `native/case-002-attempt-1` 至 `native/case-005-attempt-1`；出现非零exit即停止该批新准入，保留结果待根因调查，不自动重跑。Base batch1继续以两个并发slot运行，其两例已产生真实官方world工具事件。
