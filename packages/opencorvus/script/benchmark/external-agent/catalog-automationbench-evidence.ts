@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 import fs from "node:fs/promises"
 import path from "node:path"
 import { verifySelectedCaseSet } from "./verify-selected-case-set"
+import { verifyAutomationBenchRestrictedShells } from "./restricted-shell-evidence"
 import {
   automationBenchCaseSetAuthority,
   AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
@@ -115,11 +116,14 @@ async function arguments_() {
   const root = values.get("root")
   const sourceData = values.get("source-data")
   const python = values.get("python")
-  const restrictedShell = values.get("restricted-shell")
+  const baseRestrictedShell = values.get("base-restricted-shell")
+  const extendedRestrictedShell = values.get("extended-restricted-shell")
   const model = values.get("model")
   const caseSet = values.get("case-set")
-  if (!root || !sourceData || !python || !restrictedShell || !model || !caseSet) {
-    throw new Error("--root, --source-data, --python, --restricted-shell, --model, and --case-set are required")
+  if (!root || !sourceData || !python || !baseRestrictedShell || !extendedRestrictedShell || !model || !caseSet) {
+    throw new Error(
+      "--root, --source-data, --python, --base-restricted-shell, --extended-restricted-shell, --model, and --case-set are required",
+    )
   }
   const profiles = (values.get("profiles") ?? "base,advanced").split(",").map((item) => item.trim()) as Profile[]
   if (
@@ -134,7 +138,8 @@ async function arguments_() {
     root: path.resolve(root),
     sourceData: path.resolve(sourceData),
     python: path.resolve(python),
-    restrictedShell: path.resolve(restrictedShell),
+    baseRestrictedShell: path.resolve(baseRestrictedShell),
+    extendedRestrictedShell: path.resolve(extendedRestrictedShell),
     model,
     profiles,
     caseSet: path.resolve(caseSet),
@@ -611,30 +616,12 @@ await fs
   .catch((error: NodeJS.ErrnoException) => {
     if (error.code !== "EEXIST") throw error
   })
-const [restrictedShellBytes, baseRestrictedShellBytes, extendedRestrictedShellBytes, restrictedShellStat] =
-  await Promise.all([
-    fs.readFile(cli.restrictedShell),
-    fs.readFile(path.join(import.meta.dir, "restricted-agent-shell-base.sh")),
-    fs.readFile(path.join(import.meta.dir, "restricted-agent-shell.sh")),
-    fs.stat(cli.restrictedShell),
-  ])
-const restrictedShellSHA256 = crypto.createHash("sha256").update(restrictedShellBytes).digest("hex")
-const extendedRestrictedShellSHA256 = crypto
-  .createHash("sha256")
-  .update(extendedRestrictedShellBytes)
-  .digest("hex")
-const allowedRestrictedShellSHA256 = new Set(
-  [baseRestrictedShellBytes, extendedRestrictedShellBytes].map((bytes) =>
-    crypto.createHash("sha256").update(bytes).digest("hex"),
-  ),
-)
-if (
-  !allowedRestrictedShellSHA256.has(restrictedShellSHA256) ||
-  restrictedShellStat.uid !== 0 ||
-  (restrictedShellStat.mode & 0o022) !== 0
-) {
-  throw new Error("Catalog requires the frozen root-owned restricted Agent shell")
-}
+const restrictedShells = await verifyAutomationBenchRestrictedShells({
+  base: cli.baseRestrictedShell,
+  extended: cli.extendedRestrictedShell,
+  sourceDirectory: import.meta.dir,
+})
+const extendedRestrictedShellSHA256 = restrictedShells.extended_sha256
 const caseSetBytes = await fs.readFile(cli.caseSet)
 const caseSetSHA256 = crypto.createHash("sha256").update(caseSetBytes).digest("hex")
 const caseSet = JSON.parse(caseSetBytes.toString("utf8")) as {

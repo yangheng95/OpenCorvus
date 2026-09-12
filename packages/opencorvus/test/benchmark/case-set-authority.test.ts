@@ -1,5 +1,10 @@
 import { expect, test } from "bun:test"
-import { automationBenchCaseSetAuthority } from "../../script/benchmark/external-agent/contract"
+import {
+  AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_SHA256,
+  automationBenchCaseSetAuthority,
+  automationBenchRestrictedShellAuthority,
+  automationBenchRestrictedShellSourceFile,
+} from "../../script/benchmark/external-agent/contract"
 
 const expected = { sha256: "a".repeat(64), canonical_sha256: "b".repeat(64) }
 const input = {
@@ -7,6 +12,25 @@ const input = {
   sealedSHA256: expected.sha256,
   sealedCanonicalSHA256: expected.canonical_sha256,
   expected,
+}
+
+for (const caseIndex of [undefined, Number.NaN, "51", true, 1.5]) {
+  test(`invalid case identity ${String(caseIndex)} returns the restricted shell authority error`, () => {
+    expect(
+      automationBenchRestrictedShellAuthority({
+        caseIndex,
+        baseCount: 50,
+        extendedCount: 100,
+        sealedSHA256: AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_SHA256,
+        extendedSHA256: "a".repeat(64),
+      }),
+    ).toEqual({
+      passed: false,
+      authority: null,
+      expected_sha256: null,
+      violations: ["case_index_out_of_manifest", "restricted_shell_authority_mismatch"],
+    })
+  })
 }
 
 for (const caseIndex of [1, 50, 51, 100]) {
@@ -35,5 +59,18 @@ for (const caseIndex of [0, 101]) {
       passed: false,
       violations: ["case_index_out_of_manifest"],
     })
+  })
+}
+
+for (const [caseIndex, sourceFile] of [
+  [1, "restricted-agent-shell-base.sh"],
+  [50, "restricted-agent-shell-base.sh"],
+  [51, "restricted-agent-shell.sh"],
+  [100, "restricted-agent-shell.sh"],
+] as const) {
+  test(`case ${caseIndex} selects its frozen restricted Agent shell`, () => {
+    expect(automationBenchRestrictedShellSourceFile({ caseIndex, baseCount: 50, extendedCount: 100 })).toBe(
+      sourceFile,
+    )
   })
 }

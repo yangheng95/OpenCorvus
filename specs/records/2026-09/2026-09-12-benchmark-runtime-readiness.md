@@ -228,3 +228,19 @@ case3进一步证据：Worker真实trace最后一次请求同时提供bash和ski
 
 
 独立审查发现本轮删除旧选样器比较后canonicalJSON仅剩定义/自身递归，已删除该无消费helper；其余清单公共契约检查未见新的明确缺陷。审查者独立重验8个TS/6个Python测试、官方100身份、115文件与原封存字节、原生续接脚本/暂停progress哈希均匹配。修正后的完整日志和[审计回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-full-100-manifest-audit.json)用于最终复审，真实页面截图仍显示旧coordinator分类，未把隔离验证包装为部署完成。
+
+### 100例受限Shell选择的启动契约
+
+Recall：活动51b队列继续运行，最近有界快照为原生26例终态、Base8例终态和2例活动；尚未到case51。当前coordinator把单个`--restricted-shell`传给所有100例，而run与证据authority明确要求case1–50使用仅允许UID 60001–60050的base wrapper、case51–100使用允许至60600的extended wrapper。若不在case51前收敛，后半队列会在Agent shell隔离预检失败。已读batch coordinator、single runner、catalog、verify、两个wrapper和全部authority调用；全仓生产调用只有coordinator进入catalog与single runner。独立反馈：本阶段实施前无。
+
+深度分析：直接触发点是coordinator在参数解析时只保存一个shell路径，runTrial与refreshCatalog无条件复用；single runner随后按case身份计算唯一expected wrapper，故传入base路径的case51必然被拒绝。这不是网络、模型、Task/Mission恢复或评分问题。影响所有跨50边界的batch组合、并发slot、重启后采用旧候选的新batch和最终证据复核；各trial仍以case_index形成唯一UID，不改变项目隔离、正常/失败终态、重试或恢复。旧Base结果已按case1–50正确封存，不能更写。两个wrapper是两个不重叠case范围的显式权威，不是运行时fallback。
+
+实施方案：batch、catalog与verify均强制接收base和extended两个root-owned wrapper路径；启动时同时核对它们分别与仓库冻结源字节一致、root持有且不可组写。coordinator对每个FrozenCase复用既有`automationBenchRestrictedShellSourceFile`唯一选择，再传给single runner；catalog只接收二者用于审核已封存的混合范围记录。删除单一`--restricted-shell`入口，不保留兼容别名。聚焦正向测试覆盖1/50/51/100的唯一选择；case范围已由同一入口更早的manifest批次校验保证，不重复引入第二个范围错误契约。benchmark专用typecheck、真实两个wrapper预检和现有manifest隔离副本catalog/verify共同验收。独立只读审查后范围提交与push。活动51b安装和8769不热改；代码完成不等于已部署，后续须在不破坏已封存结果、没有并行writer的条件下切换coordinator。
+
+实现首验：batch入口强制接收两个wrapper并按既有case authority选择；catalog/verify同时验证两个路径的冻结字节、root owner、普通用户不可写和文件类型。边界1/50/51/100的12项TypeScript断言、6项Python清单测试、benchmark专用typecheck通过。WSL安装中的两个wrapper分别以UID60050/60051执行真实namespace探针并返回对应UID，路径均root:755；隔离证据副本的完整catalog和verify继续通过（5 attempts、4 sealed candidates、1 real invalid、0 completed-batch eligible）。[选择回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-restricted-shell-selection.json)保留源码与探针摘要。没有模型请求、原结果改写、活动安装或页面变更；等待独立只读复核。
+
+独立首审复现共享selector会把undefined、NaN、字符串、布尔值与小数错误落入extended分支；原因是`strictInteger`得到NaN后两个范围比较均为false。这些输入被coordinator更前面的完整manifest校验挡住，现有运行没有因此污染；但公共authority自身可在摘要匹配时错误通过。已在唯一source selector增加safe-integer约束，并覆盖五种错误输入的既有`case_index_out_of_manifest`与`restricted_shell_authority_mismatch`契约。需重跑全部本轮验收并交回独立复审。
+
+重复的双wrapper字节/owner/mode校验已收敛为`restricted-shell-evidence.ts`单一实现，并进入benchmark source bundle；catalog与verify只消费该结果。修正后17项TypeScript、6项Python、benchmark typecheck再次通过；双路径完整catalog/verify重新执行，stdout摘要仍为2b8464/dd1b38且stderr均为空。新回执明确记录真实命令参数、输出路径和最终源码摘要，并将case51+的模型证据标为未覆盖，等待独立最终复核。
+
+独立最终复审通过：17项TypeScript/17断言、6项Python、benchmark typecheck均独立通过；五种非法身份全部明确拒绝，合法/交换/重复wrapper路径均符合契约。审查者核对6份源码摘要、双路径checker输出、2份UID探针摘要及115个封存文件，未解决发现为0。此结论只覆盖代码和隔离验收；活动安装、coordinator、8769与case51+模型执行仍未切换。

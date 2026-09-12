@@ -22,6 +22,7 @@ export async function readBenchmarkSourceEvidence() {
     "automationbench_tool.py",
     "freeze_automationbench_case_set.py",
     "verify-selected-case-set.ts",
+    "restricted-shell-evidence.ts",
     "catalog-automationbench-evidence.ts",
     "verify-automationbench-evidence.ts",
     "restricted-agent-shell-base.sh",

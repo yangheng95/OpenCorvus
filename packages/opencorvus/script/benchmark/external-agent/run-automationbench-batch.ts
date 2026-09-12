@@ -6,7 +6,9 @@ import { readBenchmarkSourceEvidence } from "./source-evidence"
 import { ProviderError } from "../../../src/provider/error"
 import {
   auditBenchmarkBunRuntime,
+  AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
   automationBenchCoordinatorBatchIndexes,
+  automationBenchRestrictedShellSourceFile,
   createBenchmarkRunnerStopController,
   createRestartableDrain,
   installBenchmarkTerminationHandlers,
@@ -54,7 +56,8 @@ if (!runtimeAudit.passed) {
 const python = required("python")
 const sourceData = required("source-data")
 const output = required("output")
-const restrictedShell = required("restricted-shell")
+const baseRestrictedShell = required("base-restricted-shell")
+const extendedRestrictedShell = required("extended-restricted-shell")
 const controlRoot = required("control-root")
 const evaluatorRoot = path.dirname(path.dirname(python))
 const batchIndexes = automationBenchCoordinatorBatchIndexes(values.get("batch-index") ?? "")
@@ -242,8 +245,10 @@ async function refreshCatalog(options: { allowAfterTermination?: boolean } = {})
         sourceData,
         "--python",
         python,
-        "--restricted-shell",
-        restrictedShell,
+        "--base-restricted-shell",
+        baseRestrictedShell,
+        "--extended-restricted-shell",
+        extendedRestrictedShell,
         "--case-set",
         caseSet,
         "--model",
@@ -323,6 +328,17 @@ async function ensureBatchAuthorization(context: BatchContext) {
 }
 
 async function runTrial(context: BatchContext, item: FrozenCase, profile: Profile, waveIndex: number) {
+  const restrictedShellSource = automationBenchRestrictedShellSourceFile({
+    caseIndex: item.case_index,
+    baseCount: AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
+    extendedCount: manifest.selection.count,
+  })
+  const restrictedShell = restrictedShellSource === "restricted-agent-shell-base.sh"
+    ? baseRestrictedShell
+    : restrictedShellSource === "restricted-agent-shell.sh"
+      ? extendedRestrictedShell
+      : undefined
+  if (!restrictedShell) throw new Error(`Case ${item.case_index} has no restricted Agent shell authority`)
   const args = [
     process.execPath,
     path.join(import.meta.dir, "run-automationbench.ts"),

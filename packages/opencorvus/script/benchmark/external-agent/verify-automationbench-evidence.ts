@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 import fs from "node:fs/promises"
 import path from "node:path"
 import { verifySelectedCaseSet } from "./verify-selected-case-set"
+import { verifyAutomationBenchRestrictedShells } from "./restricted-shell-evidence"
 import {
   automationBenchCaseSetAuthority,
   AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
@@ -43,16 +44,28 @@ for (let index = 2; index < process.argv.length; index += 2) {
 const rootValue = values.get("root")
 const sourceDataValue = values.get("source-data")
 const pythonValue = values.get("python")
-const restrictedShellValue = values.get("restricted-shell")
+const baseRestrictedShellValue = values.get("base-restricted-shell")
+const extendedRestrictedShellValue = values.get("extended-restricted-shell")
 const model = values.get("model")
 const caseSetValue = values.get("case-set")
-if (!rootValue || !sourceDataValue || !pythonValue || !restrictedShellValue || !model || !caseSetValue) {
-  throw new Error("--root, --source-data, --python, --restricted-shell, --model, and --case-set are required")
+if (
+  !rootValue ||
+  !sourceDataValue ||
+  !pythonValue ||
+  !baseRestrictedShellValue ||
+  !extendedRestrictedShellValue ||
+  !model ||
+  !caseSetValue
+) {
+  throw new Error(
+    "--root, --source-data, --python, --base-restricted-shell, --extended-restricted-shell, --model, and --case-set are required",
+  )
 }
 const root = path.resolve(rootValue)
 const sourceData = path.resolve(sourceDataValue)
 const python = path.resolve(pythonValue)
-const restrictedShell = path.resolve(restrictedShellValue)
+const baseRestrictedShell = path.resolve(baseRestrictedShellValue)
+const extendedRestrictedShell = path.resolve(extendedRestrictedShellValue)
 const finalMode = values.get("mode") === "final"
 const finalProfiles = (values.get("profiles") ?? "base,advanced").split(",").map((item) => item.trim())
 if (
@@ -64,25 +77,12 @@ if (
   throw new Error("--profiles must be base, advanced, or base,advanced")
 }
 const caseSetPath = path.resolve(caseSetValue)
-const [restrictedShellBytes, baseRestrictedShellBytes, extendedRestrictedShellBytes, restrictedShellStat] =
-  await Promise.all([
-    fs.readFile(restrictedShell),
-    fs.readFile(path.join(import.meta.dir, "restricted-agent-shell-base.sh")),
-    fs.readFile(path.join(import.meta.dir, "restricted-agent-shell.sh")),
-    fs.stat(restrictedShell),
-  ])
-const restrictedShellSHA256 = digest(restrictedShellBytes)
-const extendedRestrictedShellSHA256 = digest(extendedRestrictedShellBytes)
-const allowedRestrictedShellSHA256 = new Set(
-  [baseRestrictedShellBytes, extendedRestrictedShellBytes].map((bytes) => digest(bytes)),
-)
-if (
-  !allowedRestrictedShellSHA256.has(restrictedShellSHA256) ||
-  restrictedShellStat.uid !== 0 ||
-  (restrictedShellStat.mode & 0o022) !== 0
-) {
-  throw new Error("Verifier requires the frozen root-owned restricted Agent shell")
-}
+const restrictedShells = await verifyAutomationBenchRestrictedShells({
+  base: baseRestrictedShell,
+  extended: extendedRestrictedShell,
+  sourceDirectory: import.meta.dir,
+})
+const extendedRestrictedShellSHA256 = restrictedShells.extended_sha256
 
 function digest(bytes: Uint8Array | string) {
   return crypto.createHash("sha256").update(bytes).digest("hex")

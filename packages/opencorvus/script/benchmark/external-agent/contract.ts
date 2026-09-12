@@ -1825,7 +1825,7 @@ export function automationBenchRestrictedShellSourceFile(input: {
   extendedCount: number
 }) {
   const caseIndex = strictInteger(input.caseIndex)
-  if (caseIndex < 1 || caseIndex > input.extendedCount) return null
+  if (!Number.isSafeInteger(caseIndex) || caseIndex < 1 || caseIndex > input.extendedCount) return null
   return caseIndex <= input.baseCount ? "restricted-agent-shell-base.sh" : "restricted-agent-shell.sh"
 }
 
