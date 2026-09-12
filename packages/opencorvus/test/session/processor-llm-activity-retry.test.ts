@@ -245,8 +245,7 @@ describe("SessionProcessor semantic LLM activity retry", () => {
               yield { type: "start" }
               yield { type: "tool-input-start", id: "call_abandoned", toolName: "write" }
               yield { type: "text-start", id: "text_owned_by_the_attempt" }
-              const stopAt = Date.now() + 600
-              while (Date.now() < stopAt && !streamInput.abort.aborted) {
+              while (!streamInput.abort.aborted) {
                 await new Promise((resolve) => setTimeout(resolve, 25))
                 yield { type: "tool-input-end", id: "call_abandoned" }
                 yield {

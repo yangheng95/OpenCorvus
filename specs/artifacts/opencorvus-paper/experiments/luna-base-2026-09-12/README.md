@@ -83,3 +83,7 @@ bun run docs:check
 ```
 
 The native model runner's initial real path has passed the official checker on one case. The first-case evidence is undergoing independent review before expansion. Base launch and both arms' final receipts, actual settings and inference budgets must be verified before publishing a paired aggregate. The historical Base protocol uses its original 50-case manifest/shell for cases 1–50 and the extended manifest/shell for 51–100; both preserve the same case identities as the native 100-case manifest. The primary reasoning setting is medium; organization-specific helper settings and the native 50-step versus Base uncapped budget remain explicit differences.
+
+## Runtime readiness correction
+
+[stream-progress-observer.patch](stream-progress-observer.patch) and its [receipt](stream-progress-observer-receipt.json) freeze the owned Session activity observation correction at `470d129d`, relative to `3f9cb474`. The observer consumes the existing semantic monitor; polling and lease renewal do not renew the inactivity window. Zero-model processor integration and independent review passed. New benchmark admission remains paused: actual two-role condition verification is incomplete, and the original failed Provider stream cannot be reconstructed from retained evidence. See the [readiness record](../../../../records/2026-09/2026-09-12-benchmark-runtime-readiness.md).

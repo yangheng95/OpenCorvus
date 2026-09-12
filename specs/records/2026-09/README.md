@@ -2,6 +2,7 @@
 
 - [Luna 与 Base 专家团的 AutomationBench 复刻](2026-09-12-luna-base-reproduction.md)
 - [以实际结果为中心的运行时纠偏](2026-09-12-outcome-first-runtime-correction.md)
+- [Benchmark 前的运行时可靠性验收](2026-09-12-benchmark-runtime-readiness.md)
 
 - [OpenCorvus 学术论文写作计划](2026-09-10-opencorvus-paper-plan.md)
 
