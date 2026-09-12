@@ -1,5 +1,7 @@
 # 2026-09 Records
 
+- [Luna 与 Base 专家团的 AutomationBench 复刻](2026-09-12-luna-base-reproduction.md)
+
 - [OpenCorvus 学术论文写作计划](2026-09-10-opencorvus-paper-plan.md)
 
 - [OpenCorvus 专家组织论文：专业化、跨任务演化与严格实验设计](../../artifacts/opencorvus-paper/manuscript/README.md)

@@ -1,5 +1,7 @@
 # OpenCorvus paper materials
 
+- [Luna versus Luna + Base reproduction](experiments/luna-base-2026-09-12/README.md): frozen 100-case sample, recovered historical score audit, and live-experiment preparation.
+
 - [Non-experimental working manuscript](manuscript/README.md): ICLR-format paper on evolving expert organizations, domain specialization, colored scientific figures, source mapping, references, and controlled evaluation design.
 - [Official conference templates](templates/README.md): ICLR 2027 source archive and local extraction instructions.
 - [Research and writing plan](../../records/2026-09/2026-09-10-opencorvus-paper-plan.md).
