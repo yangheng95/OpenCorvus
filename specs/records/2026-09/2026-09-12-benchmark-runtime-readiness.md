@@ -190,3 +190,41 @@ Recall：继续运营100例Luna对照与论文，先修复已记录的真实工�
 权限修复后首验：Core两个owner各覆盖允许、首次消息禁用、Session整体禁用、精确Skill名称禁用；允许路径完成读取后再验证消息/名称缩减产生明确stale。加原生Skill重建与缩减共9项70断言通过；Mission Skill正常重建、消息禁用及Session禁用1项5断言通过；两个Light并行派发路径2项162断言通过。合计12项237断言，生产typecheck、docs:check、diff检查通过。输入目录绑定夹具已与生产使用同一缩减参数；没有恢复旧兼容协议或增加模型调用。待独立复审确认全部有效发现闭合。
 
 最终独立复审通过：审查者独立运行12项77断言，另对两个owner在已加载后新增全局Session deny的原复现再次验证，均得到明确拒绝；允许加载正常、旧receipt缩减走StaleCatalogOccurrenceError。共享权限发现已关闭，未解决发现为0。主agent另验Mission永久工具表的消息/权限缩减2项2断言通过。交付仅包括共享Skill物化/重建、生产对齐夹具、聚焦正向契约及文档，无模型、业务得分或预算变更。
+
+安装验收：51b780ee已通过完整pre-push检查并推送。确认租约为空、无bench进程、viewer源码不变后，同一WSL安装从00ccc完整快进至51b780ee715aba2d80e30eaf5a89bae1ed62f3cb；安装干净。Linux真实工具链14项239断言通过，已从完整日志重新解析数量与校验哈希，见[Skill修复安装回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-skill-runtime-installation.json)。模型调用0，旧数据/页面保持原状态。
+
+### 冻结修复版本的完整100例对照
+
+Recall：用户要求“继续bench”并完成同一固定100例原生Luna与Luna+Base对照、论文与冗余减半目标。前五例已经完成质量/效率诊断；基础设施错误已修复并独立审查、安装验收。现转入完整固定100例，不能把试点低分当成无限重跑练习题的理由。原134d五例保留为已曝光的诊断试点，新完整队列两组均绑定同一51b780ee；重新覆盖1–5属于预声明完整新版本队列的一部分，不覆盖旧结果或按高分选择。已读两组执行器/原launcher、batch-index多批次及错误收敛契约、原生step限制、官方桥接与当前安装证据。实施前独立反馈：修复代码审查已通过，本次启动记录尚无。
+
+计划：新根/var/lib/opencorvus-benchmark/reproduction-20260913-luna-base-100。两组各执行case1–100，原固定清单SHA43ca54925db11d7dc6d9c5b80bbd32aed9b6c93ea92a2d1b8225a0858036ff42不改；Base使用原coordinator明确batch-index 1–20、并发2，native原执行器顺序并发1、medium和50 response steps，全部仍600秒真实无活动。先把已授权auth/models成对投影，分别核验凭据可用、精确模型目录和真实流式请求gpt-5.6-luna，再启动。源码安装在队列期间固定，不对活动进程热修。有效业务低分/失败保留且继续；新共享基础设施问题按真实checker证据调查，不把模型自述或最后错误当根因。
+
+验收指标：固定分母100上的完成/有效率、官方strict与partial、全部Provider/工具调用、token及实际端到端时间；区分OpenCorvus工具part和官方API事件，保留全部尝试与失败，不把未运行项包装为已完成。冗余减半仍独立核算，不能把局部Skill修复称为达标。结果是整体harness条件比较，原生50步与Base组织预算/工具接口、历史样本曝光都是明确局限。新只读viewer用独立端口，真实页面截图复核，旧8765–8768不动。长任务由既有luna-base定时任务有界检查；启动证据与安装回执完成后独立只读审查、范围提交和push。
+
+02:47北京时间实际启动：真实流式预检HTTP200，精确请求gpt-5.6-luna；成对资料已投影到隔离source/native home。Base 20份计划完整覆盖固定case1–100，源码51b780ee、bundle013220dd8b05c54ad31c74102d31d0a5d65a5ec77c82fb72f3552ed482ac470a及原manifest一致；实际首两个run a5f52972/36c04560同时运行，coordinator52668；native supervisor52669依次执行100例，首例eac8abaf以16步、93419ms完成并通过内置官方replay，实际请求全部gpt-5.6-luna。新8769页面和截图已真实复核（截图时native1/Base2运行中、尚无配对评分），旧服务不动。[完整启动回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-full-100-launch.json)保留20份计划哈希、启动脚本哈希及初始观察。尚未对完整队列作分数/效率结论。
+
+启动复审捕获原生队列暂停：case2/db1f8898完成8个步骤后，Provider fetch在收到HTTP响应前抛出ECONNRESET/socket closed，记录unscored_infrastructure_failure；native supervisor按原stop-on-failure规则退出，case3–100未启动。源码run-native-automationbench.ts显式maxRetries=0，错误路径关闭本单例world进程，没有保存可恢复的最终世界；因此不能把整个case2从头重跑冒充原执行续接，也不能声称网络/TLS根因已经确定。该次是传输失败表象，不是Skill修复回归的证据；Base两例当时继续活动。已检查原生SDK入口、world串行调用、50步/评分边界与失败清理、native-run-contract及产品流式入口；原生是独立基线执行器，未经过产品SessionProcessor的恢复路径。
+
+处理方案：保持冻结51b的执行策略和旧case2失败原位，不改活动安装或重跑已有病例；恢复相互独立、尚未启动的case3–100，沿用原CLI、模型、预算、世界初始化及逐例失败停止规则。新增一次有身份/范围/源脚本哈希的运营续接回执，原launcher和暂停progress保存为历史证据；当前唯一活动supervisor只处理未开始项。完整队列统计仍以100为固定分母，明确报告原生无Provider请求重试这一配置与基础设施失败，不能把可评分子集的比例当100例成功率。原生请求恢复机制改进应在独立分析/实际故障注入与审查后用于后续明确版本，不能在本轮中途静默改变条件。本次运营续接不等同于已修复原生Provider重连。
+
+已按上述方案续接：确认原supervisor退出、case1/2终态匹配、case3–100目录均未创建后，以相同CLI启动supervisor55075处理3–100；原launcher未覆盖，暂停progress另存，既有两例字节不改。[续接回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-full-100-native-resume.json)记录源/新launcher及暂停progress哈希、保留病例和新范围。没有重跑失败的case2，没有改变Provider重试策略。
+
+### 当前100例清单验收的单一权威
+
+Recall：用户追问“都无效了？”；最新快照原生3例已评分/1例断连/1运行，Base前两例在网页无效、另两例运行。读取原始sealed result确认Base1/2均scored、scorer replay=true、Mission scored_terminal=true，部分分0.8/0.5；catalog却把两例归为benchmark_identity_failed。当前任务要求修根因，不改业务分数或用重跑换标签。源码/安装51b，活动队列与用户8769页不热改。已读catalog、verify、run/coordinator、case-set authority、wrapper authority和freeze selector；全仓仅catalog/verify调用清单authority。独立反馈：启动审查确认20计划/100字段完全一致；本次校验修复前无。
+
+直接原因与旧遗漏：automationBenchCaseSetAuthority按case_index<=50强制选择仓库旧50例manifest的b7019f摘要，而实际新run、批次计划、CLI和源文件一致绑定100例43ca5摘要。真实函数输入已存新根case-set-authority-observation.json，返回case_set_authority_mismatch。该逻辑服务旧50例追加扩集，不能用于新完整100例。两套CLI又重复加载/导出base与extended清单；verify进一步重跑旧quota/append选样生成器并比较完整JSON，而本轮是已授权原600例顺序前100、元数据不同。先前试点被更前面的完成协议错误拒绝，使这一层从未验收；类型检查和20个计划身份相等并不能证明最终catalog接受它们。
+
+范围与方案：清单authority只接受当前显式选定manifest的数量、字节摘要、规范化摘要；所有case_index1–count同一来源。catalog与verify删除隐式旧50清单回退和双清单导出，保留精确case/模型/源码/任务契约/数据集身份、sealed文件和官方复算。现有freeze脚本新增对给定冻结清单的真实官方数据集身份验真入口，校验包、数据集索引、每个唯一case及顺序编号，不擅自用另一选样算法替换用户清单。边界1/50/51/100、错误范围/摘要与真实100例清单、已封存两例必须进入同一checker验证；测试不能只验计划数学。正式写入活动目录前仍须解决旧coordinator会用旧代码重建它的问题，禁止两个writer互相覆盖或放宽校验直接显示scored。未完成部署与网页复核不能宣称页面已修复。
+
+横向发现：受限shell另外按50例分界选择UID范围60001–60050的base脚本与60001–60600的extended脚本；当前coordinator把--restricted-shell-base同一路径用于所有100例，进入51之后会失败。这是另一个必须在进入该范围前处理的启动配置/公共契约问题，不能因前两例正常运行忽略。当前先修已证实的清单验收；不改变活动shell、源版本或已完成证据，后续统一补齐运行器与coordinator的全范围预检/部署方案。原生socket重连仍未修复，不把清单修复外推为全部基础设施可靠。
+
+
+清单首验完成：真实官方包验证100条selected identities通过，manifest43ca与dataset index3f988保持。从活动root仅复制已经封存的case1/2/3/4/6，共115文件，逐文件校验摘要；在独立manifest-authority-audit/evidence运行完整catalog及verify（development模式）通过。case1/2/4/6的raw evidence与官方重放通过，恢复sealed_candidate；case3仍为mission_outcome_mismatch。正式eligible仍为0，因为当前批次没有completed receipt；不伪造回执把待验收说成严格通过。副本验证不改原result与原始batch receipt，也未部署到8769。
+
+公共入口复核：catalog与verify同coordinator/run一样强制显式--case-set；唯一生产caller coordinator已传参。source-evidence的bundle移除隐式50清单（当前manifest已有独立摘要），纳入启动会实际执行的shared verifier、catalog和verify源文件，以保证此验收修复有自己的可核对代码身份。原有Python生成模式保留为显式选样工具，verify模式只核对选定数据，不替换选样规则；验证输出禁止覆盖输入manifest。
+
+case3进一步证据：Worker真实trace最后一次请求同时提供bash和skill，之前成功发现并激活automationbench-api；未实际调用Skill或任何官方API。Worker宣称必须再建Expert Squad子Task并以coordination_request交回，scheduler选择respond_agent_coordination(decision=fail_task)，任务failed，Mission最终inactive。其已封存直接用户输入包含完整业务要求及执行责任，没有该自述的禁止直接执行条件；仅凭模型自述无法确定提示来源或工具缺失。该问题与原清单误判不同，仍须从system prompt的实际组成/角色边界及终态checker接受的失败协议继续追查，不能把激活后已提供Skill误判为51b加载回归，也不能直接归咎模型。
+
+
+独立审查发现本轮删除旧选样器比较后canonicalJSON仅剩定义/自身递归，已删除该无消费helper；其余清单公共契约检查未见新的明确缺陷。审查者独立重验8个TS/6个Python测试、官方100身份、115文件与原封存字节、原生续接脚本/暂停progress哈希均匹配。修正后的完整日志和[审计回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-full-100-manifest-audit.json)用于最终复审，真实页面截图仍显示旧coordinator分类，未把隔离验证包装为部署完成。

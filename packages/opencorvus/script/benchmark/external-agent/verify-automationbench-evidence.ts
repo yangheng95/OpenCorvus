@@ -1,8 +1,10 @@
 import crypto from "node:crypto"
 import fs from "node:fs/promises"
 import path from "node:path"
+import { verifySelectedCaseSet } from "./verify-selected-case-set"
 import {
   automationBenchCaseSetAuthority,
+  AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
   automationBenchRestrictedShellAuthority,
   auditBenchmarkIsolation,
   auditAutomationBenchBatchPlanSchema,
@@ -43,8 +45,9 @@ const sourceDataValue = values.get("source-data")
 const pythonValue = values.get("python")
 const restrictedShellValue = values.get("restricted-shell")
 const model = values.get("model")
-if (!rootValue || !sourceDataValue || !pythonValue || !restrictedShellValue || !model) {
-  throw new Error("--root, --source-data, --python, --restricted-shell, and --model are required")
+const caseSetValue = values.get("case-set")
+if (!rootValue || !sourceDataValue || !pythonValue || !restrictedShellValue || !model || !caseSetValue) {
+  throw new Error("--root, --source-data, --python, --restricted-shell, --model, and --case-set are required")
 }
 const root = path.resolve(rootValue)
 const sourceData = path.resolve(sourceDataValue)
@@ -60,7 +63,7 @@ if (
 ) {
   throw new Error("--profiles must be base, advanced, or base,advanced")
 }
-const caseSetPath = path.resolve(values.get("case-set") ?? path.join(import.meta.dir, "automationbench-case-set.json"))
+const caseSetPath = path.resolve(caseSetValue)
 const [restrictedShellBytes, baseRestrictedShellBytes, extendedRestrictedShellBytes, restrictedShellStat] =
   await Promise.all([
     fs.readFile(restrictedShell),
@@ -83,17 +86,6 @@ if (
 
 function digest(bytes: Uint8Array | string) {
   return crypto.createHash("sha256").update(bytes).digest("hex")
-}
-
-function canonicalJSON(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJSON).join(",")}]`
-  if (value && typeof value === "object") {
-    return `{${Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJSON(item)}`)
-      .join(",")}}`
-  }
-  return JSON.stringify(value)
 }
 
 async function walk(directory: string): Promise<string[]> {
@@ -233,69 +225,11 @@ if (
 ) {
   throw new Error("Verifier requires an ordered AutomationBench manifest with five-case batches")
 }
-const baseCaseSetPath = path.join(import.meta.dir, "automationbench-case-set.json")
-const baseCaseSetBytes = await fs.readFile(baseCaseSetPath)
-const baseCaseSet = JSON.parse(baseCaseSetBytes.toString("utf8")) as typeof caseSet
-const baseCaseSetSHA256 = digest(baseCaseSetBytes)
-const baseCaseSetCanonicalSHA256 = digest(JSON.stringify(baseCaseSet))
-const caseIdentity = (item: Record<string, any>) =>
-  JSON.stringify({
-    domain: item.domain,
-    task: item.task,
-    example_id: item.example_id,
-    task_contract_sha256: item.task_contract_sha256,
-    case_index: item.case_index,
-    batch_index: item.batch_index,
-  })
-if (
-  baseCaseSet.selection?.count !== 50 ||
-  baseCaseSet.cases?.length !== 50 ||
-  baseCaseSet.cases.some((item, index) => caseIdentity(item) !== caseIdentity(caseSet.cases[index]!)) ||
-  digest(await fs.readFile(path.join(root, "automationbench-case-set.json"))) !== baseCaseSetSHA256
-) {
-  throw new Error("Verifier could not reconcile the frozen first 50 cases")
+const caseSetArtifactNames = [`automationbench-case-set-${caseSet.selection.count}.json`]
+if (digest(await fs.readFile(path.join(root, caseSetArtifactNames[0]!))) !== caseSetSHA256) {
+  throw new Error("Paper case-set copy does not match the selected manifest")
 }
-const caseSetArtifactNames = ["automationbench-case-set.json"]
-if (caseSetSHA256 !== baseCaseSetSHA256) {
-  const extendedName = `automationbench-case-set-${caseSet.selection.count}.json`
-  if (digest(await fs.readFile(path.join(root, extendedName))) !== caseSetSHA256) {
-    throw new Error("Paper extended case-set copy does not match the committed manifest")
-  }
-  caseSetArtifactNames.push(extendedName)
-}
-const acceptedCaseSets = [
-  {
-    sha256: baseCaseSetSHA256,
-    canonical_sha256: baseCaseSetCanonicalSHA256,
-    dataset_index_sha256: baseCaseSet.selection.dataset_index_sha256,
-  },
-  {
-    sha256: caseSetSHA256,
-    canonical_sha256: caseSetCanonicalSHA256,
-    dataset_index_sha256: caseSet.selection.dataset_index_sha256,
-  },
-].filter((item, index, items) => items.findIndex((candidate) => candidate.sha256 === item.sha256) === index)
-const selectorArguments = [
-  python,
-  path.join(import.meta.dir, "freeze_automationbench_case_set.py"),
-  "--count",
-  String(caseSet.selection.count),
-  ...(caseSet.selection.count > 50 ? ["--base-manifest", baseCaseSetPath] : []),
-]
-const selector = Bun.spawn(
-  selectorArguments,
-  { cwd: import.meta.dir, stdout: "pipe", stderr: "pipe" },
-)
-const [selectorExit, selectorStdout, selectorStderr] = await Promise.all([
-  selector.exited,
-  new Response(selector.stdout).text(),
-  new Response(selector.stderr).text(),
-])
-if (selectorExit !== 0 || canonicalJSON(JSON.parse(selectorStdout)) !== canonicalJSON(caseSet)) {
-  throw new Error(
-    `Frozen case selector did not reproduce the committed manifest: ${selectorStderr.trim() || selectorExit}`,
-  )
-}
+await verifySelectedCaseSet({ python, manifest: caseSetPath, sha256: caseSetSHA256 })
 const secretFindings: string[] = []
 for (const file of await walk(root)) {
   if ([".png", ".jpg", ".jpeg", ".gif"].includes(path.extname(file).toLowerCase())) continue
@@ -446,18 +380,14 @@ for (const attempt of catalog.attempts) {
 
   const caseSetAuthority = automationBenchCaseSetAuthority({
     caseIndex: payload.benchmark.case_index,
-    baseCount: baseCaseSet.selection.count,
-    extendedCount: caseSet.selection.count,
+    caseCount: caseSet.selection.count,
     sealedSHA256: payload.benchmark.case_set_manifest_sha256,
     sealedCanonicalSHA256: payload.benchmark.case_set_canonical_sha256,
-    base: { sha256: baseCaseSetSHA256, canonical_sha256: baseCaseSetCanonicalSHA256 },
-    extended: { sha256: caseSetSHA256, canonical_sha256: caseSetCanonicalSHA256 },
+    expected: { sha256: caseSetSHA256, canonical_sha256: caseSetCanonicalSHA256 },
   })
-  const authorityCaseSet = caseSetAuthority.authority === "base" ? baseCaseSet : caseSet
-  const frozenCase = authorityCaseSet.cases.find(
+  const frozenCase = caseSet.cases.find(
     (item) => item.domain === payload.benchmark.domain && item.task === payload.benchmark.task,
   )
-  const sealedCaseSet = caseSetAuthority.authority === "base" ? acceptedCaseSets[0] : acceptedCaseSets.at(-1)
   if (
     !frozenCase ||
     payload.benchmark.task_contract_sha256 !== frozenCase.task_contract_sha256 ||
@@ -465,8 +395,7 @@ for (const attempt of catalog.attempts) {
     payload.benchmark.case_index !== frozenCase.case_index ||
     payload.benchmark.batch_index !== frozenCase.batch_index ||
     !caseSetAuthority.passed ||
-    sealedCaseSet === undefined ||
-    payload.benchmark.dataset_index_sha256 !== sealedCaseSet.dataset_index_sha256
+    payload.benchmark.dataset_index_sha256 !== caseSet.selection.dataset_index_sha256
   ) {
     throw new Error(`Frozen case identity mismatch: ${attempt.run_id}`)
   }
@@ -639,7 +568,7 @@ for (const attempt of catalog.attempts) {
   if (!isolation.passed) throw new Error(`Evaluator isolation mismatch: ${attempt.run_id}`)
   const restrictedShellAuthority = automationBenchRestrictedShellAuthority({
     caseIndex: payload.benchmark.case_index,
-    baseCount: baseCaseSet.selection.count,
+    baseCount: AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
     extendedCount: caseSet.selection.count,
     sealedSHA256: sandboxAudit.wrapper_sha256,
     extendedSHA256: extendedRestrictedShellSHA256,

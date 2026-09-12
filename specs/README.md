@@ -4,7 +4,7 @@ Current Luna versus Luna + Base reproduction: [protocol and recovered evidence](
 
 Current correction: [outcome-first runtime and Base delivery](records/2026-09/2026-09-12-outcome-first-runtime-correction.md).
 
-Both current-source first-five arms have ended. [The complete diagnostic report](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-first-five-diagnostic.md) records independently replayed business scores, corrected completion evidence, execution conditions and costs. Original Base invalid classifications remain unchanged. Runtime fixes are installed at 00ccc5e0; cases 6–100 await the remaining quality and efficiency work.
+The [full fixed 100-case Luna comparison](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-full-100-launch.json) is running on reviewed revision 51b780ee after Linux installation checks (14 tests, 239 assertions). The prior [five-case diagnostic report](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-first-five-diagnostic.md) remains separate; its original Base invalid classifications are unchanged. The [manifest audit](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-full-100-manifest-audit.json) confirms false catalog invalidation for four checked cases and preserves one real invalid Mission outcome; this correction is not yet deployed to the active viewer. Full-cohort results and broad redundant-call reduction are not yet established.
 
 Local live comparison: [results page and viewer instructions](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/README.md#local-results-page).
 

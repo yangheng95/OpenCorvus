@@ -1,8 +1,10 @@
 import crypto from "node:crypto"
 import fs from "node:fs/promises"
 import path from "node:path"
+import { verifySelectedCaseSet } from "./verify-selected-case-set"
 import {
   automationBenchCaseSetAuthority,
+  AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
   automationBenchRestrictedShellAuthority,
   evidenceFileSetMatches,
   paperEvidenceChecks,
@@ -115,8 +117,9 @@ async function arguments_() {
   const python = values.get("python")
   const restrictedShell = values.get("restricted-shell")
   const model = values.get("model")
-  if (!root || !sourceData || !python || !restrictedShell || !model) {
-    throw new Error("--root, --source-data, --python, --restricted-shell, and --model are required")
+  const caseSet = values.get("case-set")
+  if (!root || !sourceData || !python || !restrictedShell || !model || !caseSet) {
+    throw new Error("--root, --source-data, --python, --restricted-shell, --model, and --case-set are required")
   }
   const profiles = (values.get("profiles") ?? "base,advanced").split(",").map((item) => item.trim()) as Profile[]
   if (
@@ -134,7 +137,7 @@ async function arguments_() {
     restrictedShell: path.resolve(restrictedShell),
     model,
     profiles,
-    caseSet: path.resolve(values.get("case-set") ?? path.join(import.meta.dir, "automationbench-case-set.json")),
+    caseSet: path.resolve(caseSet),
   }
 }
 
@@ -657,45 +660,9 @@ if (
 ) {
   throw new Error("Catalog requires an ordered AutomationBench manifest with five-case batches")
 }
-const baseCaseSetBytes = await fs.readFile(path.join(import.meta.dir, "automationbench-case-set.json"))
-const baseCaseSet = JSON.parse(baseCaseSetBytes.toString("utf8")) as typeof caseSet
-const baseCaseSetSHA256 = crypto.createHash("sha256").update(baseCaseSetBytes).digest("hex")
-const baseCaseSetCanonicalSHA256 = crypto.createHash("sha256").update(JSON.stringify(baseCaseSet)).digest("hex")
-const caseIdentity = (item: (typeof caseSet.cases)[number]) =>
-  JSON.stringify({
-    domain: item.domain,
-    task: item.task,
-    example_id: item.example_id,
-    task_contract_sha256: item.task_contract_sha256,
-    case_index: item.case_index,
-    batch_index: item.batch_index,
-  })
-if (
-  baseCaseSet.selection?.count !== 50 ||
-  baseCaseSet.cases?.length !== 50 ||
-  baseCaseSet.cases.some((item, index) => caseIdentity(item) !== caseIdentity(caseSet.cases[index]!))
-) {
-  throw new Error("Extended AutomationBench manifest does not preserve the frozen first 50 cases")
-}
-const acceptedCaseSets = [
-  {
-    sha256: baseCaseSetSHA256,
-    canonical_sha256: baseCaseSetCanonicalSHA256,
-    dataset_index_sha256: baseCaseSet.selection.dataset_index_sha256,
-  },
-  {
-    sha256: caseSetSHA256,
-    canonical_sha256: caseSetCanonicalSHA256,
-    dataset_index_sha256: caseSet.selection.dataset_index_sha256,
-  },
-].filter((item, index, items) => items.findIndex((candidate) => candidate.sha256 === item.sha256) === index)
-const caseSetArtifacts = [path.join(root, "automationbench-case-set.json")]
-await fs.writeFile(caseSetArtifacts[0]!, baseCaseSetBytes)
-if (caseSetSHA256 !== baseCaseSetSHA256) {
-  const extendedArtifact = path.join(root, `automationbench-case-set-${caseSet.selection.count}.json`)
-  await fs.writeFile(extendedArtifact, caseSetBytes)
-  caseSetArtifacts.push(extendedArtifact)
-}
+const caseSetArtifacts = [path.join(root, `automationbench-case-set-${caseSet.selection.count}.json`)]
+await verifySelectedCaseSet({ python: cli.python, manifest: cli.caseSet, sha256: caseSetSHA256 })
+await fs.writeFile(caseSetArtifacts[0]!, caseSetBytes)
 const protectedSecrets = sourceAuthSecretLeaves(
   JSON.parse(await fs.readFile(path.join(cli.sourceData, "auth.json"), "utf8")),
 )
@@ -756,28 +723,24 @@ for (const { directory, payload, isResult, terminalAmbiguous } of terminalEntrie
     protectedSecrets,
     legacyTraceRunIDs,
     extendedWrapperSHA256: extendedRestrictedShellSHA256,
-    baseCaseCount: baseCaseSet.selection.count,
+    baseCaseCount: AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
     extendedCaseCount: caseSet.selection.count,
     independentReplay: independentReplayByDirectory.get(directory),
   })
   const caseSetAuthority = result
     ? automationBenchCaseSetAuthority({
         caseIndex: result.benchmark.case_index,
-        baseCount: baseCaseSet.selection.count,
-        extendedCount: caseSet.selection.count,
+        caseCount: caseSet.selection.count,
         sealedSHA256: result.benchmark.case_set_manifest_sha256,
         sealedCanonicalSHA256: result.benchmark.case_set_canonical_sha256,
-        base: { sha256: baseCaseSetSHA256, canonical_sha256: baseCaseSetCanonicalSHA256 },
-        extended: { sha256: caseSetSHA256, canonical_sha256: caseSetCanonicalSHA256 },
+        expected: { sha256: caseSetSHA256, canonical_sha256: caseSetCanonicalSHA256 },
       })
     : undefined
-  const authorityCaseSet = caseSetAuthority?.authority === "base" ? baseCaseSet : caseSet
   const frozenCase = result
-    ? authorityCaseSet.cases.find(
+    ? caseSet.cases.find(
         (item) => item.domain === (result.benchmark as any).domain && item.task === result.benchmark.task,
       )
     : undefined
-  const sealedCaseSet = caseSetAuthority?.authority === "base" ? acceptedCaseSets[0] : acceptedCaseSets.at(-1)
   const benchmarkIdentityPassed =
     result?.opencorvus.model === cli.model &&
     result?.benchmark.version === "1.0.6" &&
@@ -788,8 +751,7 @@ for (const { directory, payload, isResult, terminalAmbiguous } of terminalEntrie
     result.benchmark.case_index === frozenCase.case_index &&
     result.benchmark.batch_index === frozenCase.batch_index &&
     caseSetAuthority?.passed === true &&
-    sealedCaseSet !== undefined &&
-    result.benchmark.dataset_index_sha256 === sealedCaseSet.dataset_index_sha256
+    result.benchmark.dataset_index_sha256 === caseSet.selection.dataset_index_sha256
   const evidenceChecks = paperEvidenceChecks({
     manifestVerified: manifest.verified === true,
     providerLedgerVerified: ledgerAudit.passed === true,

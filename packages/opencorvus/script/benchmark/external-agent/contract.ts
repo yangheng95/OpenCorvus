@@ -1798,28 +1798,23 @@ export function auditExcludedWrongExperimentBatch(input: {
 
 export function automationBenchCaseSetAuthority(input: {
   caseIndex: unknown
-  baseCount: number
-  extendedCount: number
+  caseCount: number
   sealedSHA256: unknown
   sealedCanonicalSHA256: unknown
-  base: { sha256: string; canonical_sha256: string }
-  extended: { sha256: string; canonical_sha256: string }
+  expected: { sha256: string; canonical_sha256: string }
 }) {
   const caseIndex = strictInteger(input.caseIndex)
-  const authority = caseIndex >= 1 && caseIndex <= input.baseCount
-    ? "base"
-    : caseIndex > input.baseCount && caseIndex <= input.extendedCount
-      ? "extended"
-      : null
-  const expected = authority === "base" ? input.base : authority === "extended" ? input.extended : undefined
   const violations = [
-    ...(authority ? [] : ["case_index_out_of_manifest"]),
-    ...(expected && input.sealedSHA256 === expected.sha256 && input.sealedCanonicalSHA256 === expected.canonical_sha256
+    ...(Number.isSafeInteger(input.caseCount) && input.caseCount > 0 ? [] : ["case_count_invalid"]),
+    ...(caseIndex >= 1 && caseIndex <= input.caseCount ? [] : ["case_index_out_of_manifest"]),
+    ...(input.sealedSHA256 === input.expected.sha256 && input.sealedCanonicalSHA256 === input.expected.canonical_sha256
       ? []
       : ["case_set_authority_mismatch"]),
   ]
-  return { passed: violations.length === 0, authority, violations }
+  return { passed: violations.length === 0, violations }
 }
+
+export const AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT = 50
 
 export const AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_SHA256 =
   "32ed4bd67d0c51d4acc8f86c7fbc1c47b7fc68aa75d5bc0d69728f658e3893b0"

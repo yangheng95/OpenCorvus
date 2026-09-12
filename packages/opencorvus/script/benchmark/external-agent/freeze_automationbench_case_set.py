@@ -10,16 +10,13 @@ import json
 from pathlib import Path
 from typing import Any
 
-import automationbench
-from automationbench.domains import PUBLIC_DOMAINS, get_domain_dataset
-from automationbench.task_contract import TASK_CONTRACT_SCHEMA, task_contract_sha256
-
-
 SOURCE_REVISION = "4a8e1061254004d9dac807054eed33fad7d1ff14"
 SELECTION_SEED = "opencorvus-automationbench-public-50-v1"
 
 
 def _package_tree_sha256() -> str:
+    import automationbench
+
     root = Path(automationbench.__file__).parent
     digest = hashlib.sha256()
     for file in sorted(root.rglob("*.py")):
@@ -34,12 +31,71 @@ def _task_name(info: dict[str, Any]) -> str:
     return str(info.get("task_name", ""))
 
 
+def dataset_index_sha256(identities: list[dict[str, Any]]) -> str:
+    index = [
+        {key: item[key] for key in ("domain", "task", "example_id", "task_contract_sha256")}
+        for item in sorted(identities, key=lambda item: (item["domain"], str(item["example_id"]), item["task"]))
+    ]
+    return hashlib.sha256(json.dumps(index, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def verify_manifest(manifest: Any, identities: list[dict[str, Any]], metadata: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(manifest, dict):
+        return {"passed": False, "violations": ["manifest_schema_invalid"]}
+    violations = []
+    for key, expected in metadata.items():
+        if type(manifest.get(key)) is not type(expected) or manifest.get(key) != expected:
+            violations.append(f"manifest_metadata_mismatch:{key}")
+    selection = manifest.get("selection", {})
+    cases = manifest.get("cases", [])
+    count = selection.get("count") if isinstance(selection, dict) else None
+    if (type(count) is not int or count < 5 or count % 5 != 0
+            or not isinstance(cases, list) or len(cases) != count):
+        return {"passed": False, "violations": violations + ["manifest_case_count_invalid"]}
+    index_sha = dataset_index_sha256(identities)
+    if selection.get("dataset_index_sha256") != index_sha:
+        violations.append("dataset_index_mismatch")
+    by_key = {(item["domain"], item["task"]): item for item in identities}
+    seen = set()
+    for index, item in enumerate(cases, start=1):
+        if not isinstance(item, dict):
+            violations.append(f"case_identity_invalid:{index}")
+            continue
+        key = (item.get("domain"), item.get("task"))
+        if not all(isinstance(value, str) for value in key):
+            violations.append(f"case_identity_invalid:{index}")
+            continue
+        current = by_key.get(key)
+        if key in seen:
+            violations.append(f"duplicate_case_identity:{index}")
+        seen.add(key)
+        if (type(item.get("case_index")) is not int or item["case_index"] != index
+                or type(item.get("batch_index")) is not int or item["batch_index"] != (index - 1) // 5 + 1):
+            violations.append(f"case_order_mismatch:{index}")
+        if current is None or any(type(item.get(field)) is not type(current[field]) or item.get(field) != current[field]
+                                  for field in ("example_id", "task_contract_sha256", "selection_rank_sha256")):
+            violations.append(f"official_case_identity_mismatch:{index}")
+    return {"passed": not violations, "violations": violations, "case_count": count,
+            "dataset_index_sha256": index_sha}
+
+
 def main() -> None:
+    from automationbench.domains import PUBLIC_DOMAINS, get_domain_dataset
+    from automationbench.task_contract import TASK_CONTRACT_SCHEMA, task_contract_sha256
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--count", type=int, default=50)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--count", type=int)
     parser.add_argument("--base-manifest", type=Path)
     parser.add_argument("--output", type=Path)
+    mode.add_argument("--verify-manifest", type=Path, help="Verify selected identities against the official dataset without changing the sample")
     args = parser.parse_args()
+    if args.verify_manifest and args.base_manifest:
+        parser.error("--base-manifest applies only to sample generation")
+    if args.verify_manifest and args.output and args.verify_manifest.resolve() == args.output.resolve():
+        parser.error("verification output must differ from the selected manifest")
+    if args.count is None:
+        args.count = 50
     if args.count < len(PUBLIC_DOMAINS):
         raise ValueError("case count must include every public domain")
     base, remainder = divmod(args.count, len(PUBLIC_DOMAINS))
@@ -75,6 +131,25 @@ def main() -> None:
             identities.append(identity)
             all_identities.append(identity)
         quota_selected.extend(sorted(identities, key=lambda item: item["selection_rank_sha256"])[: quotas[domain]])
+    metadata = {
+        "schema_version": 1,
+        "benchmark": "AutomationBench",
+        "distribution_version": importlib.metadata.version("automation-bench"),
+        "source_revision": SOURCE_REVISION,
+        "package_tree_sha256": _package_tree_sha256(),
+        "task_contract_schema": TASK_CONTRACT_SCHEMA,
+        "split": "public",
+    }
+    if args.verify_manifest:
+        data = args.verify_manifest.read_bytes()
+        report = verify_manifest(json.loads(data), all_identities, metadata)
+        report["manifest_sha256"] = hashlib.sha256(data).hexdigest()
+        text = json.dumps(report, indent=2, ensure_ascii=False) + "\n"
+        if args.output:
+            args.output.write_text(text, encoding="utf-8")
+        else:
+            print(text, end="")
+        raise SystemExit(0 if report["passed"] else 1)
     if args.count > len(all_identities):
         raise ValueError(f"case count {args.count} exceeds the {len(all_identities)} public tasks")
     base_manifest_sha256: str | None = None
@@ -117,18 +192,8 @@ def main() -> None:
     for index, item in enumerate(selected):
         item["case_index"] = index + 1
         item["batch_index"] = index // 5 + 1
-    dataset_index = [
-        {key: item[key] for key in ("domain", "task", "example_id", "task_contract_sha256")}
-        for item in sorted(all_identities, key=lambda item: (item["domain"], str(item["example_id"]), item["task"]))
-    ]
     manifest = {
-        "schema_version": 1,
-        "benchmark": "AutomationBench",
-        "distribution_version": importlib.metadata.version("automation-bench"),
-        "source_revision": SOURCE_REVISION,
-        "package_tree_sha256": _package_tree_sha256(),
-        "task_contract_schema": TASK_CONTRACT_SCHEMA,
-        "split": "public",
+        **metadata,
         "selection": {
             "algorithm": (
                 "preserve base-manifest order; append remaining unique public identities by global sha256 rank"
@@ -146,9 +211,7 @@ def main() -> None:
                 if args.base_manifest
                 else {}
             ),
-            "dataset_index_sha256": hashlib.sha256(
-                json.dumps(dataset_index, sort_keys=True, separators=(",", ":")).encode("utf-8")
-            ).hexdigest(),
+            "dataset_index_sha256": dataset_index_sha256(all_identities),
         },
         "cases": selected,
     }

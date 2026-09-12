@@ -123,9 +123,7 @@ const protectedRootAudits = await Promise.all(
 const caseSetBytes = await fs.readFile(caseSet)
 const evidenceCaseSetPath = path.join(
   output,
-  manifest.selection.count === 50
-    ? "automationbench-case-set.json"
-    : `automationbench-case-set-${manifest.selection.count}.json`,
+  `automationbench-case-set-${manifest.selection.count}.json`,
 )
 await fs.writeFile(evidenceCaseSetPath, caseSetBytes, { flag: "wx" }).catch(async (error: NodeJS.ErrnoException) => {
   if (error.code !== "EEXIST") throw error
