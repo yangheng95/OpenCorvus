@@ -4,9 +4,7 @@ Current Luna versus Luna + Base reproduction: [protocol and recovered evidence](
 
 Current correction: [outcome-first runtime and Base delivery](records/2026-09/2026-09-12-outcome-first-runtime-correction.md).
 
-Current-source recovery fixes are installed and verified on Windows and Linux. Native Luna's first five cases are completed and independently replayed; Luna + Base remains in progress at [localhost:8768/ui](http://localhost:8768/ui). See [runtime readiness and launch evidence](records/2026-09/2026-09-12-benchmark-runtime-readiness.md). Cases 6–100 await the paired first-five audit.
-
-Base's first four sealed cases satisfy the declared executor/verifier condition under the corrected write-ahead lineage audit; the fifth and the complete paired result remain pending. See [execution-condition evidence](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-first-four-condition-audit.json).
+Both current-source first-five arms have ended. [The complete diagnostic report](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-first-five-diagnostic.md) records independently replayed business scores, corrected completion evidence, execution conditions and costs. Original Base invalid classifications remain unchanged. Runtime fixes are installed at 00ccc5e0; cases 6–100 await the remaining quality and efficiency work.
 
 Local live comparison: [results page and viewer instructions](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/README.md#local-results-page).
 

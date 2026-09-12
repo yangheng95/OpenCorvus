@@ -154,3 +154,17 @@ Recall：继续运营中，原生五例已独立复核，Base已有1/2/4密封�
 首审另复现canonical user.time_created=NaN绕过两个大于比较的问题。统一时间值检查用于执行事件、lineage、用户输入、所选final及settlement：必须是有限的正数并在JavaScript安全数值范围内；保留各字段明确错误码。真实四例八条时间链已由审查者独立核对，均为严格lineage<input<prepared；20个输入文件与四份manifest哈希及新报告一致。
 
 最终独立复审通过：25项Python检查通过，续跑外来回执与NaN输入的原复现均得到明确错误；审查者重新核对真实四例，最终checker报告逐字节一致，全部符合条件且保留原invalid。两项有效发现均已关闭。仅条件审计代码/测试/记录变更，无模型、运行时或UI改动；第五例仍按原计划运行，完整业务分数、效率和配对验收待其结束后处理。
+
+### 首五例完整诊断复核与安装同步
+
+Recall：17:35 UTC定时快照确认Base五例全部自然封存、active leases为空、coordinator退出。五例原始status均invalid且唯一未通过的OpenCorvus审计均为已经修复的mission_outcome_audit；禁止改旧目录、分类或为获得更高分重新调用模型。原生五例已独立复核无需重复。当前主仓00ccc5e0已验证、独立审查和推送；WSL仍134d。验收仍为完整5例同清单的世界评分、真实双角色条件、总调用/耗时与冗余指标，不能把一个发布选择指标当全部调用减半。独立反馈：本次全批产物生成前无。
+
+实施方案：使用现有check_seal、measurement_inputs、measure及官方replay函数，对全部五个封存目录核对完整文件集、case/run/source/manifest和官方package/task契约；明确选择每例原sealed diagnostic_metrics作为待复算分数，绝不构造scored候选或覆盖metrics=null。新报告分别记录原invalid、当前Mission完成/静止审计、独立执行条件、官方诊断分数、实际Provider/Tool账本和从启动到真实Mission完成与到最终封存的两个耗时。采用同一measure定义与已审查e03f五例基线比较发布选择和总调用，同时说明条件/实现共同变化以及10分钟检查器空等。完整原始字节先验真再生成新报告，待独立审查后提交。复核完成并确认没有活动bench进程后，将同一WSL安装完整快进到已审查提交，不碰viewer源码或用户进程；之后再根据质量和效率事实决定后续改进与100例推进。
+
+全批首验：110个封存文件/完整文件集、五次独立官方replay均通过；当前完成/静止/来源/集合/基础设施/提示组成/trace/Skill封存检查均通过，双角色执行条件5/5符合。原始eligible仍0/5，官方诊断strict2/5、mean partial0.820261，对照原生1/5、0.749899。Provider activity请求499（原基线540，下降7.59%），Task Tool414（737，下降43.83%），加Mission工具482，官方世界调用285；计量Provider509，含10次memory helper；发布专用选择48降至0。平均到最后会话Provider结算911464.8ms，原始封存1519494ms；前者不是新修复代码的端到端实测。显式skill工具加载指标0/5仍保留；Task记录中实际存在read读取SKILL.md，故不能把该指标直接解释为未读取环境方法，也不能宣称所有遵守度均通过。
+
+完整数据与限制见[五例诊断报告](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-first-five-diagnostic.md)。确认所有bench子进程/coordinator结束和租约为空后，WSL从134d完整快进至00ccc5e0，工作区干净，viewer源码无差异、进程不动。安装后Linux真实流式恢复到checker四项21断言、Python25项通过，见报告链接的安装回执。没有新增模型请求，未扩跑6–100；整体冗余减半尚未达成，下一步需依据完整调用与原始需求传播定位剩余质量/效率问题。
+
+后续只读调查线索（尚未形成根因结论或实施方案）：case2–4真实panel_create_task输入及Task首条用户上下文仍保留业务USER内容，delegatedWorkerContextSections通过renderUserRequestSection完整投影task.request；不能凭短dispatch摘要断言业务要求被runtime截断。case4 Tester在分类源发现上只尝试了Drive列表查询，仍未重新取得ss_categories，未完成规则独立核对；其余HelpScout会话/邮箱与Slack历史读回另有记录。Orchestrator的manage_task完成输入明确接受了这个限制并依赖Developer报告，需追查上下文、来源发现和验收判断。case3/4真实capability_search均得到“Capability default/skill/automationbench-api resolves to skill, which is absent from the materialized owner surface.”；须核对能力目录与SessionLoop.finalizeSkillSurface的实际投影，不能把这两个明确工具错误等同于显式skill加载计数器的0/5或网络错误。case1–3另有四次artifact_publish的payload_json解析错误，case5有六次多出空格的workdir导致ENOENT；这些是可定位的接口使用开销，但总量不足以解释499个会话请求。下一阶段应从真实工具定义、完整上下文和实际来源读取证据确定共享修复，不能继续堆提示、放宽验收或把某一类错误消除声称为整体减半。本轮没有基于这些线索修改生产代码。
+
+完整交付独立只读复审通过：审查者核对110个封存文件与完整集合、五份官方replay输出，独立重算五例分数/成本/时间/条件并实际调用当前50项共享runtime审计，均与报告一致；干净安装00ccc5e0、空租约及验证日志哈希一致。已关闭README历史状态残留、OpenCorvus工具part与官方API事件层级表述、case4分类源核对范围三项文档发现，最终未解决发现为0。docs:check与diff检查通过；本轮仅报告/证据记录，未新增模型或生产修改。
