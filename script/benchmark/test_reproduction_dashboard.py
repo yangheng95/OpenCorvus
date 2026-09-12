@@ -1,9 +1,10 @@
 import copy
+import hashlib
 import json
 from pathlib import Path
 import tempfile
 import unittest
-from reproduction_dashboard import (Snapshot, SnapshotError, base_command_state, base_record_index,
+from reproduction_dashboard import (MODEL, Snapshot, SnapshotError, base_command_state, base_record_index,
                                     paired_summary, resolve_base_scores, scored_cell, summarize)
 
 
@@ -35,11 +36,19 @@ class DashboardProjectionTests(unittest.TestCase):
             (root / "base").mkdir()
             manifest = root / "manifest.json"
             manifest.write_text(json.dumps({"cases": [case], "selection": {"count": 1}}), encoding="utf-8")
+            native = root / "original/native/case-001"
+            native.mkdir(parents=True)
+            (native / "run-start.json").write_text(json.dumps({"run_id": "original-native", "case_index": 1}), encoding="utf-8")
+            (native / "input.json").write_text(json.dumps({"case": case, "manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest()}), encoding="utf-8")
+            (native / "result.json").write_text(json.dumps({"run_id": "original-native", "case_index": 1, "model": MODEL,
+                "status": "scored", "replay": {"passed": True}, "score": {"task_completed_correctly": 1, "partial_credit": 1},
+                "started_at": 0, "finished_at": 1000, "usage": {"totalTokens": 20}}), encoding="utf-8")
             (root / "base/evidence-catalog.json").write_text(json.dumps({"leaderboard": [], "candidates": [], "attempts": [record]}), encoding="utf-8")
             (root / "base/.automationbench-active-leases.json").write_text(json.dumps({"active": []}), encoding="utf-8")
-            result = Snapshot(root, manifest).build()
+            result = Snapshot(root / "original/native", root / "base", manifest).build()
             self.assertEqual(result["rows"][0]["base"], {"state": "invalid", "run_id": "failed-start"})
             self.assertEqual(result["base"]["invalid"], 1)
+            self.assertEqual(result["rows"][0]["native"], scored_cell("original-native", 1, 1, 1000, 20))
         record["benchmark"]["case_index"] = 2
         with self.assertRaisesRegex(SnapshotError, "base_case_identity_mismatch"):
             base_record_index(record, {(case["domain"], case["task"]): 1}, {1: case})

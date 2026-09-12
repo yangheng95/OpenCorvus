@@ -2,6 +2,8 @@
 
 ## Recall
 
+- 最新纠正：“bug不修吗？”要求立即修复Base无效执行根因并验收。此前仅解释错误未完成修复，不算交付。首批之外的新准入暂停；保留所有有效零分和原始失败证据。共享调度审计、生产修复、固定运行时修复投影、真实复验及独立审查完成后才扩展。
+
 - 网页展示要求：用户询问“有网页展示结果吗”。补本轮原生Luna/Base共同结果页，使用真实实验快照；必须打开真实页面、截图人工复核，不运行UI自动化测试。该页面作为现有benchmark工具的结果查看器，本轮产品开发页面没有此双组视图，故使用独立只读本地服务，不启动Vite或修改产品UI。
 
 - 最新授权（重新认证后）：用户明确“我auth了，开始”，授权使用重新安装后 `C:/Users/hengu/AppData/Local/OpenCorvus/data` 的新OpenAI登录与模型目录执行已确认的两个条件。旧安装目录已按用户确认移到同级备份（永久递归删除被自动审批阻止）；不使用该备份或旧WSL凭据。新auth采用generation/info结构，须用Auth公开读取契约，不能以顶层缺少type误报未登录。
@@ -121,3 +123,23 @@
 - 首轮网页独立审查发现3项展示映射缺陷：Base启动/失败记录不一定有case_index，现映射会遗漏已失败任务；同批多个任务的PID互换仍被弱身份检查认作运行；同run ID的矛盾分数会被字典覆盖。根因分别是未使用各生命周期共有的任务身份、未验证进程完整任务归属、重复项未检查内容一致性；均在查看器读取层，未发现实验调度或持久化失败。修复前已核验真实catalog形状与进程参数，范围覆盖Base所有目录记录类型和lease，原生已有多有效结果冲突语义保持一致。以冻结manifest的(domain, task)统一映射并校验已有index，运行状态同时核对domain/task/profile/output/batch，只有内容完全一致的重复记录可合并；新增后台正向状态/错误契约测试，重跑真实API、人工截图和独立复审。
 - 三项修复后6个后台正向契约测试全部通过，覆盖真实启动失败目录形状、完整进程归属和重复记录冲突。真实API仍返回100例、原生5已评分/1通过、Base2运行/1待验收且通过率未知；页面HTTP 200。主agent再次刷新独立浏览器页并人工查看截图，首屏指标、前5例状态和部分评分与API一致；`bun run docs:check`通过（339 operations、25 groups），`git diff --check`通过。结果页保持运行，实验进程未受影响。
 - 网页第二轮独立只读复审通过：3项问题全部关闭，没有新的未解决发现。reviewer独立复跑6个后台测试，并以真实数据内存副本核实无index失败记录保留invalid、同批错配PID返回interrupted、矛盾同run评分返回conflict；真实API计数与分母正确，代码/规格一致，未读取凭据或操作实验。此结论仅覆盖本轮结果查看器，100例双组实验与论文最终结果继续按定时唤醒协议推进。
+
+## Base调度发送阻塞修复方案
+
+- 现象及直接触发：case1/run `5e03f280-d1b5-466e-a355-5fc2ffe51cce`在Mission执行阶段运行54.65分钟后，600秒无进展，随后scheduler cleanup超过10000ms。原始catalog为invalid_bug/cleanup_failure，无官方得分。runtime snapshot中Mission请求工具 `call_CJUHn6gLUv3z1UWg4aEiZu6I` 与Task回复工具 `call_M7p4M8U6iTjyrNC0gPRF08OD`同时running；请求和回复已分别持久化task_ingress/session_wake回执。最后错误是结果，不是根因。
+- 已确认控制流：冻结17bc运行时的 `sendSchedulerMessage` 对任一接收者await整个recipient drain；Mission drain又await接收Session的activation和completion，并复用该接收者既有owner Promise。Task回复已落入正在等待请求工具的Mission，而回复工具等待该Mission整轮结束，形成发送与接收执行之间的循环依赖。Task入口也await materializer后的dispatch，因此须横向验证所有方向，不能只对Base或reply特判。
+- 旧路径未根治原因：既有公平性测试通过直接enqueue驱动drain，覆盖不同接收者并行和同接收者顺序，未覆盖工具内send等待对方执行的回边。当前论文分支的Mission目标已经异步，但Task目标仍同步等待drain；历史分支与当前分支不是祖先关系，不整体合并历史产品代码。
+- 公开契约及方案：统一send的返回边界为消息已持久化的SchedulerDeliveryReceipt；投递、真实接收者Message、唤醒与最终收敛仍由现有durable inbox、drain和恢复入口负责。去除发送工具对接收者整轮执行的等待，不增加超时、特殊reply规则、模型提示路由或平行队列。请求、回复、通知、Mission/Task双向和同Mission的Task间通信共用此边界；实际业务结果仍必须等自然终态与官方checker。
+- 影响面审计：定义在protocol/scheduler-message与delivery；生产调用覆盖Mission Tool、Task Orchestrator工具、Session loop的终态通知；消费者返回工具输出，不应把入队回执当作业务完成。正常投递、retry/dead letter、已投递幂等重放、Task epoch/根Session和Mission opened occurrence约束、重启扫描、串并行FIFO与跨Project隔离均保留持久化权威，并以聚焦测试复核。未审完项明确待验，不以当前其他case通过排除共性风险。
+- 实施及交付：当前论文分支修改唯一生产sender并增加聚焦正向回执测试；已授权的独立冻结runner应用同一语义修复并验证其真实路径，精确差异及测试作为本实验版本补丁归档在本产物目录，与论文分支同轮提交，记录新源码身份。该补丁仅描述历史复刻运行时版本，不是产品第二实现或fallback；不创建额外branch/worktree、不覆盖历史证据、不把新版本与旧版本混算。修改前两个工作区tracked差异均为空。
+- 验收：先证明原阻塞的可重复失败，再验证消息提交回执及时返回、接收者继续执行、双向关联与最终收敛；运行相关非UI检查和真实Luna/官方checker小批复验。根因/恢复审计和独立只读复审通过前不扩大100例。当前独立agent反馈：无，首轮验证后委托只读审查。
+- 已完成双版本red验证：冻结runner的既有跨接收者FIFO测试增加繁忙Mission期间send回执断言，当前分支既有Task并发投递测试增加暂停materialization期间send回执断言；两者均明确失败于发送等待接收执行。Windows初跑先遇到未编译的Rust进程监督器超过5秒hook默认窗口，使用60000ms测试窗口完成真实helper构建后重跑，才得到目标red；未把工具准备失败当作缺陷复现。
+- 当前生产sender修复后8项调度测试/106断言全部通过，涵盖Task物理容量、跨Project发现和取消、分页、Mission关闭/重开、错误wake恢复；全仓typecheck（8任务）及docs:check（339 operations/25 groups）通过。独立初审核验全调用方和事务信号链，未发现功能回归；指出materializer返回的messageID/ingressID/wakeStatus已无消费者。全仓证据只有定义、typeof端口绑定、bootstrap绑定及drain唯一调用，故同步删除该派生返回，保留真实await dispatch/reconcile，避免留下第二份返回状态。冻结生产源码待最后一个旧运行自然收尾后应用，未中途更换实验代码。
+- 旧批次于约14:49自然收尾，lease清空且原trial进程消失后才应用冻结生产补丁；batch1为failed，catalog正式leaderboard为0，原有候选与失败全部保留。冻结busy-recipient red转green；同步将旧测试里把send回执等同delivered/messageID的断言改为先检查pending，再读取canonical投递结果，两个文件6项/30断言全部通过。对应4文件归档补丁16075字节，SHA-256 `08d5e57ede57558fc6986efbe2a7919e7809d7228cc230b3c821d50cd337d1b5`。
+- 独立后续只读复审核验当前materializer清理、冻结4文件diff与归档逐字节一致，关闭/重开、FIFO、并发和revision检查保留，无未解决发现；当前分支最终8项/106断言及typecheck通过。冻结typecheck先发现SDK dist过期：src/index.ts已导出ProcessFacade，dist/index.d.ts尚未生成该导出。按SDK现有tsconfig以 `node node_modules/typescript/bin/tsc --build packages/sdk/js/tsconfig.json --force` 从冻结源码重建ignored dist，再重跑原typecheck；不改接口或锁文件来绕过检查。
+- 真实修复复验使用独立目录 `/var/lib/opencorvus-benchmark/reproduction-20260912-scheduler-fix`，相同冻结首5例、模型、medium主推理及并发2，记录新的clean源码commit。旧版本有效零分保留为旧配置记录，不混入修复后固定版本结果，也不按分数挑选重跑。原生条件未触及调度sender，继续使用原5例单次执行证据。结果查看器以明确的native/base两个源目录连接原生原始证据与修复后Base，替换原同时指向一个root的启动参数，避免复制结果或混合两版Base目录；无旧参数兼容入口。
+- SDK ignored产物重建后，冻结运行时完整 `bun run typecheck` 通过（产品tsconfig与tsconfig.benchmark）。冻结修复提交为 `e03f1fd678295421ac0a37c1b4b6fed8a22c6cc6`、tree `7e5b9011343cdf2b8e2333c2517b688699af42d9`，父提交17bc；status为空，4文件diff已归档且独立审查通过。该独立runner保持既有detached checkout，不创建或推送额外分支；补丁、当前生产修复、实验记录同轮收敛到论文分支。
+- 新目录从已授权的新Windows安装再次同时投影auth/models，使用root私有0700目录和0600文件；准确Luna流式预检通过（OAuth、projected_model=request_model=gpt-5.6-luna、HTTP 200 connected）。预检后将其有效auth/models同时复制回本轮provider-source，防止仅保留过期的预检前登录快照；未记录凭据内容。
+- 已启动修复后首5例Base batch1，并发2、600秒无活动窗口；Windows隐藏host PID 19532。启动脚本先验证运行时commit精确e03f及git status为空。当前待验：真实双向发送回执/回复推进和自然终态、官方评分复算、最终只读审查及论文分支提交推送。模型预检成功不代替该真实链路验收。
+- 修复复验batch ID为 `bb871e9d-9956-446e-8f21-18248a76f56d`，首两例run ID为 `3aa4e29b-b0f4-460f-9da2-16fbe2c09027` / `fadd5d34-0bc9-41e4-b037-12328c57ec8d`。查看器改为必需 `--native-root`/`--base-root` 两个明确权威；6个后台测试通过，包括从两个独立根读取原生已评分与Base失败状态。真实API返回原生5已评分/1通过，修复后Base2运行/0已评分、0配对；主agent只读截图确认页面与该快照一致。只重启自建查看器加载新数据配置，未刷新/操作用户窗口或实验进程。
+- 当前交付最终独立只读复审通过，无未解决发现；reviewer复核双数据源权限、运行归属、冻结commit/parent/tree/clean与补丁一致，以及batch/run真实身份，并独立复跑6个后台测试、文档和差异检查。15:05的只读真实Provider账本分别有26/22次gpt-5.6-luna调用，两个run持续推进。此交付只确认代码、回执契约和运行准备；修复后完整官方评分与真实终态仍未完成，后续继续验收并保持首5例以外准入暂停。

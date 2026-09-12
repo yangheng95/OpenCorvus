@@ -108,16 +108,17 @@ def resolve_base_scores(records):
 
 
 class Snapshot:
-    def __init__(self, root: Path, manifest: Path):
-        self.root = root.resolve()
+    def __init__(self, native_root: Path, base_root: Path, manifest: Path):
+        self.native_root = native_root.resolve()
+        self.base_root = base_root.resolve()
         self.manifest = manifest.resolve()
         self.cache = {}
         self.lock = threading.Lock()
 
     def read(self, path: Path):
         resolved = path.resolve()
-        if not (resolved == self.manifest or resolved.is_relative_to(self.root / "native")
-                or resolved.is_relative_to(self.root / "base")):
+        if not (resolved == self.manifest or resolved.is_relative_to(self.native_root)
+                or resolved.is_relative_to(self.base_root)):
             raise SnapshotError("snapshot_path_outside_evidence")
         try:
             stat = path.stat()
@@ -150,7 +151,7 @@ class Snapshot:
                 for index, case in cases.items()}
         native = defaultdict(list)
         live = native_live_outputs()
-        for directory in sorted((self.root / "native").glob("case-*")):
+        for directory in sorted(self.native_root.glob("case-*")):
             start = self.read(directory / "run-start.json")
             if not start or start.get("case_index") not in cases:
                 continue
@@ -177,7 +178,7 @@ class Snapshot:
             rows[index]["native"] = ({"state": "conflict"} if len(accepted) > 1
                                      else accepted[0] if accepted else attempts[-1])
 
-        catalog = self.read(self.root / "base/evidence-catalog.json")
+        catalog = self.read(self.base_root / "evidence-catalog.json")
         if catalog is None:
             raise SnapshotError("base_catalog_unavailable")
         accepted = defaultdict(list)
@@ -201,14 +202,14 @@ class Snapshot:
             index = base_record_index(record, by_identity, cases)
             if index in rows and rows[index]["base"]["state"] == "pending":
                 rows[index]["base"] = {"state": "invalid", "run_id": record["run_id"]}
-        leases = self.read(self.root / "base/.automationbench-active-leases.json")
+        leases = self.read(self.base_root / ".automationbench-active-leases.json")
         if leases is None:
             raise SnapshotError("base_lease_snapshot_unavailable")
         by_task = {f"{case['domain']}:{case['task']}": index for index, case in cases.items()}
         for lease in leases.get("active", []):
             index = by_task.get(lease.get("case_id"))
             if index in rows and rows[index]["base"]["state"] in ("pending", "invalid"):
-                rows[index]["base"] = {"state": base_lease_state(lease, cases[index], self.root / "base"),
+                rows[index]["base"] = {"state": base_lease_state(lease, cases[index], self.base_root),
                                        "run_id": lease["run_id"]}
         values = [rows[index] for index in sorted(rows)]
         return {"generated_at": int(time.time() * 1000), "model": MODEL,
@@ -219,11 +220,12 @@ class Snapshot:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--native-root", type=Path, required=True)
+    parser.add_argument("--base-root", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
-    snapshot = Snapshot(args.root, args.manifest)
+    snapshot = Snapshot(args.native_root, args.base_root, args.manifest)
     page = Path(__file__).with_name("reproduction-dashboard.html").read_bytes()
 
     class Handler(BaseHTTPRequestHandler):

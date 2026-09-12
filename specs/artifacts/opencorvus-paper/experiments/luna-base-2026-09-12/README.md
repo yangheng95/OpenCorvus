@@ -11,12 +11,19 @@ The independent viewer uses the real WSL evidence root; no product UI or benchma
 ```bash
 /var/lib/opencorvus-benchmark/evaluator-venv/bin/python -B \
   /mnt/d/myhexin-local/opencorvus/script/benchmark/reproduction_dashboard.py \
-  --root /var/lib/opencorvus-benchmark/reproduction-20260912 \
+  --native-root /var/lib/opencorvus-benchmark/reproduction-20260912/native \
+  --base-root /var/lib/opencorvus-benchmark/reproduction-20260912-scheduler-fix/base \
   --manifest /mnt/d/myhexin-local/opencorvus/specs/artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/case-manifest.json \
   --port 8765
 ```
 
 The viewer's backend projection tests run with `python -B -m unittest discover -s script/benchmark -p test_reproduction_dashboard.py`. Visual acceptance uses actual browser interaction and screenshots; no UI automation tests are used.
+
+## Scheduler correction
+
+The initial Base batch exposed a scheduler send deadlock: a Tool awaited the recipient drain, while the recipient could be waiting for that sender's Tool to finish. The failed attempt remains in its original evidence directory. The correction makes the durable enqueue receipt the send boundary for requests, replies and notifications; delivery and recovery stay with the existing inbox/drain owner.
+
+[`scheduler-send-enqueue-receipt.patch`](scheduler-send-enqueue-receipt.patch) records the same correction and a positive busy-recipient regression test against frozen runtime `17bc3f63fc2ed0e2d4953e50811ee106882fd8fe`. The current paper branch carries its production correction directly in `src/protocol/scheduler-message.ts` and the Task materializer. The patch is a reproducible historical runtime delta, not a second production implementation. Apply it only to the exact clean frozen revision, after its active trials have ended. Corrected-runtime validation and experiment identity are recorded in the [protocol](../../../../records/2026-09/2026-09-12-luna-base-reproduction.md#base调度发送阻塞修复方案); old and corrected runtime results must be distinguished.
 
 ## Frozen sample
 
