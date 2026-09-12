@@ -1,12 +1,12 @@
 ---
 name: base-delivery-method
-description: Deliver one ordinary repository task through explicit research, planning, implementation, testing, and selected independent review evidence.
+description: Deliver a concrete outcome with capability-matched execution and independent verification at proportional cost.
 ---
 
 # Base delivery method
 
-Use the one binding workflow selected by the Orchestrator. Every declared node runs once after its declared predecessors complete. Research, plan, development, and test Artifacts are same-Task handoffs; they are not separate Mission phases.
+Use `execution-verification` for ordinary work: one Developer owns discovery, planning, changes, and self-checks; one Tester independently verifies the settled outcome. Add the Planner and parallel Researcher only through the declared research workflow when the delivery needs that independent partition.
 
-Each consumer discovers the current typed Task Artifact, reads it completely, selects the exact evidence it uses, and publishes its own canonical output. Do not reconstruct a missing handoff from chat summaries. The Developer owns product mutations. Tester, Visual Reviewer, and Integrity Reviewer independently inspect the exact delivered revision and current evidence required by the selected workflow.
+The original request and relevant authoritative facts define the result. Plans and reports help allocate and inspect work; they cannot narrow that result. Keep reports concise and point to existing Tool, file, and state evidence. Publish Artifact sources directly with complete `source_read_refs`; other consumers request a standalone selection only when their own Tool contract requires it.
 
-Repair root causes and keep one current implementation and one fact source. Use focused positive checks for changed non-UI behavior. UI delivery requires a real rendered page, real interaction, screenshots, console or runtime evidence, and human visual inspection; static text, mocks, or build success are not visual acceptance.
+Fix root causes, preserve a single current implementation, and keep changes within the assigned ownership. Use focused positive checks. UI acceptance requires a real page, interaction, screenshots, and visual inspection. Verify the actual outcome, preserve failures, and repair through the existing worker lineage.

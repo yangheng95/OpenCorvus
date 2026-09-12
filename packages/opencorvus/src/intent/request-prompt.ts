@@ -18,7 +18,7 @@ export function renderUserRequestSection(input: {
   if (input.title?.trim()) {
     lines.push(`Title: ${input.title.trim()}`, "")
   }
-  lines.push("Full user request:")
+  lines.push("Accepted Task input (including any attributed delegation):")
   lines.push("")
   lines.push(input.request)
   lines.push("")

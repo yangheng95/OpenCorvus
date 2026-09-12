@@ -29,7 +29,7 @@ describe("built-in interface review workflow authority", () => {
   test("projects autonomous greenfield and explicit independent-visual Advanced workflows", async () => {
     const loaded = await ExpertSquadRegistry.loadSourcePackage(advancedPackageRoot)
 
-    expect(loaded.manifest.version).toBe("2026.08.30.3")
+    expect(loaded.manifest.version).toBe("2026.09.12.1")
     expect(schedulerCapabilityGrants(loaded.manifest).defaultSkillRefs).toEqual(["default/skill/grill-me"])
     expect(agentCapabilityGrants(loaded.manifest, "requirement-engineer").defaultSkillRefs).toEqual([
       "default/skill/grill-me",
@@ -190,98 +190,23 @@ describe("built-in interface review workflow authority", () => {
       "First find that exact acceptance inventory through `artifact_search`, completely read it through `artifact_read`, and select it through `artifact_select` in the current physical Turn",
     )
     expect(loaded.promptProfile.agents["test-engineer"]).toContain(
-      "current-Turn `artifact_selection_ref` for the acceptance inventory and every semantically used RequirementSet, Architect, implementation, and prior test-owned Artifact in `source_selection_refs`",
+      "current-Turn `artifact_read_ref` for the acceptance inventory and every semantically used RequirementSet, Architect, implementation, and prior test-owned Artifact in `source_read_refs`",
     )
   })
 
-  test("projects capability-matched Base workflows and the read-only authority Planner surface", async () => {
+  test("projects direct execution followed by independent verification and a separate research graph", async () => {
     const loaded = await ExpertSquadRegistry.loadSourcePackage(basePackageRoot)
-
-    expect(loaded.manifest.version).toBe("2026.08.30.2")
-    expect(workflowNodes(loaded, "planner-execution-verification")).toEqual({
-      "base-planner": [],
-      "base-developer": ["base-planner"],
+    expect(loaded.manifest.version).toBe("2026.09.12.2")
+    expect(workflowNodes(loaded, "execution-verification")).toEqual({
+      "base-developer": [],
       "base-tester": ["base-developer"],
     })
-    // Verification cannot race the mutation it checks: an AutomationBench Base trial failed its
-    // Task with "No post was created" after the Tester verified a pre-mutation world.
     expect(workflowNodes(loaded, "planner-parallel-delivery")).toEqual({
       "base-planner": [],
       "base-researcher": ["base-planner"],
       "base-developer": ["base-planner"],
       "base-tester": ["base-developer"],
     })
-    expect(loaded.selectorInstructions).toContain(
-      "Select `planner-execution-verification` when source discovery, implementation, or verification requires a project Skill",
-    )
-    // The parallel frontier stays, but a report published before the mutation owner's latest
-    // occurrence can no longer carry the terminal decision.
-    expect(loaded.promptProfile.agents["orchestrator"]).toContain("that report is stale for the mutated surface")
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "acceptance authority is the original Task request plus current raw authoritative sources",
-    )
-    expect(loaded.promptProfile.agents["base-planner"]).toContain(
-      "Allocate work from the actual projected Tool inventory",
-    )
-    // The new edge is ordering only. If it ever becomes a report handoff, the Tester inherits the
-    // Developer's blind spots and the scope fix above is undone.
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "that ordering is not a handoff, and you do not consume the Researcher's or Developer's report as your scope",
-    )
-    expect(loaded.promptProfile.agents["base-planner"]).toContain("explicit Task-element analysis")
-    expect(loaded.promptProfile.agents["base-planner"]).toContain(
-      "A missing fact is not itself a blocker",
-    )
-    expect(loaded.promptProfile.agents["base-planner"]).toContain(
-      "finite authority-candidate ledger",
-    )
-    expect(loaded.promptProfile.agents["base-developer"]).toContain(
-      "close the plan's authority-field effect ledger before external-state mutation",
-    )
-    expect(loaded.promptProfile.agents["base-developer"]).toContain(
-      "Missing a dedicated field never authorizes a different surrogate mutation",
-    )
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "independently rebuild the finite authority-candidate ledger",
-    )
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "omitted required effects, extra or surrogate mutations, wrong identities, stale precedence",
-    )
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "When the dynamic business-entity trigger applies, it additionally records row-for-row comparison of the published independent effect ledger",
-    )
-    expect(loaded.promptProfile.agents["base-planner"]).toContain(
-      "Ordinary repository/software delivery continues to use the existing `AC-N` contract",
-    )
-    expect(loaded.promptProfile.agents["orchestrator"]).toContain(
-      "challenges every `AC-N` and omission against that immutable baseline",
-    )
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "criterion-by-criterion coverage for every planned `AC-N`",
-    )
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "Before searching for, reading, or selecting the plan or any worker claim, perform pass one",
-    )
-    expect(loaded.promptProfile.agents["base-tester"]).toContain("bidirectional traceability")
-    expect(loaded.promptProfile.agents["base-planner"]).toContain(
-      "The plan is an allocation claim, not acceptance authority",
-    )
-    expect(loaded.promptProfile.agents["base-planner"]).toContain(
-      "invoke its local client or shell only for read/list/get/search operations",
-    )
-    expect(loaded.promptProfile.agents["base-developer"]).toContain("authority-field effect ledger")
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "Publish that frozen baseline first as one `base/acceptance-inventory` Artifact",
-    )
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "Include the independent authority-field effect ledger only when the dynamic business-entity trigger applies",
-    )
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "First find that exact acceptance inventory through `artifact_search`, completely read it through `artifact_read`, and select it through `artifact_select` in the current physical Turn",
-    )
-    expect(loaded.promptProfile.agents["base-tester"]).toContain(
-      "current-Turn `artifact_selection_ref` in `source_selection_refs`",
-    )
     expect(loaded.manifest.capability_projection.agents["base-planner"]).toMatchObject({
       base_role: "delegated-worker",
     })

@@ -2,6 +2,10 @@
 
 ## Recall
 
+- 最新主线改为[从底层以实际结果为中心纠偏](2026-09-12-outcome-first-runtime-correction.md)：用户明确不能接受半小时且零分，要求从OpenCorvus理念纠偏。普通Base改为执行→独立验证，原始输入高于派生合同，精简发布中转和环境Skill。e03f首5例已独立复算，strict1/5、两例partial0；保持旧结果，100例扩跑继续暂停。纠偏新运行时3f9cb474已独立审查/冻结并启动首5例，详情见文末。
+
+- 最新速度要求：“还是不行，执行太慢了”，明确选择“先把冗余调用至少减半”。优化仍保持Luna、官方业务评分和必要独立验证；不以强制截断或删掉失败凑速度。先核实并减少证据传输中多余的模型往返，同时报告总调用与真实耗时，不把局部调用减幅冒充整体加速。
+
 - 最新纠正：“bug不修吗？”要求立即修复Base无效执行根因并验收。此前仅解释错误未完成修复，不算交付。首批之外的新准入暂停；保留所有有效零分和原始失败证据。共享调度审计、生产修复、固定运行时修复投影、真实复验及独立审查完成后才扩展。
 
 - 网页展示要求：用户询问“有网页展示结果吗”。补本轮原生Luna/Base共同结果页，使用真实实验快照；必须打开真实页面、截图人工复核，不运行UI自动化测试。该页面作为现有benchmark工具的结果查看器，本轮产品开发页面没有此双组视图，故使用独立只读本地服务，不启动Vite或修改产品UI。
@@ -143,3 +147,23 @@
 - 已启动修复后首5例Base batch1，并发2、600秒无活动窗口；Windows隐藏host PID 19532。启动脚本先验证运行时commit精确e03f及git status为空。当前待验：真实双向发送回执/回复推进和自然终态、官方评分复算、最终只读审查及论文分支提交推送。模型预检成功不代替该真实链路验收。
 - 修复复验batch ID为 `bb871e9d-9956-446e-8f21-18248a76f56d`，首两例run ID为 `3aa4e29b-b0f4-460f-9da2-16fbe2c09027` / `fadd5d34-0bc9-41e4-b037-12328c57ec8d`。查看器改为必需 `--native-root`/`--base-root` 两个明确权威；6个后台测试通过，包括从两个独立根读取原生已评分与Base失败状态。真实API返回原生5已评分/1通过，修复后Base2运行/0已评分、0配对；主agent只读截图确认页面与该快照一致。只重启自建查看器加载新数据配置，未刷新/操作用户窗口或实验进程。
 - 当前交付最终独立只读复审通过，无未解决发现；reviewer复核双数据源权限、运行归属、冻结commit/parent/tree/clean与补丁一致，以及batch/run真实身份，并独立复跑6个后台测试、文档和差异检查。15:05的只读真实Provider账本分别有26/22次gpt-5.6-luna调用，两个run持续推进。此交付只确认代码、回执契约和运行准备；修复后完整官方评分与真实终态仍未完成，后续继续验收并保持首5例以外准入暂停。
+
+## 冗余证据调用减半方案
+
+- 可观察现象：修复后前两例在约20分钟时分别95/101次Provider请求，已收敛请求时段的并集约占墙钟97%；这表示Provider活动边界覆盖大部分时间，不能未经流式边界复核就全归为网络或模型计算。后续密封结果：case1用时1980210ms（33.00分钟）、strict=0/partial=0；case2用时1196924ms（19.95分钟）、strict=0/partial=0.5。两例自然形成sealed_candidate，评分尚待独立复算和批次收据验收。
+- 排除误判：同一参与者、同一immutable locator/hash/byte range的重复Artifact读取，前两例仅1/0次；不同角色的必要独立复核不计为冗余，查询重试或最终状态读回也不能仅凭输入相同判冗余。两例中的Artifact选择调用22/9次，其中13/4个selection回执仅用于后续通用artifact_publish，形成“完整读取→选择Tool→模型再次调用发布”的可合并往返；这是本轮明确消除的17个传输中转调用，而非宣称全部调用都可砍半。
+- 直接触发与根因：通用publisher仅接受source_selection_refs，强制模型先执行artifact_select获得动态as_引用，即使模型已经完整读取源且在发布参数中能够明确作出来源选择。发布本身已有真实Tool请求、精确Scope、完整读证据、canonical source_artifact_locators及单一发布服务，独立中转不是维护这些契约的必要条件。Task/Session调度保持上一修复，本轮不改组织图、绕过独立验证、缩短超时或换模型。
+- 修复方案：通用artifact_publish以source_read_refs替换source_selection_refs；该字段本身明确选择这些已完整读取的证据作为本次输出语义来源。复用resolveArtifactReadReferenceBeforeSelection的同Session、同物理Turn、先于本次Tool、完整字节和精确locator验证；将已核验的显式选择传给唯一publishExpertArtifact，保留其observed/selected/source一致性校验。无来源仍为[]。不保留旧参数兼容入口。独立artifact_select继续服务需要独立selection回执的其他既有消费者；通用发布只有一个当前参数路径，不增加新Tool、影子状态或隐藏消息。
+- 影响面：全仓搜索命中通用Tool/schema、prompt-profile-resolver公共提示、Base/Advanced/Research及外部专家团和作者模板说明、SDK中英文文档、两类正向契约测试和generated expert-squad payload。逐项判断是否是通用publisher说明；typed/package publisher保留其原独立契约。同步使用现有生成器更新payload，版本和冻结实验delta单独记录。引用字段、完整read验证和发布源图是公开契约，必须测试真实服务的正确输出与明确错误类型；不只改提示字符串。
+- 验收指标：同一冻结首批与固定模型下，发布用证据选择中转调用从基线17次至少减少50%；同时列出其他选择调用、总Provider调用、总Tool调用、官方strict/partial和耗时，不以局部指标替代总体结果。先做聚焦正向发布及错误契约、真实小批复验和独立审查；未达标继续定位，不扩大100例。与当前运行版本隔离，不中途修改其source。当前独立agent反馈：无；首轮实现与验证后委托只读审查。
+
+### 终态观察器空等的追加调查与方案
+
+- 已确认现象：e03f case1 的最终 Mission assistant 在1789197808142ms已自然完成，运行到1789198416123ms才结束，相隔607981ms；case2成功路径仅约7秒。case1的持久化审计为scored_terminal=true、natural_failed、11个Task执行轮次全部收敛，Mission inactive且无待答用户消息。不能把此600秒算作模型推理耗时，也不能删去有效零分。
+- 控制流根因：冻结runner唯一waitForTerminal入口把missionRecord.completion作为提前转入quiescence检查的额外条件；自然失败只在无活动窗口耗尽后进入同一收尾。现有auditMissionOutcome已经统一定义成功/自然失败且检查Task集合、Session归属、最新用户应答、Provider健康和完成回执，观察器却再加成功专属条件，造成双重定义。旧测试覆盖audit的自然失败，但未核对运行器提前返回分支。
+- 横向审计：全仓搜索冻结生产src及benchmark入口，completion专属提前返回仅在run-automationbench；native循环按自然模型finish收敛，当前论文分支没有这份历史运行器。Mission投影来自SessionStatus.isExecuting与projectID/missionID/sessionID约束的Task持久化记录；并无按Base单例分支。Task成功/自然失败/取消由统一auditTaskOutcome分别裁定可评分/无效。后续waitForTerminalQuiescence仍逐一检查全部Task/Session occurrence、pending interactions、scheduler收据、ingress/protocol交付及2秒稳定观测。延迟唤醒仍由项目+Mission+Task集合查询、原deadline逻辑处理；重启/重试及不同并发槽不共用观察器局部变量。上一轮发送回执修复、恢复/FIFO/跨Project验证继续有效；本次证据定位为benchmark观察器对既有终态契约的错误使用，不修改生产调度或模型决策。
+- 实施：提前返回只使用唯一auditMissionOutcome.scored_terminal，不再额外要求completion；原未终态600秒无活动窗口和全部quiescence/官方checker保持。利用既有正向成功/自然失败audit测试，追加自然失败的完整轮次静止验收，并用密封真实case1/case2重建运行器输入验证两种路径。完成当前旧批次后才把此次运行器改动及发布优化投影进冻结源码，保存精确patch/commit/tree，再开始新配置首5例。独立审查已发起，反馈待记录。
+
+### 纠偏配置实跑
+
+后续唯一活跃Base来源为 `/var/lib/opencorvus-benchmark/reproduction-20260912-outcome-first/base`，运行时commit3f9cb474、Base/SquadSDK2026.09.12.2；首5例batch6f1e14ec已启动。旧e03f首5例官方复算5/5有效、strict1/5，两例partial0；成本基线48次发布选择、540次Provider和737次Tool，原始及归档证据完整保留。具体修改、独立审查和未完成验收见[纠偏记录](2026-09-12-outcome-first-runtime-correction.md)。现阶段仍暂停第6例及以后，不把源码测试等同效率或质量目标通过。

@@ -102,13 +102,13 @@ describe("Expert Squad catalog index", () => {
     const inspection = await PromptProfileResolver.catalogInspection({ projectDirectory: project.path, id: "base" })
     expect(inspection).toMatchObject({
       id: "base",
-      version: "2026.08.30.2",
+      version: "2026.09.12.2",
       selector: {
         summary: expect.any(String),
         selection_guidance: expect.any(String),
       },
       workflows: [
-        { id: "planner-execution-verification", node_count: 3 },
+        { id: "execution-verification", node_count: 2 },
         { id: "planner-parallel-delivery", node_count: 4 },
       ],
       workflow_count: 2,
@@ -128,7 +128,7 @@ describe("Expert Squad catalog index", () => {
     expect(detail?.name).toBe("Base")
     expect(detail?.source).toEqual({ kind: "built_in" })
     expect(detail?.readme.content).toContain("# Base")
-    expect(detail?.selector.instructions).toContain("# Base Expert Squad")
+    expect(detail?.selector.instructions).toContain("# Selecting Base")
     expect(detail?.capability_projection.scheduler.base_role).toBe("orchestrator")
     expect(
       Object.fromEntries(

@@ -189,48 +189,9 @@ TASK REQUEST CONTRACT
 
 Every `panel action=create_task` call supplies a semantic 3-8 word `title`, one exact held `promptProfile`, and a self-contained `request` written in the same language as the original operator request. The Host preserves that semantic title and adds Mission provenance.
 
-Use this Task brief:
+Start the Task input with the task-relevant original operator text copied verbatim, clearly attributed to the operator. Then add a concise delegation note with the owned outcome, any real sibling or prerequisite boundary, material constraints, and the observations needed to accept that outcome. Include imported evidence by semantic role through artifact_sources. Use the operator's language. Do not expand a short request into repeated Outcome, Scope, Deliverables, Acceptance, and Reporting copies of the same interpretation.
 
-   ## Outcome
-   <one complete delivery closure, including every Mission acceptance claim this Task owns>
-
-   ## Scope and ownership
-   In scope:
-   - ...
-   Out of scope or pending later stages:
-   - ...
-   This Task owns:
-   - ...
-   Mission or later stages own:
-   - ...
-
-   ## Inputs
-   Imported predecessor evidence:
-   - <semantic Artifact role; supplied through artifact_sources>
-   Facts to investigate:
-   - ...
-
-   ## Deliverables
-   - <Artifact or product change>
-   - <evidence or report>
-
-   ## Acceptance
-   - <observable positive result>
-   - <required validation evidence>
-
-   ## Constraints
-   - <operator constraints preserved exactly>
-   - <directory, repository, execution, and held-Squad boundary>
-
-   ## Reporting
-   - <operator-requested progress, evidence, notification, or reporting behavior>
-
-   ## Original user input
-   > <task-relevant operator text copied verbatim>
-
-Write the task title and authored request narrative in the same language as the original operator request. Quoted source material, code, paths, commands, identifiers, and API names retain their required source text and do not change the task language.
-
-The `Original user input` section is audit evidence, not the authored stage boundary. Preserve every task-relevant scope, constraint, example, acceptance condition, and warning verbatim, while assigning later dependent deliverables to the explicit out-of-scope or pending section.
+The original operator text remains semantic authority. The delegation note allocates work; it cannot turn an unresolved interpretation into a new user requirement, replace a requested effect with a summary, or mark an assigned outcome out of scope. Explicit sibling ownership prevents duplicate effects without weakening the complete Mission outcome. Preserve task-relevant examples, exact values, warnings, and operator reporting requirements. If the note and original request conflict, correct the note and preserve the original requirement.
 
 Workflow IDs, phase names, sequencing, and ordinary acceptance intent belong in `request`, never `checks`. Use `checks` only for executable Host verification configuration exposed by its schema. The Host owns creator metadata and source.
 

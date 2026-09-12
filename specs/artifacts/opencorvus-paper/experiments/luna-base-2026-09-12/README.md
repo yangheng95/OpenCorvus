@@ -4,17 +4,17 @@ Protocol and current execution status: [dated record](../../../../records/2026-0
 
 ## Local results page
 
-Open [the current comparison](http://localhost:8765/ui) on the experiment machine. It updates every 30 seconds from the native results and Base's existing catalog/leases. It shows scored denominators, running/awaiting states, per-case results, and comparisons only for completed pairs. The localhost viewer exposes only selected summary fields and does not serve raw files, prompts, logs or credentials.
+Open [the current correction comparison](http://localhost:8766/ui) on the experiment machine. It updates every 30 seconds from the native results and Base's existing catalog/leases. It shows scored denominators, running/awaiting states, per-case results, and comparisons only for completed pairs. The localhost viewer exposes only selected summary fields and does not serve raw files, prompts, logs or credentials.
 
-The independent viewer uses the real WSL evidence root; no product UI or benchmark process is restarted:
+The original e03f baseline viewer remains at [port 8765](http://localhost:8765/ui). The new viewer uses the new configuration's WSL evidence root, without restarting the prior viewer or user page:
 
 ```bash
 /var/lib/opencorvus-benchmark/evaluator-venv/bin/python -B \
   /mnt/d/myhexin-local/opencorvus/script/benchmark/reproduction_dashboard.py \
   --native-root /var/lib/opencorvus-benchmark/reproduction-20260912/native \
-  --base-root /var/lib/opencorvus-benchmark/reproduction-20260912-scheduler-fix/base \
+  --base-root /var/lib/opencorvus-benchmark/reproduction-20260912-outcome-first/base \
   --manifest /mnt/d/myhexin-local/opencorvus/specs/artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/case-manifest.json \
-  --port 8765
+  --port 8766
 ```
 
 The viewer's backend projection tests run with `python -B -m unittest discover -s script/benchmark -p test_reproduction_dashboard.py`. Visual acceptance uses actual browser interaction and screenshots; no UI automation tests are used.
@@ -24,6 +24,21 @@ The viewer's backend projection tests run with `python -B -m unittest discover -
 The initial Base batch exposed a scheduler send deadlock: a Tool awaited the recipient drain, while the recipient could be waiting for that sender's Tool to finish. The failed attempt remains in its original evidence directory. The correction makes the durable enqueue receipt the send boundary for requests, replies and notifications; delivery and recovery stay with the existing inbox/drain owner.
 
 [`scheduler-send-enqueue-receipt.patch`](scheduler-send-enqueue-receipt.patch) records the same correction and a positive busy-recipient regression test against frozen runtime `17bc3f63fc2ed0e2d4953e50811ee106882fd8fe`. The current paper branch carries its production correction directly in `src/protocol/scheduler-message.ts` and the Task materializer. The patch is a reproducible historical runtime delta, not a second production implementation. Apply it only to the exact clean frozen revision, after its active trials have ended. Corrected-runtime validation and experiment identity are recorded in the [protocol](../../../../records/2026-09/2026-09-12-luna-base-reproduction.md#base调度发送阻塞修复方案); old and corrected runtime results must be distinguished.
+
+## Outcome-first correction and cost baseline
+
+The [runtime correction](../../../../records/2026-09/2026-09-12-outcome-first-runtime-correction.md) changes the shared goal/delegation guidance, Base's ordinary workflow to executor → independent verifier, report transport, and the historical environment Skill's responsibility. These are jointly changed conditions; a retest cannot isolate the causal contribution of any one change.
+
+`scheduler-fix-first-five-score-audit.json` independently checks all five e03f sealed cases, task/source identities, and the official replay checker: strict 1/5, partial scores 0, 0.5, 1, 0, and 0.81818; durations 33.00, 19.95, 21.53, 17.06, and 38.83 minutes. Internal acceptance and score validity do not imply business success.
+
+`publication-overhead-baseline-first-five.json` measures 48 standalone publishing-session selections, 540 Provider requests, and 737 Tool calls from sealed inputs. `publication-overhead-baseline-first-two.json` preserves the preregistered initial two-case baseline of 17 removable selections; the corrected measurement produces the same 17. The metric keeps selections used by any other consumer, including failed consumers, and counts unused publishing-session selections. It measures a specific transport overhead, not all redundancy or overall speedup. Retests must report total calls, score, and elapsed time alongside this metric.
+
+`outcome-first-runtime.patch` is the 268,627-byte historical-runtime delta against clean e03f; SHA-256 `fffaa66226690460734bc1bd6ccdafcc4d3e13cbb0140812b8b220f8a77185f1`. `outcome-first-runtime-receipt.json` records clean commit `3f9cb474b577f6e313492ed48b5b4bbf1bfa4f1f` and its tree. Apply it after the earlier scheduler correction, never during an active trial. New evidence is under `/var/lib/opencorvus-benchmark/reproduction-20260912-outcome-first/base`; the e03f evidence remains intact. Both Base and SquadSDK are version 2026.09.12.2.
+
+```text
+python -B -m unittest discover -s script/benchmark -p test_measure_publication_overhead.py
+python -B script/benchmark/measure_publication_overhead.py --root <sealed-base-root> --cases 1,2,3,4,5 --runtime-commit <exact-commit> --output <new-measurement.json>
+```
 
 ## Frozen sample
 

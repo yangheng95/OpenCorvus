@@ -45,6 +45,10 @@ and different winners return a typed identity conflict. Database uniqueness choo
 owns business identity or spans reconciliation/Provider work. A narrow process lock may serialize only physical publication
 of the already-allocated directory.
 
+## Outcome and delegated input
+
+The original operator outcome and relevant authoritative facts define semantic success. Mission delegation adds ownership and real dependency boundaries while preserving attributed original input first; it does not replace that input with repeated derived scope/acceptance sections. Task input rendering preserves the accepted text and its attribution rather than labelling every coordinator-authored statement as literal user wording. A plan or report remains a claim to inspect against the outcome. This is a prompt/context contract, not a new permission, lifecycle writer, hidden message, or Host business-decision gate.
+
 ## Task lifecycle and execution epoch
 
 `protocol_event` is the sole Task lifecycle authority. Task aggregate identity is stored once as `(aggregate_type='task', aggregate_id=task_id)`; `protocol_event.task_id` is `NULL` for Task aggregate events and is reserved for correlation from non-Task aggregates.
