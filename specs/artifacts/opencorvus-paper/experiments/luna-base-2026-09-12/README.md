@@ -4,17 +4,17 @@ Protocol and current execution status: [dated record](../../../../records/2026-0
 
 ## Local results page
 
-Open [the current correction comparison](http://localhost:8766/ui) on the experiment machine. It updates every 30 seconds from the native results and Base's existing catalog/leases. It shows scored denominators, running/awaiting states, per-case results, and comparisons only for completed pairs. The localhost viewer exposes only selected summary fields and does not serve raw files, prompts, logs or credentials.
+Open [the current-source comparison](http://localhost:8768/ui) on the experiment machine. It updates every 30 seconds from the new native results and Base's catalog/leases under `/var/lib/opencorvus-benchmark/reproduction-20260913-current-source`. The first five cases are running on both arms at runtime revision `134d34336cdb19c90d96ac49640c0746556a3f0f`; cases 6–100 are pending. [Launch and real Provider preflight receipt](current-source-benchmark-launch.json) records the exact source/bundle/manifest identity, parameters and run identifiers. The viewer shows scored denominators, running/awaiting states, per-case results, and comparisons only for completed pairs. It exposes only selected summary fields and does not serve raw files, prompts, logs or credentials.
 
-The original e03f baseline viewer remains at [port 8765](http://localhost:8765/ui). The new viewer uses the new configuration's WSL evidence root, without restarting the prior viewer or user page:
+The historical viewers at [port 8765](http://localhost:8765/ui), [port 8766](http://localhost:8766/ui) and [port 8767](http://localhost:8767/ui) retain their original roots. The current viewer runs from the frozen current-source installation without restarting those viewers or pages:
 
 ```bash
 /var/lib/opencorvus-benchmark/evaluator-venv/bin/python -B \
-  /mnt/d/myhexin-local/opencorvus/script/benchmark/reproduction_dashboard.py \
-  --native-root /var/lib/opencorvus-benchmark/reproduction-20260912/native \
-  --base-root /var/lib/opencorvus-benchmark/reproduction-20260912-outcome-first/base \
-  --manifest /mnt/d/myhexin-local/opencorvus/specs/artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/case-manifest.json \
-  --port 8766
+  /var/lib/opencorvus-benchmark/opencorvus-runner/script/benchmark/reproduction_dashboard.py \
+  --native-root /var/lib/opencorvus-benchmark/reproduction-20260913-current-source/native \
+  --base-root /var/lib/opencorvus-benchmark/reproduction-20260913-current-source/base \
+  --manifest /var/lib/opencorvus-benchmark/opencorvus-runner/specs/artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/case-manifest.json \
+  --port 8768
 ```
 
 The viewer's backend projection tests run with `python -B -m unittest discover -s script/benchmark -p test_reproduction_dashboard.py`. Visual acceptance uses actual browser interaction and screenshots; no UI automation tests are used.

@@ -106,3 +106,13 @@ Recall：用户要求实际修复，停止只解释。最新 readiness 首5例�
 检查脚本曾错误等待常驻Mission Session owner退出，实际执行轮次和Task调度已结束；最终改用SessionStatus的精确input/owner执行轮次结算，断言idle和scheduler delivery审计通过，再按process.shutdown释放隔离测试的常驻会话。没有把长驻会话误报成新的生产死锁。全程无外部模型调用；目前仍不能声称TLS原始根因已闭合、真实模型批次有效或冗余调用已减半。
 
 2026-09-13 安装收敛：修复提交b463c413已推送，pre-push全部检查通过。检查3个历史批次租约均为空、旧runner Git干净且无进程以其目录为cwd后，将原安装移入retired/opencorvus-runner-84a09194；同一opencorvus-runner路径从当前论文分支完整重新安装，不再维护旧runtime backport。干净检出最初因SDK的dist未构建无法加载manifest-v2，已完成现有SDK标准build，构建后源码无差异。Linux8项21断言通过，完整Mission恢复22.3秒，真实bridge/官方scorer replay通过；[完整安装回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-installation.json)记录提交、树、manifest和日志digest。没有新模型调用，旧页面不刷新/重启。
+
+## 2026-09-13 当前源码首五例对照启动
+
+Recall：用户明确“继续bench”。承接已完成的共享恢复修复与独立审查，当前主仓和干净WSL运行器均为134d34336cdb19c90d96ac49640c0746556a3f0f（相对b463仅安装文档）。原要求仍为同一100例原生Luna与Luna+Base对照、冗余调用至少减半；本轮先启动同源码前五例两组，实际有效性与官方评分查明后再扩展。已读上述Recall、安装回执、复刻协议、两个执行器、Provider连接测试、批次身份与隔离代码及结果页读取契约。全仓搜索确认新batch必须显式指定100例manifest，原临时launcher绑定旧84a与50例，不再调用。没有活动模型进程，旧3个viewer保持运行。独立agent反馈：上轮代码和安装审查已通过，本轮启动记录尚无反馈。
+
+执行方案：新证据根为/var/lib/opencorvus-benchmark/reproduction-20260913-current-source。已授权私有auth/models成对复制到隔离预检home，以当前Provider公开入口核对精确openai/gpt-5.6-luna和真实流式连接；成功后将成对资料投影到本轮两个条件。原生条件使用同checkout的官方prompt/API工具循环，medium、50 response steps；Base使用真实Mission/Base，既有角色推理配置、并发2；两者均保持600秒真实无活动窗口。原生同样重跑五例以避免混合SDK/Provider源码，旧配置不替换、不挑高分。Base计划、单例、manifest使用同一源码身份，启动后冻结该安装不再改源码。新只读结果服务使用未占用端口，真实页面截图复核；不运行UI自动化测试。共享故障再次出现先保留证据并修根因，不能用历史TLS来源未知替代当前连接验收，也不声称已经消除网络中断。启动、真实请求模型、进展和终态以持久化证据核对，并由现有定时任务续查，不持续监听日志。
+
+00:16北京时间实际启动：当前Provider公开流式预检connected，传输层捕获的实际请求gpt-5.6-luna、HTTP200，与成对投影一致。Base batch c78ebbca-bb73-42d8-95dd-8370dfe7f957已提交五个slot计划，首两个run f6494719/26c90986活动；原生首个run 3e27fb9b已进入官方工具循环，首16个完成step的实际请求模型均匹配。完整参数与摘要见[启动回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-benchmark-launch.json)。新8768真实页面与截图已核对，显示原生1例、Base2例运行中，尚无配对评分；旧页面不动。运行时安装继续固定134d，不随本次文档提交移动。
+
+启动交付独立只读复核通过：活动源码干净，实际进程参数、bundle、100例manifest、首五例计划、流式预检与文档一致，无未解决发现。docs:check与差异检查通过；本轮只有启动记录和结果页入口文档变更，未修改生产代码。后续结果由现有定时任务每5分钟进行一次有界快照和真实checker核对。
