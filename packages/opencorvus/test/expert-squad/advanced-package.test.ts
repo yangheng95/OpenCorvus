@@ -194,9 +194,10 @@ describe("built-in interface review workflow authority", () => {
     )
   })
 
-  test("projects direct execution followed by independent verification and a separate research graph", async () => {
+  test("projects workflow execution followed by independent verification and a separate research graph", async () => {
     const loaded = await ExpertSquadRegistry.loadSourcePackage(basePackageRoot)
-    expect(loaded.manifest.version).toBe("2026.09.12.2")
+    expect(loaded.manifest.version).toBe("2026.09.12.3")
+    expect(loaded.promptProfile.agents.orchestrator).toContain("workflow_subject.kind=virtual_workflow")
     expect(workflowNodes(loaded, "execution-verification")).toEqual({
       "base-developer": [],
       "base-tester": ["base-developer"],

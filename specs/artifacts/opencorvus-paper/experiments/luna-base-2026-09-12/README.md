@@ -87,3 +87,6 @@ The native model runner's initial real path has passed the official checker on o
 ## Runtime readiness correction
 
 [stream-progress-observer.patch](stream-progress-observer.patch) and its [receipt](stream-progress-observer-receipt.json) freeze the owned Session activity observation correction at `470d129d`, relative to `3f9cb474`. The observer consumes the existing semantic monitor; polling and lease renewal do not renew the inactivity window. Zero-model processor integration and independent review passed. New benchmark admission remains paused: actual two-role condition verification is incomplete, and the original failed Provider stream cannot be reconstructed from retained evidence. See the [readiness record](../../../../records/2026-09/2026-09-12-benchmark-runtime-readiness.md).
+
+
+[base-workflow-subject-clarification.patch](base-workflow-subject-clarification.patch) records the Base 2026.09.12.3 prompt clarification against runner 470d129d: use the declared Developer workflow node followed by independent Tester. Package projection checks passed; model adherence is still unverified and new benchmark admission remains paused. The public direct binding contract is unchanged.

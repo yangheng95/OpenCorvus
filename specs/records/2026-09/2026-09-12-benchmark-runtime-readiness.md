@@ -29,3 +29,18 @@
 - 独立复核无未解决的本次修复问题。冻结processor与observer集成6项/14断言通过，包含真实pending input进展、idle重试恢复、同Session持久化新input轮次及不同Session隔离。主仓跨进程租约、终态恢复、processor12项/44断言通过。冻结benchmark TypeScript类型检查通过，docs:check通过。
 - 保持原600秒阈值、终态静止审计、公共direct及既有Task绑定契约。没有证据将原始无效执行归因于锁死；原Provider完整流缺失限制了该次事件的追溯。
 - **新benchmark准入仍暂停**。本次没有完成全部真实实验条件验收，也没有外部Provider端到端通过证据；第1例没有独立Tester的问题仍待通过实验要求、真实参与者与官方原始评分的独立核对解决。原始历史数据不改写。不得将本次局部修复表述为全部问题已解决或100例实验已就绪。
+
+## 11:00 工作流选择语义修正方案
+
+Recall补充：第5例82abc8df与第1例一样，原始dispatch.workflow_subject=direct，只有Developer消息并以workflow_id=null完成；第2/4例使用execution-verification并出现Tester，case4还有真实修复后复验。继续暂停新模型benchmark。
+
+已读主仓Base selector、Orchestrator system、公共Orchestrator core、版本生成器、包投影与catalog测试；全仓查找execution-verification调用与版本约束。Base system中“bind execution-verification”紧接“dispatch base-developer directly”，与工具的direct subject词义冲突；selector虽然要求绑定图，但旧包提示在派发动作处留下歧义。此是可验证提示缺陷，不足以证明两例模型选择的唯一成因。共享绑定层已证明direct是合法平台能力，不能再次修改该公共契约。
+
+实施仅澄清Base的现有声明：Developer作为execution-verification首节点，明确workflow_subject的graph/node身份；Tester是独立的第二节点而非Developer自检。保持普通图、角色、工具、模型、评分、超时与恢复事实不变。按唯一版本生成器更新Base版本和payload，现有包投影/catelog正向测试更新版本。冻结runner投影同一包源码并归档精确增量。独立只读review后提交；零模型投影验收不等于模型遵守率，仍不启动benchmark。独立反馈在实施前为无（前次绑定方案已由review否决并撤回）。
+
+
+实现验证：主仓包投影/catelog20项142断言通过，冻结同组20项134断言通过。Base为2026.09.12.3；版本生成器的旧baseline落后于此前已发布的6包版本，本轮刷新其既有source事实并显式将Base从.2升到.3，其他包source不变。payload生成无差异（内嵌包由其source加载）。冻结manifest使用原schema，只投影版本；初次拷贝主仓新schema的本轮错误已撤回，最终diff确认唯一manifest变化为版本。冻结catalog旧.08版本、旧3节点、旧selector标题断言已修正。docs:check通过。
+
+[Base节点表述补丁](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/base-workflow-subject-clarification.patch)记录相对470d的4文件完整增量。没有新模型运行；此为声明歧义修正和零模型加载验收，不是两角色真实遵守率或官方评分实效验收。新benchmark继续暂停。
+
+独立只读复核通过：主仓20/142、冻结20/134独立复跑；6条版本摘要复算匹配；冻结补丁逐字节一致，无未解决的本次改动发现。冻结提交84a0919412616bbd76213ee1715a7e8b8a54f5ac，父470d129d；补丁5783bytes，SHA-256 790b1a62b5cc6ffaa011349bf9166b981c56564c0a5a10a392dbb4dc9888d8e0。模型遵守及实效仍未验证。
