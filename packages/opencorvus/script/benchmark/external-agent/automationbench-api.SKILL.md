@@ -1,0 +1,29 @@
+---
+name: automationbench-api
+description: Execute an AutomationBench business workflow through its official API-mode search, fetch, and base64 tools. Use only for a Task whose request explicitly says it is an AutomationBench trial.
+---
+
+# AutomationBench API mode
+
+The Task is scored only from the final simulated business state. A narrative answer, repository edit, or report does not complete it.
+
+AutomationBench initializes a seeded simulated business environment for every Task. It does not use or require real Airtable, Google, Salesforce, Slack, or other SaaS credentials. A typed 401/404 from one candidate service means that service or route is unavailable in this Task's simulated world; it is not a Host credential failure and does not prove the requested authority or records are absent from the other simulated services.
+
+Use the project-local client with these exact commands:
+
+```text
+python3 automationbench_tool.py search "API-native keywords" --top-k 5
+python3 automationbench_tool.py fetch GET "https://full.url/from/search" --params '{"key":"value"}'
+python3 automationbench_tool.py fetch POST "https://full.url/from/search" --body '{"key":"value"}'
+python3 automationbench_tool.py base64 "text that an endpoint explicitly requires encoded"
+```
+
+`search` is an endpoint-contract directory: it tells you which URL, method, path parameters, query parameters, body fields, and response shape an API supports. It does not search the seeded business records. A zero-result `search` therefore proves only that the endpoint keywords did not match; it never proves that an email, spreadsheet, message, customer, ticket, or other business record is absent. Business existence and content are established only by calling a discovered list/get/search endpoint with `fetch`. `--top-k` accepts 1 through 20.
+
+Use the original business request and fetched business records to decide what work is needed. Replace URL path placeholders with the exact record identifiers; query parameters belong in `--params` and request fields in `--body`. The client passes their JSON strings to the official tools. Inspect returned values and typed errors before deciding the next action.
+
+A successful response records an operation's result. Some simulated read endpoints expose seeded/query projections that do not reflect every recorded action. Keep the exact action receipt and any conflicting readback visible; neither the Skill nor a report declares the business goal satisfied. Resolve correctness from the actual request, relevant source records, supported API semantics, and the available observations. An unknown outcome is not permission to repeat an irreversible action.
+
+This Skill specifies the environment and tool transport. It does not prescribe a business search checklist, a planning graph, report artifacts, or a success verdict. Independent verification remains the selected Squad's responsibility.
+
+The client intentionally exposes no world dump, assertions, expected answer, or scoring endpoint. Do not inspect its config or implementation as a substitute for using the official tools.

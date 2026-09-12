@@ -82,7 +82,7 @@ def sealed_directory(directory, mutate=lambda files: None):
         {"node_id": "developer", "agent_id": "developer", "depends_on": []},
         {"node_id": "tester", "agent_id": "tester", "depends_on": ["developer"]}]}
     board["task"].update(packageRevisionBinding={"id": "base"}, completionDecision={"workflowBinding": binding})
-    artifacts, nodes, canonical_messages = [], [], []
+    artifacts, canonical_messages = [], []
     for i, role in [(1, "developer"), (3, "tester")]:
         message, part = messages[i], messages[i]["parts"][0]
         message["info"].update(id=role + "-producer", sessionID="orchestrator")
@@ -97,8 +97,6 @@ def sealed_directory(directory, mutate=lambda files: None):
             "time_created": 10 if role == "developer" else 30})
         artifacts.append({"id": lineage_id, "task_id": "task", "kind": "dispatch_lineage", "payload": payload,
                           "payload_bytes": len(payload.encode()), "payload_sha256": hashlib.sha256(payload.encode()).hexdigest()})
-        nodes.append({"task_id": "task", "workflow_id": "verify", "workflow_node_id": role,
-                      "child_session_id": role, "initial_dispatch_id": role + "-dispatch-id"})
         start, end = (10, 20) if role == "developer" else (30, 40)
         canonical_messages.extend([
             {"id": role + "-input", "session_id": role, "agent": role, "role": "user", "time_created": start},
@@ -114,7 +112,7 @@ def sealed_directory(directory, mutate=lambda files: None):
         "run-start.json": {"run": {"id": "run"}, "benchmark": dict(case), "opencorvus": system},
         "terminal-board.json": {"tasks": [{"task_id": "task", "board": board}]},
         "task-transcripts.json": [{"task_id": "task", "transcript": messages}],
-        "runtime-database-snapshot.json": {"rows": {"engine_artifact": artifacts, "engine_workflow_node_occurrence": nodes, "message": canonical_messages}}}
+        "runtime-database-snapshot.json": {"rows": {"engine_artifact": artifacts, "message": canonical_messages}}}
     frozen = {1: dict(case)}
     mutate(files)
     entries = []

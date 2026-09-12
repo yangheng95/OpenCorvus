@@ -4,7 +4,7 @@ Current Luna versus Luna + Base reproduction: [protocol and recovered evidence](
 
 Current correction: [outcome-first runtime and Base delivery](records/2026-09/2026-09-12-outcome-first-runtime-correction.md).
 
-Controlled first-five diagnostic revalidation is running; expansion remains paused under [runtime readiness verification](records/2026-09/2026-09-12-benchmark-runtime-readiness.md).
+The controlled first-five diagnostic has ended. Current-source harness and streamed recovery corrections are under [runtime readiness verification](records/2026-09/2026-09-12-benchmark-runtime-readiness.md); model expansion remains paused.
 
 Local live comparison: [results page and viewer instructions](artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/README.md#local-results-page).
 

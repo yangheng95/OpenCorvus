@@ -98,4 +98,18 @@ The native model runner's initial real path has passed the official checker on o
 
 Reproduce condition verification with `python script/benchmark/audit_execution_condition.py --root <outcome-first/base> --manifest <case-manifest.json> --cases 1,2,3,4,5 --runtime-commit 3f9cb474b577f6e313492ed48b5b4bbf1bfa4f1f --workflow execution-verification --executor base-developer --verifier base-tester --output <new-report.json>`. Official replay uses `recover-automationbench.py --root <outcome-first/base> --manifest <case-manifest.json> --harness <checker-directory> --harness-revision 84a0919412616bbd76213ee1715a7e8b8a54f5ac --output <new-audit-directory>`. Both commands preserve original evidence.
 
-Current controlled diagnostic revalidation: [localhost:8767/ui](http://localhost:8767/ui), source84a09194/Base.3, batch3ab2a1e3-a714-4dad-90bc-e3547468d7f5, first five only. Old 8765/8766 viewers retain their prior roots. New scores and actual condition compliance remain pending.
+The controlled first-five diagnostic at [localhost:8767/ui](http://localhost:8767/ui), source84a09194/Base.3, batch3ab2a1e3-a714-4dad-90bc-e3547468d7f5, has ended. Cases 1, 2, 4 and 5 are invalid; case 3 remains a sealed candidate rather than an audited completed batch. Old 8765/8766 viewers retain their prior roots.
+
+## Current-source recovery verification
+
+The active implementation is now maintained in `packages/opencorvus/script/benchmark/external-agent` on this paper branch, importing the same checkout's production runtime. The old runner lacked the current dispatch replay protocol. Do not apply further selective runtime backports or launch the old readiness script. Both execution entry points now require an explicit `--case-set`; use this directory's fixed 100-case `case-manifest.json`. The retained 50-case file is a historical prefix reference used by the evidence catalog, not the selected experiment. Every new batch binds its runtime commit, harness digest and selected manifest digest; reuse only matches that exact identity.
+
+From `packages/opencorvus`, the focused zero-model command is:
+
+```text
+bun test --timeout 120000 test/mission-streamed-recovery.test.ts test/session/processor-producer-boundary.test.ts test/benchmark/runtime-source-identity.test.ts test/storage/schema-contract.test.ts test/orchestrator-streamed-dispatch-settlement.test.ts test/session/processor-llm-activity-retry.test.ts
+```
+
+The 25 checks / 120 assertions passed. The single Mission scenario enters real streaming SDK execution, commits an operation, injects a socket error, preserves the unsafe-retry guard, opens the Mission acceptance gap, continues the same Developer Session, first starts an independent Tester, reads its real report and completes Task/Mission acceptance. Its runtime snapshot and ordinary isolated teardown also pass. Separate producer/consumer and cancellation checks cover execution before observation and cancellation during step preparation. This proves deterministic runtime recovery, not external Provider availability or an improvement in the official scores. The source migration also uses the shared finalized SQLite reader so snapshot connections release their statements before cleanup.
+
+The real AutomationBench 1.0.6 bridge and official scorer replay passed without a model request. The condition auditor's 18 checks passed using the canonical initial lineage, each input occurrence and terminal settlement; it no longer requires the removed node-occurrence table. The old static report was visually inspected and omitted from the migrated runner because it hardcoded a 50-case display and historical public comparisons. The existing `script/benchmark/reproduction_dashboard.py` remains the comparison viewer. TLS origin, new controlled Provider execution, the requested call reduction and the 100-case comparison remain unverified.

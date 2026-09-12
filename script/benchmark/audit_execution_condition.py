@@ -163,10 +163,10 @@ def audit_lineages(task, board, messages, snapshot):
                     lineage.get("workflow_node_id") != occurrence["agent"]):
                 task["issues"].append("occurrence_workflow_binding_mismatch")
             if expected_binding.get("kind") == "virtual_workflow":
-                logical = [n for n in snapshot["rows"]["engine_workflow_node_occurrence"]
-                           if n["task_id"] == task["task_id"] and n["workflow_id"] == expected_binding["workflow_id"]
+                logical = [n for n in lineages if not n.get("continuation_of_dispatch_id")
+                           and n["task_id"] == task["task_id"] and n["workflow_binding"] == expected_binding
                            and n["workflow_node_id"] == occurrence["agent"] and n["child_session_id"] == occurrence["sessionID"]]
-                if len(logical) != 1 or lineage.get("workflow_occurrence_id") != logical[0]["initial_dispatch_id"]:
+                if len(logical) != 1 or lineage.get("workflow_occurrence_id") != logical[0]["dispatch_id"]:
                     task["issues"].append("continuation_logical_occurrence_mismatch")
             predecessor = lineage.get("continuation_of_dispatch_id")
             if predecessor:
@@ -220,11 +220,12 @@ def audit_lineages(task, board, messages, snapshot):
         if completion and binding != completion["workflowBinding"]:
             task["issues"].append("completion_lineage_binding_mismatch")
         if subject["kind"] == "virtual_workflow":
-            expected = {"task_id": task["task_id"], "workflow_id": subject["workflow_id"],
-                        "workflow_node_id": subject["node_id"], "initial_dispatch_id": lineage["dispatch_id"],
+            expected = {"task_id": task["task_id"], "workflow_binding": binding,
+                        "workflow_node_id": subject["node_id"], "dispatch_id": lineage["dispatch_id"],
                         "child_session_id": dispatch["session_id"]}
-            nodes = [n for n in snapshot["rows"]["engine_workflow_node_occurrence"]
-                     if all(n.get(k) == v for k, v in expected.items())]
+            nodes = [n for n in lineages if not n.get("continuation_of_dispatch_id")
+                     and all(n.get(k) == v for k, v in expected.items())
+                     and n.get("workflow_occurrence_id") == n["dispatch_id"]]
             if len(nodes) != 1:
                 task["issues"].append("canonical_node_occurrence_mismatch")
         if dispatch["receipt_kind"] == "terminal_success":

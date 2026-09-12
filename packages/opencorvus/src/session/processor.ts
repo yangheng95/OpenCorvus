@@ -36,6 +36,7 @@ import {
 } from "./tool-failure-cause"
 import { toolResultControl, toolResultDisposition, type ToolResultControl } from "./tool-result-control"
 import { parsePartialJson } from "ai"
+import { copyToolCoordinationBindings } from "@/tool/execution-mode"
 import {
   registerMcpAppToolLifecycleController,
   type McpAppToolLifecycleController,
@@ -796,7 +797,58 @@ export namespace SessionProcessor {
               activityPolicy,
               input.abort,
               async (run) => {
-                const stream = await LLM.stream({ ...streamInput, abort: run.signal })
+                const preparedSteps: Array<{ snapshot: string | undefined }> = []
+                let preparation: Promise<unknown> | undefined
+                await using _preparationSettlement = {
+                  async [Symbol.asyncDispose]() {
+                    // The SDK producer can still be preparing after the abortable
+                    // consumer exits. Join it before attempt cleanup owns its Parts;
+                    // the stream/abort path already carries its failure outcome.
+                    if (preparation) await Promise.allSettled([preparation])
+                  },
+                }
+                const stream = await LLM.stream({
+                  ...streamInput,
+                  abort: run.signal,
+                  tools: Object.fromEntries(
+                    Object.entries(streamInput.tools).map(([name, definition]) => {
+                      const execute = definition.execute
+                      if (!execute) return [name, definition]
+                      return [
+                        name,
+                        copyToolCoordinationBindings(definition, {
+                          ...definition,
+                          execute: (...args: Parameters<typeof execute>) => {
+                            run.signal.throwIfAborted()
+                            // The SDK executes tools independently of fullStream consumption.
+                            markToolExecutionStarted(run.attempt)
+                            return execute(...args)
+                          },
+                        }),
+                      ]
+                    }),
+                  ),
+                  prepareStep: (step) => {
+                    const preparing = (async () => {
+                      run.signal.throwIfAborted()
+                      const stepSnapshot = await Snapshot.track()
+                      run.signal.throwIfAborted()
+                      const part = await Session.updatePart({
+                        id: Identifier.ascending("part"),
+                        messageID: input.assistantMessage.id,
+                        sessionID: input.sessionID,
+                        snapshot: stepSnapshot,
+                        type: "step-start",
+                      })
+                      trackCreatedPart(run.attempt, part.id)
+                      preparedSteps.push({ snapshot: stepSnapshot })
+                      run.signal.throwIfAborted()
+                      return await streamInput.prepareStep?.(step)
+                    })()
+                    preparation = preparing
+                    return preparing
+                  },
+                })
 
                 // LLM.stream returns the canonical @/llm/api wrapped stream.
                 for await (const value of stream.fullStream) {
@@ -1129,20 +1181,13 @@ export namespace SessionProcessor {
                     case "error":
                       throw value.error
 
-                    case "start-step":
-                      snapshot = await Snapshot.track()
-                      {
-                        const part = await Session.updatePart({
-                          id: Identifier.ascending("part"),
-                          messageID: input.assistantMessage.id,
-                          sessionID: input.sessionID,
-                          snapshot,
-                          type: "step-start",
-                        })
-                        trackCreatedPart(run.attempt, part.id)
-                      }
+                    case "start-step": {
+                      const prepared = preparedSteps.shift()
+                      if (!prepared) throw new Error("Provider step started without its committed Session boundary")
+                      snapshot = prepared.snapshot
                       semanticChunkAccepted = true
                       break
+                    }
 
                     case "finish-step":
                       const usage = Session.getUsage({
