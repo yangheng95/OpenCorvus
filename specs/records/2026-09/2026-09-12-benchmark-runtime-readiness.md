@@ -116,3 +116,23 @@ Recall：用户明确“继续bench”。承接已完成的共享恢复修复与
 00:16北京时间实际启动：当前Provider公开流式预检connected，传输层捕获的实际请求gpt-5.6-luna、HTTP200，与成对投影一致。Base batch c78ebbca-bb73-42d8-95dd-8370dfe7f957已提交五个slot计划，首两个run f6494719/26c90986活动；原生首个run 3e27fb9b已进入官方工具循环，首16个完成step的实际请求模型均匹配。完整参数与摘要见[启动回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-benchmark-launch.json)。新8768真实页面与截图已核对，显示原生1例、Base2例运行中，尚无配对评分；旧页面不动。运行时安装继续固定134d，不随本次文档提交移动。
 
 启动交付独立只读复核通过：活动源码干净，实际进程参数、bundle、100例manifest、首五例计划、流式预检与文档一致，无未解决发现。docs:check与差异检查通过；本轮只有启动记录和结果页入口文档变更，未修改生产代码。后续结果由现有定时任务每5分钟进行一次有界快照和真实checker核对。
+
+### 首五例原生条件完成复核
+
+Recall：按“继续bench”的既有授权进行首次定时检查；当前134d安装仍干净、Base前两例活动，不能修改活动源码或扩跑6–100。原生5例均已自然结束并在各自运行器内通过官方replay；现在以同一官方checker独立再执行5次复算，核对固定manifest、run/input/result身份、实际请求模型、medium和50步参数及源码文件摘要，保存原始文件字节摘要和逐例调用/耗时。输入是本轮native五个独立目录，输出为新增审计JSON；没有生产或UI改动，不新调模型。已读上述Recall、启动回执、native runner与原生首例历史回执；独立反馈：本次完成审计前无，产物生成后只读复核。初读结果为strict1/5，所有病例保留；Base有真实Developer/Tester与持续已完成Provider事件，目前未发现失败终态，最终有效性和减半指标仍待成对结果。
+
+五次独立官方replay均通过，逐例部分得分0.8、0.5、1、0.722222、0.727273，strict1/5；实际请求全部为gpt-5.6-luna，来源与参数均匹配。共83个response step、169次Tool，平均121726.8ms。每例11个原始证据文件摘要及官方checker各项结果存入[本轮原生五例审计](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-native-first-five-audit.json)，完整复算输出保留在新证据根native-first-five-audit。未启动额外模型或6–100。
+
+### 当前完成协议的 benchmark 验收遗漏
+
+Recall：定时检查发现Base两例已在真实panel_complete_mission提交完成、Task及所有执行轮次终态，但数分钟仍无评分。立即按共享验收机制审计，不归因网络或模型。活动安装不修改，当前已提交的五例计划保留取证，不追加批次。已读生产mission/board.ts、mission/completion.ts、panel工具、全部harness工具语义比较、run/catalog/verify调用及完整恢复测试。全仓搜索确认旧panel+operation.action只残留于共享auditMissionOutcome；manage_task、skill、bash与生产接口一致，Task轮次静止检查实据通过。独立反馈：原生完成审计已通过，此故障修复前无。
+
+可观察事实：两份实际公开Mission/Task/Session投影保存于本轮根active-terminal-observation-42308/42309.json。原harness函数在同一输入上均输出mission_completed=true、assistant_healthy=true、子Task scored_terminal=true、quiescence.passed=true，但explicit_complete_mission=false和completion_receipt_matches=false。真实工具名称是panel_complete_mission，旧checker只扫描panel及嵌套operation.action，因此waitForTerminal直到600秒无活动才返回，后续catalog/verify又共享同一错误分类。生产公开Mission投影已经核验真实回执和证据；模型已停止活动，不是锁或常驻Session未退出。
+
+根因及旧验收遗漏：harness移植只覆盖类型、数据表和流式执行，any形状使旧工具分派协议能通过类型检查；完整恢复测试虽然执行真实panel_complete_mission，结束在产品投影和数据库快照，没有进入harness终态checker。横向审计还发现checker将整段Mission历史的完成调用要求为一次，而生产仅认可最新用户输入之后的当前完成事实，重启保留历史/再次开启同Mission会被旧完成污染。影响所有使用该共享checker的Base/Advanced、单例/批次/离线复算及Mission重新执行；原生单agent不使用此函数，官方世界评分器不变。
+
+方案：用当前MissionCompletionInput/Receipt公开schema解析panel_complete_mission的真实输入输出，保留精确Mission/Session/Message/Tool/Task/终态证据身份匹配；按最新用户输入划定当前执行轮次，删除旧panel嵌套解析，不引入兼容分支或放宽回执校验。加入当前成功、重新打开后成功及明确失配结果的聚焦正向契约检查；将真实Mission流式恢复测试最后的公开路由输出送入同一个auditMissionOutcome与auditMissionQuiescence，以实际恢复→产品投影→benchmark验收贯通作为验收。真实已保存投影也必须重跑同checker并从false转为严格匹配true。旧原始结果保留，后续核对需要记录评分执行源码与修正后的审计源码，不能把重算归为新的模型实验或无条件把invalid改成pass。当前尚未宣布无效分类修好、全五例有效或调用减半达成。
+
+实现首验：4项21断言通过（44.09秒），完整真实恢复→公开路由→benchmark outcome/quiescence用41.3秒完成。两份真实模型公开投影用新checker复算均为scored_terminal=true、completion_receipt_matches=true、quiescence=true；原checker在完全相同字节上前两项false。新增[修正回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-completion-audit-correction.json)记录投影和审计源码哈希、前后完整判定；不是重新运行模型，也不修改旧result或catalog。等待独立只读审查，活动五例计划自然收尾，其余新批次不启动。
+
+独立只读复审通过：审查者复跑4项21断言并独立核对两份真实公开投影及新checker，未解决发现为0；原生55个文件、5次replay输出和汇总也已独立复核。harness及新增测试的TypeScript检查、docs:check、diff检查通过。原134d前两例已自然密封为invalid，唯一未通过的OpenCorvus审计为旧mission_outcome_audit；其官方replay通过、diagnostic部分得分1和0.5。这些是保留的诊断分数，不改写原sealed审计或计入正式配对。当前catalog/verify仍要求新算audit与sealed记录精确一致，没有为了接纳旧无效结果而放宽该约束。原批次第3/4例按原计划运行，活动安装仍不改动。

@@ -1,6 +1,7 @@
 import { comparePromptComposition, type PromptCompositionFingerprint } from "../../../src/session/prompt-composition"
 import crypto from "node:crypto"
 import { ProviderError } from "../../../src/provider/error"
+import { MissionCompletionInput, MissionCompletionReceipt } from "../../../src/mission/completion"
 
 export const EXTERNAL_BENCHMARK_SCHEMA_VERSION = 1 as const
 
@@ -1321,8 +1322,7 @@ export function auditMissionOutcome(input: {
     task_id: task.task_id,
     ...auditTaskOutcome(task.lifecycle_status, task.transcript),
   }))
-  const missionInactive =
-    input.missionStatus?.status === "inactive" && input.missionRecord?.interruptible === false
+  const missionInactive = input.missionStatus?.status === "inactive" && input.missionRecord?.interruptible === false
   const exactTaskSet =
     JSON.stringify(recordIDs) === JSON.stringify(statusIDs) &&
     JSON.stringify(recordIDs) === JSON.stringify(transcriptIDs)
@@ -1335,9 +1335,7 @@ export function auditMissionOutcome(input: {
   ].sort()
   const missionSessionID = String(input.missionRecord?.sessionID ?? "")
   const transcriptSessionMatches =
-    missionSessionID.length > 0 &&
-    transcriptSessionIDs.length === 1 &&
-    transcriptSessionIDs[0] === missionSessionID
+    missionSessionID.length > 0 && transcriptSessionIDs.length === 1 && transcriptSessionIDs[0] === missionSessionID
   const assistants = input.missionTranscript.filter((message) => message.info?.role === "assistant")
   const users = input.missionTranscript.filter((message) => message.info?.role === "user")
   const latestAssistant = assistants.at(-1)
@@ -1352,19 +1350,29 @@ export function auditMissionOutcome(input: {
     assistantRepliesToLatestUser &&
     latestAssistant?.info?.error === undefined &&
     latestAssistant?.info?.finish !== "error"
-  const completionCalls = input.missionTranscript.flatMap((message) =>
+  const currentTurn = input.missionTranscript.slice(
+    input.missionTranscript.findLastIndex((message) => message.info?.role === "user"),
+  )
+  const completionCalls = currentTurn.flatMap((message) =>
     (message.parts ?? []).flatMap((part) => {
-      if (part.type !== "tool" || part.tool !== "panel" || part.state?.status !== "completed") return []
-      const raw = part.state.input
-      const operation = raw && typeof raw === "object" && "operation" in raw ? raw.operation : raw
-      if (operation?.action !== "complete_mission") return []
-      let output: any
+      if (
+        message.info?.role !== "assistant" ||
+        part.type !== "tool" ||
+        part.tool !== "panel_complete_mission" ||
+        part.state?.status !== "completed"
+      )
+        return []
+      const operation = MissionCompletionInput.safeParse(part.state.input)
+      if (!operation.success) return []
+      let decoded: unknown
       try {
-        output = typeof part.state.output === "string" ? JSON.parse(part.state.output) : part.state.output
+        decoded = typeof part.state.output === "string" ? JSON.parse(part.state.output) : part.state.output
       } catch {
-        output = undefined
+        return []
       }
-      return [{ message, part, operation, output }]
+      const receipt = MissionCompletionReceipt.safeParse(decoded)
+      if (!receipt.success) return []
+      return [{ message, part, operation: operation.data, output: receipt.data }]
     }),
   )
   const completion = completionCalls.length === 1 ? completionCalls[0] : undefined
@@ -1387,6 +1395,9 @@ export function auditMissionOutcome(input: {
       completion.output.assistant_message_id === completion.message.info?.id &&
       completion.output.tool_call_id === completion.part.callID &&
       completion.output.tool_part_id === completion.part.id &&
+      completion.output.summary === completion.operation.summary &&
+      JSON.stringify(completion.operation.task_acceptances.map((item) => item.task_id).sort()) ===
+        JSON.stringify(acceptedTaskIDs) &&
       completion.output.summary === input.missionRecord.completion.summary &&
       completion.output.assistant_message_id === input.missionRecord.completion.messageID &&
       completion.output.tool_call_id === input.missionRecord.completion.toolCallID &&

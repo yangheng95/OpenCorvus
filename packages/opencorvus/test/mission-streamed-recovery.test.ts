@@ -23,6 +23,8 @@ import { auditSchedulerSessionDeliverySettlement } from "@/protocol/delivery"
 import { WorkerTurnDescriptorTable } from "@/session/session.sql"
 import { memoryProject, resetMemoryDatabase } from "./fixture/memory"
 import { databaseSnapshot } from "../script/benchmark/external-agent/runtime-evidence"
+import { auditMissionOutcome, auditMissionQuiescence } from "../script/benchmark/external-agent/contract"
+import { Server } from "@/server/server"
 
 const model = { providerID: "recovery-stream", modelID: "deterministic" }
 const usage = {
@@ -438,6 +440,43 @@ test("a Mission recovers a committed side effect and first starts its independen
         })
         expect(SessionStatus.getExecution(mission.id, occurrence.inputMessageID)).toMatchObject({ type: "idle" })
         expect(auditSchedulerSessionDeliverySettlement(mission.id).passed).toBe(true)
+        const readProjection = async (route: string) => {
+          const url = new URL(route, "http://localhost")
+          url.searchParams.set("directory", project.path)
+          const response = await Server.App().request(url.toString(), {
+            headers: { "x-opencorvus-directory": project.path },
+          })
+          expect(response.status).toBe(200)
+          return response.json() as Promise<any>
+        }
+        const [missionRecords, missionStatus, missionTranscript, taskBoard, taskTranscript] = await Promise.all([
+          readProjection("/mission?limit=100"),
+          readProjection(`/mission/${mission.missionID}/status`),
+          readProjection(`/session/${mission.id}/message`),
+          readProjection(`/task/${taskID}/board?sync=0`),
+          readProjection(`/task/${taskID}/transcript`),
+        ])
+        const missionRecord = missionRecords.find((item: any) => item.missionID === mission.missionID)
+        expect(
+          auditMissionOutcome({
+            missionRecord,
+            missionStatus,
+            missionTranscript,
+            taskTranscripts: [{ task_id: taskID, lifecycle_status: taskBoard.task.status, transcript: taskTranscript }],
+          }),
+        ).toMatchObject({
+          passed: true,
+          scored_terminal: true,
+          explicit_complete_mission: true,
+          completion_receipt_matches: true,
+        })
+        expect(
+          auditMissionQuiescence({
+            missionRecord,
+            missionStatus,
+            taskBoards: [{ task_id: taskID, board: taskBoard }],
+          }),
+        ).toMatchObject({ passed: true, mission_completed: true, task_count: 1 })
         expect({ taskID, calls, failures, rootStep, developerStep, testerStep }).toMatchObject({
           taskID: expect.any(String),
           failures: [],
