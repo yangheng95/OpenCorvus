@@ -94,12 +94,12 @@ def sealed_directory(directory, mutate=lambda files: None):
             "tool_part_id": part["id"], "tool_call_id": part["callID"], "tool_name": "dispatch_agent",
             "workflow_binding": binding, "workflow_node_id": role, "dispatch_id": role + "-dispatch-id",
             "workflow_occurrence_id": role + "-dispatch-id",
-            "time_created": 10 if role == "developer" else 30})
+            "time_created": 8 if role == "developer" else 28})
         artifacts.append({"id": lineage_id, "task_id": "task", "kind": "dispatch_lineage", "payload": payload,
                           "payload_bytes": len(payload.encode()), "payload_sha256": hashlib.sha256(payload.encode()).hexdigest()})
         start, end = (10, 20) if role == "developer" else (30, 40)
         canonical_messages.extend([
-            {"id": role + "-input", "session_id": role, "agent": role, "role": "user", "time_created": start},
+            {"id": role + "-input", "session_id": role, "agent": role, "role": "user", "time_created": start - 1},
             {"id": role + "-final", "session_id": role, "agent": role, "role": "assistant", "parent_id": role + "-input",
              "time_created": end - 1, "time_completed": end, "finish": "stop", "error_name": None}])
         settlement = json.dumps({"task_id": "task", "dispatch_lineage_id": lineage_id, "dispatch_id": role + "-dispatch-id",
@@ -124,6 +124,35 @@ def sealed_directory(directory, mutate=lambda files: None):
     return frozen
 
 
+def collection_frontiers(files):
+    rows = files["runtime-database-snapshot.json"]["rows"]["engine_artifact"]
+    for task in files["task-transcripts.json"]:
+        for message in task["transcript"]:
+            for part in message.get("parts", []):
+                if part.get("tool") != "dispatch_agent":
+                    continue
+                state = part["state"]
+                dispatch = state["input"]["dispatch"]
+                result = json.loads(state["output"])
+                name = part["id"]
+                part["tool"] = "dispatch_agents"
+                state["input"] = {"team": [{"name": name, "target": dispatch["target"],
+                                           "responsibility": "Current ready node", "depends_on": []}],
+                                  "dispatches": [{"dispatch": dispatch}]}
+                state["output"] = json.dumps({"members": [{"member_index": 0, "name": name,
+                    "target": dispatch["target"], "status": "completed", "outcome": result}]})
+                for row in rows:
+                    if row["kind"] != "dispatch_lineage":
+                        continue
+                    payload = json.loads(row["payload"])
+                    if payload["tool_part_id"] != part["id"]:
+                        continue
+                    payload.update(tool_name="dispatch_agents", collection_member_index=0, collection_member_count=1)
+                    row["payload"] = json.dumps(payload)
+                    raw = row["payload"].encode()
+                    row.update(payload_bytes=len(raw), payload_sha256=hashlib.sha256(raw).hexdigest())
+
+
 class SealedDirectoryTests(unittest.TestCase):
     def run_audit(self, mutate=lambda files: None):
         with tempfile.TemporaryDirectory() as name:
@@ -134,6 +163,63 @@ class SealedDirectoryTests(unittest.TestCase):
     def test_sealed_completed_condition(self):
         result = self.run_audit()
         self.assertEqual((result["case_index"], result["condition_satisfied"]), (1, True))
+
+    def test_lineage_written_after_input_is_reported(self):
+        def mutate(files):
+            rows = files["runtime-database-snapshot.json"]["rows"]["engine_artifact"]
+            row = next(a for a in rows if a["id"] == "developer-lineage")
+            value = json.loads(row["payload"])
+            value["time_created"] = 10
+            row["payload"] = json.dumps(value)
+            data = row["payload"].encode()
+            row.update(payload_bytes=len(data), payload_sha256=hashlib.sha256(data).hexdigest())
+        self.assertEqual(self.run_audit(mutate)["tasks"][0]["issues"],
+                         ["canonical_occurrence_lineage_order_mismatch"])
+
+    def test_canonical_timestamp_values_have_explicit_errors(self):
+        for identity, field, code in [
+            ("developer-input", "time_created", "canonical_input_creation_time_invalid"),
+            ("developer-final", "time_created", "canonical_final_creation_time_invalid"),
+            ("developer-final", "time_completed", "canonical_final_completion_time_invalid"),
+        ]:
+            for invalid in (float("nan"), float("inf"), True, 0, 2**53, 10**400):
+                with self.subTest(identity=identity, field=field, invalid=invalid):
+                    def mutate(files):
+                        row = next(m for m in files["runtime-database-snapshot.json"]["rows"]["message"]
+                                   if m["id"] == identity)
+                        row[field] = invalid
+                    with self.assertRaisesRegex(ValueError, code):
+                        self.run_audit(mutate)
+
+    def test_collection_frontiers_keep_exact_member_lineage(self):
+        result = self.run_audit(collection_frontiers)
+        self.assertEqual(result["condition_satisfied"], True)
+        self.assertEqual([(d["tool_name"], d["collection_member_index"], d["collection_member_count"])
+                          for d in result["tasks"][0]["initial_dispatches"]],
+                         [("dispatch_agents", 0, 1), ("dispatch_agents", 0, 1)])
+
+    def test_collection_result_member_index_has_explicit_error(self):
+        def mutate(files):
+            collection_frontiers(files)
+            part = files["task-transcripts.json"][0]["transcript"][1]["parts"][0]
+            output = json.loads(part["state"]["output"])
+            output["members"][0]["member_index"] = 1
+            part["state"]["output"] = json.dumps(output)
+        with self.assertRaisesRegex(ValueError, "dispatch_collection_member_set_mismatch"):
+            self.run_audit(mutate)
+
+    def test_collection_lineage_member_drift_is_reported(self):
+        def mutate(files):
+            collection_frontiers(files)
+            row = next(a for a in files["runtime-database-snapshot.json"]["rows"]["engine_artifact"]
+                       if a["id"] == "developer-lineage")
+            payload = json.loads(row["payload"])
+            payload.update(collection_member_index=1, collection_member_count=2)
+            row["payload"] = json.dumps(payload)
+            raw = row["payload"].encode()
+            row.update(payload_bytes=len(raw), payload_sha256=hashlib.sha256(raw).hexdigest())
+        self.assertEqual(self.run_audit(mutate)["tasks"][0]["issues"],
+                         ["occurrence_dispatch_producer_mismatch", "dispatch_lineage_identity_mismatch"])
 
     def test_frozen_case_identity_error(self):
         with self.assertRaisesRegex(ValueError, "frozen_case_identity_mismatch"):
@@ -163,36 +249,71 @@ class SealedDirectoryTests(unittest.TestCase):
         self.assertIn("continuation_predecessor_mismatch", result["tasks"][0]["issues"])
         self.assertEqual(result["condition_satisfied"], False)
 
+    @staticmethod
+    def coordination_continuation(files):
+        rows = files["runtime-database-snapshot.json"]["rows"]
+        original = next(a for a in rows["engine_artifact"] if a["id"] == "tester-lineage")
+        lineage = json.loads(original["payload"])
+        lineage.update(dispatch_id="retry-dispatch", continuation_of_dispatch_id="tester-dispatch-id",
+            coordination_action_id="coordination", time_created=45,
+            orchestrator_message_id="retry-producer", tool_part_id="retry-part", tool_call_id="retry-call")
+        settlement = {"task_id": "task", "dispatch_lineage_id": "retry-lineage", "dispatch_id": "retry-dispatch",
+            "session_id": "tester", "outcome": {"kind": "terminal_success", "final_message_id": "retry-final"}, "time_created": 50}
+        for identity, kind, value in [("retry-lineage", "dispatch_lineage", lineage), ("retry-settlement", "dispatch_settlement", settlement)]:
+            payload = json.dumps(value)
+            rows["engine_artifact"].append({"id": identity, "task_id": "task", "kind": kind, "payload": payload,
+                "payload_bytes": len(payload.encode()), "payload_sha256": hashlib.sha256(payload.encode()).hexdigest()})
+        rows["message"].extend([
+            {"id": "retry-input", "session_id": "tester", "agent": "tester", "role": "user", "time_created": 46},
+            {"id": "retry-final", "session_id": "tester", "agent": "tester", "role": "assistant", "parent_id": "retry-input",
+             "time_created": 49, "time_completed": 50, "finish": "stop", "error_name": None}])
+        event = {"sequence": 1, "status": {"type": "terminal", "reason": "completed"}, "emittedAt": 50}
+        files["terminal-board.json"]["tasks"][0]["board"]["executionProjection"]["occurrences"].append({
+            "agent": "tester", "sessionID": "tester", "inputMessageID": "retry-input", "preparedAt": 47,
+            "events": [event], "latest": event})
+        files["task-transcripts.json"][0]["transcript"].extend([
+            {"info": {"id": "retry-input", "sessionID": "tester", "role": "user"}},
+            {"info": {"id": "retry-producer", "sessionID": "orchestrator", "agent": "orchestrator", "role": "assistant"},
+             "parts": [{"id": "retry-part", "callID": "retry-call", "tool": "dispatch_agent", "state": {
+                 "status": "completed", "input": {"dispatch": {"target": "tester", "turn": {"kind": "continuation",
+                     "authority": {"kind": "coordination_action", "coordination_action_id": "coordination"}}}},
+                 "output": json.dumps({"kind": "accepted", "session_id": "tester", "dispatch_lineage_id": "retry-lineage"})}}]}])
+
     def test_coordination_action_continuation(self):
-        def mutate(files):
-            rows = files["runtime-database-snapshot.json"]["rows"]
-            original = next(a for a in rows["engine_artifact"] if a["id"] == "tester-lineage")
-            lineage = json.loads(original["payload"])
-            lineage.update(dispatch_id="retry-dispatch", continuation_of_dispatch_id="tester-dispatch-id",
-                coordination_action_id="coordination", time_created=45,
-                orchestrator_message_id="retry-producer", tool_part_id="retry-part", tool_call_id="retry-call")
-            settlement = {"task_id": "task", "dispatch_lineage_id": "retry-lineage", "dispatch_id": "retry-dispatch",
-                "session_id": "tester", "outcome": {"kind": "terminal_success", "final_message_id": "retry-final"}, "time_created": 50}
-            for identity, kind, value in [("retry-lineage", "dispatch_lineage", lineage), ("retry-settlement", "dispatch_settlement", settlement)]:
-                payload = json.dumps(value)
-                rows["engine_artifact"].append({"id": identity, "task_id": "task", "kind": kind, "payload": payload,
-                    "payload_bytes": len(payload.encode()), "payload_sha256": hashlib.sha256(payload.encode()).hexdigest()})
-            rows["message"].extend([
-                {"id": "retry-input", "session_id": "tester", "agent": "tester", "role": "user", "time_created": 45},
-                {"id": "retry-final", "session_id": "tester", "agent": "tester", "role": "assistant", "parent_id": "retry-input",
-                 "time_created": 49, "time_completed": 50, "finish": "stop", "error_name": None}])
-            event = {"sequence": 1, "status": {"type": "terminal", "reason": "completed"}, "emittedAt": 50}
-            files["terminal-board.json"]["tasks"][0]["board"]["executionProjection"]["occurrences"].append({
-                "agent": "tester", "sessionID": "tester", "inputMessageID": "retry-input", "preparedAt": 45,
-                "events": [event], "latest": event})
-            files["task-transcripts.json"][0]["transcript"].extend([
-                {"info": {"id": "retry-input", "sessionID": "tester", "role": "user"}},
-                {"info": {"id": "retry-producer", "sessionID": "orchestrator", "agent": "orchestrator", "role": "assistant"},
-                 "parts": [{"id": "retry-part", "callID": "retry-call", "tool": "dispatch_agent", "state": {
-                     "status": "completed", "input": {"dispatch": {"target": "tester", "turn": {"kind": "continuation",
-                         "authority": {"kind": "coordination_action", "coordination_action_id": "coordination"}}}},
-                     "output": json.dumps({"kind": "accepted", "session_id": "tester", "dispatch_lineage_id": "retry-lineage"})}}]}])
-        self.assertEqual(self.run_audit(mutate)["condition_satisfied"], True)
+        self.assertEqual(self.run_audit(self.coordination_continuation)["condition_satisfied"], True)
+        def collection(files):
+            self.coordination_continuation(files)
+            collection_frontiers(files)
+        self.assertEqual(self.run_audit(collection)["condition_satisfied"], True)
+
+    def test_continuation_accepted_receipt_identity_error(self):
+        for collection in (False, True):
+            with self.subTest(collection=collection):
+                def mutate(files):
+                    self.coordination_continuation(files)
+                    part = files["task-transcripts.json"][0]["transcript"][-1]["parts"][0]
+                    part["state"]["output"] = json.dumps({"kind": "accepted", "session_id": "foreign-session",
+                                                        "dispatch_lineage_id": "foreign-lineage"})
+                    if collection:
+                        collection_frontiers(files)
+                self.assertEqual(self.run_audit(mutate)["tasks"][0]["issues"],
+                                 ["occurrence_dispatch_receipt_mismatch"])
+
+    def test_continuation_terminal_receipt_final_identity(self):
+        for collection in (False, True):
+            for final_id in ("retry-final", "foreign-final"):
+                with self.subTest(collection=collection, final_id=final_id):
+                    def mutate(files):
+                        self.coordination_continuation(files)
+                        part = files["task-transcripts.json"][0]["transcript"][-1]["parts"][0]
+                        part["state"]["output"] = json.dumps({"kind": "terminal_success", "session_id": "tester",
+                                                            "final_message_id": final_id})
+                        if collection:
+                            collection_frontiers(files)
+                    result = self.run_audit(mutate)
+                    expected = [] if final_id == "retry-final" else ["occurrence_dispatch_receipt_mismatch"]
+                    self.assertEqual(result["tasks"][0]["issues"], expected)
+                    self.assertEqual(result["condition_satisfied"], final_id == "retry-final")
 
     def test_fabricated_verifier_occurrence_is_reported(self):
         def mutate(files):
@@ -217,6 +338,10 @@ class SealedDirectoryTests(unittest.TestCase):
             part["state"]["output"] = json.dumps(receipt)
             messages.append({"info": {"id": "developer-final", "parentID": "developer-input", "sessionID": "developer", "role": "assistant", "time": {"completed": 20}}})
         self.assertEqual(self.run_audit(mutate)["condition_satisfied"], True)
+        def collection(files):
+            mutate(files)
+            collection_frontiers(files)
+        self.assertEqual(self.run_audit(collection)["condition_satisfied"], True)
 
     def test_fabricated_terminal_final_is_reported(self):
         def mutate(files):
@@ -225,7 +350,7 @@ class SealedDirectoryTests(unittest.TestCase):
                 "kind": "terminal_success", "session_id": "developer", "final_message_id": "invented"})
             messages.append({"info": {"id": "invented", "parentID": "developer-input", "sessionID": "developer",
                                        "role": "assistant", "time": {"completed": 20}}})
-        self.assertEqual(self.run_audit(mutate)["tasks"][0]["issues"], ["terminal_receipt_final_message_mismatch"])
+        self.assertEqual(self.run_audit(mutate)["tasks"][0]["issues"], ["occurrence_dispatch_receipt_mismatch", "terminal_receipt_final_message_mismatch"])
 
     def test_completion_binding_matches_condition(self):
         board, messages = evidence()

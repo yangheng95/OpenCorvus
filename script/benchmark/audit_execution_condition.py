@@ -10,6 +10,51 @@ from pathlib import Path
 from measure_publication_overhead import measurement_inputs
 
 
+def valid_timestamp(value):
+    return type(value) in (int, float) and 0 < value <= 2**53 - 1 and math.isfinite(value)
+
+
+def dispatch_members(part):
+    """Read members of a real persisted dispatch Tool, preserving outer identity."""
+    tool = part.get("tool")
+    state = part.get("state", {})
+    if tool not in ("dispatch_agent", "dispatch_agents") or state.get("status") != "completed":
+        return []
+    request, receipt = state["input"], json.loads(state["output"])
+    if tool == "dispatch_agent":
+        return [{"dispatch": request["dispatch"], "receipt": receipt, "tool_name": tool,
+                 "collection_member_index": None, "collection_member_count": None}]
+    requests, team, results = request["dispatches"], request["team"], receipt["members"]
+    count = len(requests)
+    if (count == 0 or len(team) != count or len(results) != count
+            or any(type(r.get("member_index")) is not int for r in results)
+            or [r.get("member_index") for r in results] != list(range(count))
+            or len({m["name"] for m in team}) != count):
+        raise ValueError("dispatch_collection_member_set_mismatch")
+    members = []
+    for index, (entry, owner, result) in enumerate(zip(requests, team, results)):
+        dispatch = entry["dispatch"]
+        if (owner["target"] != dispatch["target"] or result["target"] != dispatch["target"]
+                or owner["name"] != result["name"]):
+            raise ValueError("dispatch_collection_member_identity_mismatch")
+        if result["status"] == "failed":
+            continue
+        if result["status"] != "completed":
+            raise ValueError("dispatch_collection_member_status_invalid")
+        members.append({"dispatch": dispatch, "receipt": result["outcome"], "tool_name": tool,
+                        "collection_member_index": index, "collection_member_count": count})
+    return members
+
+
+def member_matches_lineage(member, lineage):
+    if member["tool_name"] != lineage.get("tool_name"):
+        return False
+    fields = ("collection_member_index", "collection_member_count")
+    if member["tool_name"] == "dispatch_agent":
+        return all(key not in lineage for key in fields)
+    return all(type(lineage.get(key)) is int and lineage[key] == member[key] for key in fields)
+
+
 def audit_task(board, messages, workflow, executor, verifier):
     issues = []
     task_id = board["task"]["id"]
@@ -33,7 +78,7 @@ def audit_task(board, messages, workflow, executor, verifier):
         for occurrence in owned:
             times = [occurrence.get("preparedAt")] + [e.get("emittedAt") for e in occurrence.get("events", [])]
             sequences = [e.get("sequence") for e in occurrence.get("events", [])]
-            if (any(type(t) not in (int, float) or not math.isfinite(t) for t in times)
+            if (any(not valid_timestamp(t) for t in times)
                     or times != sorted(times)
                     or any(type(s) is not int for s in sequences)
                     or sequences != sorted(set(sequences))):
@@ -53,18 +98,17 @@ def audit_task(board, messages, workflow, executor, verifier):
         if message["info"].get("role") != "assistant" or message["info"].get("agent") != "orchestrator":
             continue
         for part in message.get("parts", []):
-            if part.get("tool") != "dispatch_agent" or part.get("state", {}).get("status") != "completed":
-                continue
-            dispatch = part["state"]["input"]["dispatch"]
-            turn = dispatch["turn"]
-            if dispatch["target"] in (executor, verifier) and turn["kind"] == "initial":
-                receipt = json.loads(part["state"]["output"])
-                starts.append({"target": dispatch["target"], "subject": turn["workflow_subject"], "part_id": part["id"],
-                               "session_id": receipt["session_id"], "receipt_kind": receipt["kind"],
-                               "lineage_id": receipt.get("dispatch_lineage_id"),
-                               "producer_session_id": message["info"].get("sessionID"),
-                               "producer_message_id": message["info"].get("id"),
-                               "call_id": part.get("callID"), "final_message_id": receipt.get("final_message_id")})
+            for member in dispatch_members(part):
+                dispatch, receipt = member["dispatch"], member["receipt"]
+                turn = dispatch["turn"]
+                if dispatch["target"] in (executor, verifier) and turn["kind"] == "initial":
+                    starts.append({"target": dispatch["target"], "subject": turn["workflow_subject"], "part_id": part["id"],
+                                   "session_id": receipt.get("session_id"), "receipt_kind": receipt["kind"],
+                                   "lineage_id": receipt.get("dispatch_lineage_id"),
+                                   "producer_session_id": message["info"].get("sessionID"),
+                                   "producer_message_id": message["info"].get("id"),
+                                   "call_id": part.get("callID"), "final_message_id": receipt.get("final_message_id"),
+                                   **{key: member[key] for key in ("tool_name", "collection_member_index", "collection_member_count")}})
     for role in (executor, verifier):
         selected = [d for d in starts if d["target"] == role]
         if len(selected) != 1 or selected[0]["subject"] != {
@@ -98,7 +142,11 @@ def audit_lineages(task, board, messages, snapshot):
         payload = artifact["payload"].encode()
         if hashlib.sha256(payload).hexdigest() != artifact["payload_sha256"] or len(payload) != artifact["payload_bytes"]:
             raise ValueError("lineage_payload_digest_mismatch")
-        lineages.append(json.loads(payload))
+        lineage = json.loads(payload)
+        created = lineage["time_created"]
+        if not valid_timestamp(created):
+            raise ValueError("lineage_creation_time_invalid")
+        lineages.append(lineage)
     canonical_messages = snapshot["rows"]["message"]
     settlements = []
     for artifact in artifacts:
@@ -106,19 +154,31 @@ def audit_lineages(task, board, messages, snapshot):
             payload = artifact["payload"].encode()
             if hashlib.sha256(payload).hexdigest() != artifact["payload_sha256"] or len(payload) != artifact["payload_bytes"]:
                 raise ValueError("settlement_payload_digest_mismatch")
-            settlements.append(json.loads(payload))
+            settlement = json.loads(payload)
+            if not valid_timestamp(settlement["time_created"]):
+                raise ValueError("settlement_creation_time_invalid")
+            settlements.append(settlement)
     for occurrence in task["occurrences"]:
         users = [m for m in canonical_messages if m["id"] == occurrence["inputMessageID"]
                  and m["session_id"] == occurrence["sessionID"] and m["role"] == "user"
                  and m["agent"] == occurrence["agent"]]
-        if len(users) != 1 or users[0]["time_created"] > occurrence["preparedAt"]:
+        if len(users) != 1:
+            task["issues"].append("canonical_occurrence_input_mismatch")
+            continue
+        if not valid_timestamp(users[0]["time_created"]):
+            raise ValueError("canonical_input_creation_time_invalid")
+        if users[0]["time_created"] > occurrence["preparedAt"]:
             task["issues"].append("canonical_occurrence_input_mismatch")
             continue
         if occurrence["latest"]["status"].get("reason") != "completed":
             continue
         finals = [m for m in canonical_messages if m.get("parent_id") == occurrence["inputMessageID"]
                   and m["session_id"] == occurrence["sessionID"] and m["role"] == "assistant"]
+        if any(not valid_timestamp(m["time_created"]) for m in finals):
+            raise ValueError("canonical_final_creation_time_invalid")
         final = max(finals, key=lambda m: (m["time_created"], m["id"])) if finals else None
+        if final and final.get("time_completed") is not None and not valid_timestamp(final["time_completed"]):
+            raise ValueError("canonical_final_completion_time_invalid")
         matches = [s for s in settlements if final and s["outcome"].get("final_message_id") == final["id"]
                    and s["session_id"] == occurrence["sessionID"] and s["outcome"]["kind"] == "terminal_success"]
         if (final is None or len(matches) != 1 or not final.get("time_completed") or final.get("error_name")
@@ -131,20 +191,30 @@ def audit_lineages(task, board, messages, snapshot):
         if (not lineage or owner["kind"] != "dispatch_lineage" or owner["task_id"] != task["task_id"]
                 or lineage["child_session_id"] != occurrence["sessionID"]
                 or lineage["target_agent_id"] != occurrence["agent"]
-                or lineage["dispatch_id"] != matches[0]["dispatch_id"]
-                or occurrence["preparedAt"] > lineage["time_created"]):
+                or lineage["dispatch_id"] != matches[0]["dispatch_id"]):
             task["issues"].append("canonical_occurrence_lineage_mismatch")
         elif board["task"].get("completionDecision"):
-            producers = [(m, p) for m in messages for p in m.get("parts", [])
+            # Current admission commits lineage before the input and descriptor.
+            # The input <= preparedAt boundary was checked above.
+            if lineage["time_created"] > users[0]["time_created"]:
+                task["issues"].append("canonical_occurrence_lineage_order_mismatch")
+            producers = [(m, p, member) for m in messages for p in m.get("parts", [])
                          if m["info"].get("id") == lineage["orchestrator_message_id"]
                          and m["info"].get("sessionID") == lineage["orchestrator_session_id"]
                          and m["info"].get("agent") == "orchestrator" and m["info"].get("role") == "assistant"
                          and p.get("id") == lineage["tool_part_id"] and p.get("callID") == lineage["tool_call_id"]
-                         and p.get("tool") == "dispatch_agent" and p.get("state", {}).get("status") == "completed"]
+                         for member in dispatch_members(p) if member_matches_lineage(member, lineage)]
             if len(producers) != 1:
                 task["issues"].append("occurrence_dispatch_producer_mismatch")
             else:
-                requested = producers[0][1]["state"]["input"]["dispatch"]
+                requested = producers[0][2]["dispatch"]
+                receipt = producers[0][2]["receipt"]
+                receipt_matches = receipt.get("session_id") == occurrence["sessionID"] and (
+                    (receipt.get("kind") == "accepted" and receipt.get("dispatch_lineage_id") == owner["id"])
+                    or (receipt.get("kind") == "terminal_success" and receipt.get("final_message_id") == final["id"])
+                )
+                if not receipt_matches:
+                    task["issues"].append("occurrence_dispatch_receipt_mismatch")
                 turn = requested["turn"]
                 parent_id = lineage.get("continuation_of_dispatch_id")
                 authority_matches = not parent_id
@@ -191,7 +261,8 @@ def audit_lineages(task, board, messages, snapshot):
                 value = json.loads(candidate["payload"])
                 if (value.get("orchestrator_session_id") == dispatch["producer_session_id"] and
                         value.get("orchestrator_message_id") == dispatch["producer_message_id"] and
-                        value.get("tool_part_id") == dispatch["part_id"] and value.get("tool_call_id") == dispatch["call_id"]):
+                        value.get("tool_part_id") == dispatch["part_id"] and value.get("tool_call_id") == dispatch["call_id"]
+                        and member_matches_lineage(dispatch, value)):
                     candidates.append(candidate)
             row = candidates[0] if len(candidates) == 1 else None
         else:
@@ -207,9 +278,9 @@ def audit_lineages(task, board, messages, snapshot):
             "task_id": task["task_id"], "child_session_id": dispatch["session_id"],
             "target_agent_id": dispatch["target"], "orchestrator_session_id": dispatch["producer_session_id"],
             "orchestrator_message_id": dispatch["producer_message_id"], "tool_part_id": dispatch["part_id"],
-            "tool_call_id": dispatch["call_id"], "tool_name": "dispatch_agent",
+            "tool_call_id": dispatch["call_id"],
         }
-        if any(lineage.get(k) != v for k, v in matches.items()):
+        if any(lineage.get(k) != v for k, v in matches.items()) or not member_matches_lineage(dispatch, lineage):
             task["issues"].append("dispatch_lineage_identity_mismatch")
         binding = lineage["workflow_binding"]
         subject = dispatch["subject"]

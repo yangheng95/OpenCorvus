@@ -136,3 +136,21 @@ Recall：定时检查发现Base两例已在真实panel_complete_mission提交完
 实现首验：4项21断言通过（44.09秒），完整真实恢复→公开路由→benchmark outcome/quiescence用41.3秒完成。两份真实模型公开投影用新checker复算均为scored_terminal=true、completion_receipt_matches=true、quiescence=true；原checker在完全相同字节上前两项false。新增[修正回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-completion-audit-correction.json)记录投影和审计源码哈希、前后完整判定；不是重新运行模型，也不修改旧result或catalog。等待独立只读审查，活动五例计划自然收尾，其余新批次不启动。
 
 独立只读复审通过：审查者复跑4项21断言并独立核对两份真实公开投影及新checker，未解决发现为0；原生55个文件、5次replay输出和汇总也已独立复核。harness及新增测试的TypeScript检查、docs:check、diff检查通过。原134d前两例已自然密封为invalid，唯一未通过的OpenCorvus审计为旧mission_outcome_audit；其官方replay通过、diagnostic部分得分1和0.5。这些是保留的诊断分数，不改写原sealed审计或计入正式配对。当前catalog/verify仍要求新算audit与sealed记录精确一致，没有为了接纳旧无效结果而放宽该约束。原批次第3/4例按原计划运行，活动安装仍不改动。
+
+### 条件审计的 write-ahead 谱系契约
+
+Recall：继续运营中，原生五例已独立复核，Base已有1/2/4密封、3随后结束、5活动，不动134d运行器和旧记录。先对已密封1/2/4运行现有真实条件checker以提前发现问题，输出interim-condition-001-002-004.json。三例均因canonical_occurrence_lineage_mismatch被判不符合，但原始dispatch全部明确绑定execution-verification两个节点，独立Verifier已在Developer完成后执行。独立agent反馈：本次修复前无。
+
+直接触发是审计器拒绝preparedAt大于lineage.time_created；当前共享生产协议恰是先提交write-ahead lineage（预写派发谱系），再创建用户输入，最后提交Worker Turn Descriptor（工作轮次描述符），preparedAt取descriptor.time.created。三例六个轮次均满足lineage < input < descriptor，间隔124–400ms；不是谱系被改写。第四例新密封也同样满足。旧测试把lineage、input与preparedAt全部设成相等，反向比较因此仍绿；移植移除了旧node occurrence表却未纠正时间契约。已读dispatch-lineage.ts的claim/record先行提交、dispatch-lineage-facts.ts、task-event.ts的执行投影、完整审计器/测试及当前架构。
+
+横向审计：时间关系影响共享initial/continuation、单例/集合、重启恢复后同Session新输入，任务/项目身份已有独立匹配不能放宽。审计器还只读取dispatch_agent，而生产dispatch_agents是同一真实outer Tool的有序成员，按collection_member_index/count绑定相同派发协议；当前实验要求仅声明工作流和两角色，并未限制用哪个合法工具。该遗漏会错误拒绝合法集合，须同步修复，不能新增旧协议兼容或合成子Tool。成员的输入、结果、团队身份及谱系index/count必须精确对应，终态重放也采用同一提取函数。
+
+实施：明确核对lineage.time_created <= durable user.time_created <= descriptor preparedAt，分离身份错误和时间错误；修正fixture为非相等的真实因果顺序，增加晚到谱系的明确错误契约。统一单派发与集合真实成员读取，涵盖initial、continuation、terminal_success重放和错位成员。保持原始世界得分、封存字节、模型/提示和运行时不变。聚焦Python测试与已密封真实条件checker共同验收，独立只读审查后提交；完整五例结果出来后再给总条件率与正式诊断复核，不以已完成子集外推全批。
+
+首轮验证：22项Python检查通过；单例与集合的初始、coordination continuation、terminal_success重放均通过，错位成员和反向因果输入产生明确错误。原1/2/4三例初审0/3的同一密封数据经修正后全部通过，随后已密封第3例同样通过；[前四例条件审计](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-first-four-condition-audit.json)保留原source_status=invalid和完整输入哈希，condition_satisfied=4/4。未重新调用模型，未改变旧目录/得分或活动运行器。等待独立只读复核；第五例尚在运行。
+
+独立首审复现了续跑回执身份缺口：审计已验证continuation输入authority和canonical settlement，却未把该次Tool成员输出的session/lineage/final绑定回同一轮次；替换回执为foreign-session/foreign-lineage仍被接受，单例和集合都有。同步补入每一完成轮次的真实输出核对：accepted必须匹配该Session与lineage artifact；terminal_success必须匹配同一canonical final/settlement。初始派发原有验收保留，新增续跑两种回执的明确错误测试，再交独立复审。
+
+首审另复现canonical user.time_created=NaN绕过两个大于比较的问题。统一时间值检查用于执行事件、lineage、用户输入、所选final及settlement：必须是有限的正数并在JavaScript安全数值范围内；保留各字段明确错误码。真实四例八条时间链已由审查者独立核对，均为严格lineage<input<prepared；20个输入文件与四份manifest哈希及新报告一致。
+
+最终独立复审通过：25项Python检查通过，续跑外来回执与NaN输入的原复现均得到明确错误；审查者重新核对真实四例，最终checker报告逐字节一致，全部符合条件且保留原invalid。两项有效发现均已关闭。仅条件审计代码/测试/记录变更，无模型、运行时或UI改动；第五例仍按原计划运行，完整业务分数、效率和配对验收待其结束后处理。
