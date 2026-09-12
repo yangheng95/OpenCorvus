@@ -2,6 +2,14 @@ import { comparePromptComposition, type PromptCompositionFingerprint } from "../
 import crypto from "node:crypto"
 import { ProviderError } from "../../../src/provider/error"
 import { MissionCompletionInput, MissionCompletionReceipt } from "../../../src/mission/completion"
+export {
+  BENCHMARK_RUNNER_CLEANUP_TIMEOUT_MS,
+  acquireBenchmarkResourceWithAdmission,
+  benchmarkRunnerShutdownGraceMs,
+  createBenchmarkAdmissionGate,
+  createBenchmarkRunnerStopController,
+  installBenchmarkTerminationHandlers,
+} from "../../../../../script/benchmark/process-lifecycle"
 
 export const EXTERNAL_BENCHMARK_SCHEMA_VERSION = 1 as const
 
@@ -1470,6 +1478,59 @@ export type BatchProfileSlot = {
   profile: "base" | "advanced"
 }
 
+export const AUTOMATIONBENCH_SETTLED_BATCH_STATUSES = ["completed", "settled_from_failed_receipt"] as const
+export const AUTOMATIONBENCH_TERMINAL_RUN_STATUSES = ["scored", "invalid", "blocked_preflight", "failed"] as const
+
+export function auditAutomationBenchBatchSettlement(input: {
+  expected: BatchProfileSlot[]
+  launched: Array<BatchProfileSlot & { run_id?: unknown; run_status?: unknown }>
+  eligible: Array<BatchProfileSlot & { run_id?: unknown }>
+}) {
+  const violations: string[] = []
+  const terminalLaunched = input.launched.filter((item) => {
+    const terminal =
+      typeof item.run_id === "string" &&
+      item.run_id.length > 0 &&
+      typeof item.run_status === "string" &&
+      (AUTOMATIONBENCH_TERMINAL_RUN_STATUSES as readonly string[]).includes(item.run_status)
+    if (!terminal) violations.push(`batch_slot_unsettled:${item.profile}:${item.case_index}`)
+    return terminal
+  })
+  const key = (item: BatchProfileSlot) => `${item.case_index}:${item.profile}`
+  const expected = [...new Set(input.expected.map(key))].sort()
+  const settled = [...new Set([...terminalLaunched, ...input.eligible].map(key))].sort()
+  if (JSON.stringify(settled) !== JSON.stringify(expected)) violations.push("settled_case_coverage")
+  return { passed: violations.length === 0, violations }
+}
+
+export function auditAutomationBenchBatchPublication(input: {
+  batchRunID: string
+  expectedEligibleRunIDs: string[]
+  batches: Array<{
+    batch_run_id?: unknown
+    receipt_present?: unknown
+    audit?: { passed?: unknown; status?: unknown }
+    eligible_run_ids?: unknown
+  }>
+}) {
+  const matches = input.batches.filter((batch) => batch.batch_run_id === input.batchRunID)
+  const published = matches[0]
+  const actualEligibleRunIDs = Array.isArray(published?.eligible_run_ids)
+    ? published.eligible_run_ids.filter((runID): runID is string => typeof runID === "string").sort()
+    : []
+  const expectedEligibleRunIDs = [...new Set(input.expectedEligibleRunIDs)].sort()
+  const violations = [
+    ...(matches.length === 1 && published?.receipt_present === true ? [] : ["batch_publication_missing"]),
+    ...(published?.audit?.passed === true && published.audit.status === "completed"
+      ? []
+      : ["batch_publication_not_completed"]),
+    ...(JSON.stringify(actualEligibleRunIDs) === JSON.stringify(expectedEligibleRunIDs)
+      ? []
+      : ["batch_publication_eligible_mismatch"]),
+  ]
+  return { passed: violations.length === 0, violations }
+}
+
 export type AutomationBenchTrialLease = {
   run_id: string
   pid: number
@@ -1655,7 +1716,7 @@ export function missingCompletedBatchProfileReceipts(input: {
       input.batches.some(
         (batch) =>
           batch.audit.passed === true &&
-          batch.audit.status === "completed" &&
+          (AUTOMATIONBENCH_SETTLED_BATCH_STATUSES as readonly string[]).includes(String(batch.audit.status)) &&
           batch.receipt?.batch_index === caseBatchIndex &&
           batch.profiles.includes(profile),
       )
@@ -1814,6 +1875,58 @@ export function automationBenchCaseSetAuthority(input: {
   return { passed: violations.length === 0, violations }
 }
 
+export function auditAutomationBenchTerminalCohortIdentity(input: {
+  benchmark: Record<string, any>
+  opencorvus: Record<string, any>
+  selectedCase: Record<string, any> | undefined
+  model: string
+  manifestSHA256: string
+  manifestCanonicalSHA256: string
+  datasetIndexSHA256: string
+  caseCount: number
+  packageTreeSHA256: string
+  allowIncompleteOfficialIdentity: boolean
+}) {
+  const caseSetAuthority = automationBenchCaseSetAuthority({
+    caseIndex: input.benchmark.case_index,
+    caseCount: input.caseCount,
+    sealedSHA256: input.benchmark.case_set_manifest_sha256,
+    sealedCanonicalSHA256: input.benchmark.case_set_canonical_sha256,
+    expected: { sha256: input.manifestSHA256, canonical_sha256: input.manifestCanonicalSHA256 },
+  })
+  const selectedCase = input.selectedCase
+  const violations = [
+    ...(input.opencorvus.model === input.model ? [] : ["cohort_model_mismatch"]),
+    ...(input.opencorvus.launch_mode === "mission" ? [] : ["cohort_launch_mode_mismatch"]),
+    ...(["base", "advanced"].includes(String(input.opencorvus.profile)) ? [] : ["cohort_profile_mismatch"]),
+    ...(input.benchmark.version === "1.0.6" ? [] : ["cohort_benchmark_version_mismatch"]),
+    ...(input.benchmark.package_tree_sha256 === input.packageTreeSHA256 ||
+    (input.allowIncompleteOfficialIdentity && input.benchmark.package_tree_sha256 === null)
+      ? []
+      : ["cohort_package_tree_mismatch"]),
+    ...(selectedCase &&
+    input.benchmark.case_index === selectedCase.case_index &&
+    input.benchmark.batch_index === selectedCase.batch_index &&
+    input.benchmark.domain === selectedCase.domain &&
+    input.benchmark.task === selectedCase.task
+      ? []
+      : ["cohort_case_identity_mismatch"]),
+    ...(selectedCase &&
+    ((input.allowIncompleteOfficialIdentity && input.benchmark.task_contract_sha256 == null) ||
+      input.benchmark.task_contract_sha256 === selectedCase.task_contract_sha256)
+      ? []
+      : ["cohort_task_contract_mismatch"]),
+    ...(selectedCase &&
+    ((input.allowIncompleteOfficialIdentity && input.benchmark.example_id == null) ||
+      input.benchmark.example_id === selectedCase.example_id)
+      ? []
+      : ["cohort_example_identity_mismatch"]),
+    ...caseSetAuthority.violations,
+    ...(input.benchmark.dataset_index_sha256 === input.datasetIndexSHA256 ? [] : ["cohort_dataset_index_mismatch"]),
+  ]
+  return { passed: violations.length === 0, violations }
+}
+
 export const AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT = 50
 
 export const AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_SHA256 =
@@ -1848,6 +1961,19 @@ export function automationBenchRestrictedShellAuthority(input: {
     ...(expectedSHA256 && input.sealedSHA256 === expectedSHA256 ? [] : ["restricted_shell_authority_mismatch"]),
   ]
   return { passed: violations.length === 0, authority, expected_sha256: expectedSHA256 ?? null, violations }
+}
+
+function automationBenchPlanBoundTerminalIdentity(plan: any, attempt: Record<string, any>) {
+  const identity = plan?.execution_identity
+  return (
+    attempt.cohort_identity_audit?.passed === true &&
+    typeof identity?.commit === "string" &&
+    typeof identity?.benchmark_bundle_sha256 === "string" &&
+    typeof identity?.case_set_manifest_sha256 === "string" &&
+    attempt.opencorvus?.source?.commit === identity.commit &&
+    attempt.opencorvus?.source?.benchmark_bundle_sha256 === identity.benchmark_bundle_sha256 &&
+    attempt.benchmark?.case_set_manifest_sha256 === identity.case_set_manifest_sha256
+  )
 }
 
 export function auditBatchEvidence(input: {
@@ -1923,6 +2049,7 @@ export function auditBatchEvidence(input: {
               (slot) => slot.case_index === caseIndex && slot.profile === profile,
             )
             const exactBinding =
+              automationBenchPlanBoundTerminalIdentity(input.plan, record) &&
               record.benchmark?.batch_plan_sha256 === input.planSHA256 &&
               record.benchmark?.repetition === (planSchemaAudit.repetition ?? 1) &&
               record.opencorvus?.model === input.plan.model &&
@@ -1937,8 +2064,9 @@ export function auditBatchEvidence(input: {
                 case_index: caseIndex,
                 profile,
                 run_id: record.run_id,
-                exit_code: record.raw_leaderboard_eligible === true ? 0 : 1,
-                run_status: record.raw_leaderboard_eligible === true ? "scored" : "failed",
+                exit_code:
+                  record.source_run_status === "scored" ? 0 : record.source_run_status === "invalid" ? 2 : 1,
+                run_status: record.source_run_status,
                 stderr_tail: "",
                 recovered_from_immutable_attempt: true,
                 waveIndex,
@@ -1977,15 +2105,24 @@ export function auditBatchEvidence(input: {
     }
     if (
       !attempt ||
+      !automationBenchPlanBoundTerminalIdentity(input.plan, attempt) ||
       attempt.benchmark?.batch_run_id !== input.plan.batch_run_id ||
       attempt.benchmark?.batch_plan_sha256 !== input.planSHA256 ||
       attempt.benchmark?.wave_index !== item.waveIndex ||
       attempt.benchmark?.case_index !== item.case_index ||
+      attempt.benchmark?.repetition !== (planSchemaAudit.repetition ?? 1) ||
       attempt.opencorvus?.profile !== item.profile ||
       attempt.opencorvus?.model !== input.plan.model ||
       attempt.opencorvus?.launch_mode !== input.plan.launch_mode ||
       !expectedSlot ||
       !item.run_id ||
+      item.run_status !== attempt.source_run_status ||
+      !Number.isSafeInteger(item.exit_code) ||
+      !(
+        (item.run_status === "scored" && item.exit_code === 0) ||
+        (item.run_status === "invalid" && item.exit_code === 2) ||
+        (["blocked_preflight", "failed"].includes(String(item.run_status)) && item.exit_code === 1)
+      ) ||
       launchedRunIDs.has(String(item.run_id))
     ) {
       reasons.push(`launched_trial:${item.profile}:${item.case_index}`)
@@ -2036,6 +2173,7 @@ export function auditBatchEvidence(input: {
     const currentBatch = attempt?.benchmark?.batch_run_id === input.plan.batch_run_id
     if (
       !attempt ||
+      !automationBenchPlanBoundTerminalIdentity(input.plan, attempt) ||
       attempt.benchmark?.case_index !== item.case_index ||
       attempt.opencorvus?.profile !== item.profile ||
       attempt.opencorvus?.model !== input.plan.model ||
@@ -2092,20 +2230,37 @@ export function auditBatchEvidence(input: {
       reasons.push("wave_2_barrier_start")
     }
   }
-  const selectedSlots = waveIndexes
-    .flatMap((waveIndex) =>
-      (receipt[`wave_${waveIndex}`]?.eligible ?? []).map((item: any) => `${item.case_index}:${item.profile}`),
-    )
-    .sort()
-  const expectedSelectedSlots = expectedCases
-    .flatMap((caseIndex) => (input.plan.profiles ?? []).map((profile: string) => `${caseIndex}:${profile}`))
-    .sort()
-  if (receipt.status === "completed" && JSON.stringify(selectedSlots) !== JSON.stringify(expectedSelectedSlots)) {
-    reasons.push("selected_case_coverage")
+  const settlementAudit = auditAutomationBenchBatchSettlement({
+    expected: expectedCases.flatMap((caseIndex) =>
+      (input.plan.profiles ?? []).map((profile: "base" | "advanced") => ({ case_index: caseIndex, profile })),
+    ),
+    launched: launched
+      .filter((item) => launchedRunIDs.has(String(item.run_id)))
+      .map((item) => ({
+        case_index: item.case_index,
+        profile: item.profile,
+        run_id: item.run_id,
+        run_status: item.run_status,
+      })),
+    eligible: eligibleClaims
+      .filter((item: any) => eligibleRunIDs.has(String(item.run_id)))
+      .map((item: any) => ({ case_index: item.case_index, profile: item.profile, run_id: item.run_id })),
+  })
+  reasons.push(...settlementAudit.violations)
+  const settledWithFailures = input.receipt && receipt.status === "failed" && settlementAudit.passed && reasons.length === 0
+  if (settledWithFailures) {
+    for (const runID of recoveredSealingRunIDs) eligibleRunIDs.add(runID)
   }
   return {
     passed: reasons.length === 0,
-    status: reasons.length === 0 ? receipt.status : input.receipt ? "invalid" : "orphan_plan",
+    status:
+      reasons.length === 0
+        ? settledWithFailures
+          ? "settled_from_failed_receipt"
+          : receipt.status
+        : input.receipt
+          ? "invalid"
+          : "orphan_plan",
     reasons,
     eligible_run_ids: [...eligibleRunIDs].sort(),
     sealing_run_ids: [...sealingRunIDs].sort(),
@@ -2144,7 +2299,9 @@ export function reusableBatchCandidateRunIDs(audit: {
       (reason) =>
         reason === "batch_receipt_missing" ||
         reason.startsWith("eligible_trial_raw_invalid:") ||
-        reason.startsWith("launched_trial_unstarted:"),
+        reason.startsWith("launched_trial_unstarted:") ||
+        reason.startsWith("batch_slot_unsettled:") ||
+        reason === "settled_case_coverage",
     )
   ) {
     return []
@@ -2385,69 +2542,6 @@ export async function readBenchmarkObserverLivenessStream(input: {
       await input.onTimeout()
       throw new BenchmarkObserverLivenessTimeoutError(input.timeoutMs)
     }
-  }
-}
-
-export const BENCHMARK_RUNNER_CLEANUP_TIMEOUT_MS = 10_000
-
-/**
- * The runner can spend five bounded cleanup phases at the shared per-phase
- * timeout before database snapshot and isolated-runtime removal. Keep one
- * coordinator grace owner with explicit room for those final durable writes.
- */
-export function benchmarkRunnerShutdownGraceMs(): number {
-  return BENCHMARK_RUNNER_CLEANUP_TIMEOUT_MS * 5 + 40_000
-}
-
-export function createBenchmarkRunnerStopController<T extends object>(input: {
-  isAlive: (child: T) => boolean
-  signal: (child: T, signal: "SIGTERM" | "SIGKILL") => void
-  exited: (child: T) => Promise<unknown>
-  graceMs?: number
-}) {
-  const signalled = new WeakSet<T>()
-  const operations = new WeakMap<T, Promise<void>>()
-  const graceMs = input.graceMs ?? benchmarkRunnerShutdownGraceMs()
-  const stop = (child: T): Promise<void> => {
-    const existing = operations.get(child)
-    if (existing) return existing
-    const operation = (async () => {
-      if (!input.isAlive(child)) {
-        await input.exited(child).catch(() => undefined)
-        return
-      }
-      if (!signalled.has(child)) {
-        signalled.add(child)
-        input.signal(child, "SIGTERM")
-      }
-      let timer: ReturnType<typeof setTimeout> | undefined
-      const graceful = await Promise.race([
-        input.exited(child).then(() => true).catch(() => true),
-        new Promise<false>((resolve) => {
-          timer = setTimeout(() => resolve(false), graceMs)
-        }),
-      ])
-      if (timer) clearTimeout(timer)
-      if (graceful) return
-      input.signal(child, "SIGKILL")
-      await input.exited(child).catch(() => undefined)
-    })()
-    operations.set(child, operation)
-    return operation
-  }
-  return { stop }
-}
-
-export function installBenchmarkTerminationHandlers(
-  request: (signal: "SIGINT" | "SIGTERM") => void,
-) {
-  const onSIGINT = () => request("SIGINT")
-  const onSIGTERM = () => request("SIGTERM")
-  process.on("SIGINT", onSIGINT)
-  process.on("SIGTERM", onSIGTERM)
-  return () => {
-    process.removeListener("SIGINT", onSIGINT)
-    process.removeListener("SIGTERM", onSIGTERM)
   }
 }
 

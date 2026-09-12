@@ -8,6 +8,7 @@ import { spawn, execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { once } from "node:events"
 import { awaitNativeOperation, nativeStreamEvidence, requireScorableNativeCompletion } from "./native-run-contract"
+import { createBenchmarkAdmissionGate, installBenchmarkTerminationHandlers } from "./process-lifecycle"
 
 const values = new Map<string, string>()
 for (let index = 2; index < process.argv.length; index += 2) {
@@ -32,6 +33,7 @@ const effort = required("reasoning-effort")
 if (!["low", "medium", "high", "xhigh", "max"].includes(effort)) throw new Error("Unsupported explicit reasoning effort")
 const modelID = "gpt-5.6-luna"
 const manifestBytes = await fs.readFile(manifestPath)
+const manifestSHA256 = crypto.createHash("sha256").update(manifestBytes).digest("hex")
 const manifest = JSON.parse(manifestBytes.toString("utf8"))
 const selected = manifest.cases.find((item: any) => item.case_index === caseIndex)
 if (!selected) throw new Error("case_index_not_in_frozen_manifest")
@@ -42,9 +44,17 @@ await fs.mkdir(output, { recursive: false, mode: 0o700 })
 const startedAt = Date.now()
 const runID = crypto.randomUUID()
 const append = (name: string, value: unknown) => fs.appendFile(path.join(output, name), JSON.stringify(value) + "\n")
+const admission = createBenchmarkAdmissionGate("Native benchmark runner")
 const abort = new AbortController()
+let world: ReturnType<typeof spawn> | undefined
+let worldClosed: Promise<unknown> | undefined
+const removeTerminationHandlers = installBenchmarkTerminationHandlers((signal) => {
+  admission.request(signal)
+  abort.abort(new Error(`Native benchmark runner received ${signal}`))
+})
 let lastActivity = Date.now()
 const inactivityMs = 600_000
+const maxResponseSteps = 50
 const watchdog = setInterval(() => {
   if (Date.now() - lastActivity >= inactivityMs) abort.abort(new Error("native_provider_inactivity"))
 }, 1000)
@@ -52,12 +62,12 @@ watchdog.unref()
 const activity = () => { lastActivity = Date.now() }
 const wait = <T>(operation: Promise<T>) => awaitNativeOperation(operation, abort.signal)
 const runCommand = promisify(execFile)
-let world: ReturnType<typeof spawn> | undefined
-let worldClosed: Promise<unknown> | undefined
 let outcome: any
+let failureStage = "setup"
 let redactError = (text: string) => "native_setup_error:" + text.split(":")[0]!.slice(0, 100)
 await fs.writeFile(path.join(output, "run-start.json"), JSON.stringify({ run_id: runID, started_at: startedAt,
-  case_index: caseIndex, runtime_revision: runtimeRevision, model: `openai/${modelID}`, reasoning_effort: effort }) + "\n")
+  case_index: caseIndex, runtime_revision: runtimeRevision, model: `openai/${modelID}`, reasoning_effort: effort,
+  manifest_sha256: manifestSHA256, max_response_steps: maxResponseSteps, inactivity_ms: inactivityMs }) + "\n")
 try {
 await fs.access(path.join(runtimeHome, "data/auth.json"))
 await fs.access(path.join(runtimeHome, "data/models.json"))
@@ -73,7 +83,8 @@ redactError = ProviderError.redactSensitiveProviderText
 const config = await wait(Config.getGlobal())
 const model = await wait<any>(Provider.getModelGlobal("openai", modelID, config))
 if (model.api.id !== modelID) throw new Error("projected_request_model_mismatch")
-const language = await wait(Provider.getLanguageGlobal(model, config))
+  const language = await wait(Provider.getLanguageGlobal(model, config))
+  failureStage = "official_world"
 activity()
 const child = spawn(python, [path.join(import.meta.dir, "native-automationbench-world.py"),
   "--harness", harness, "--domain", selected.domain, "--task", selected.task, "--output", path.join(output, "world")],
@@ -108,15 +119,18 @@ const call = (request: unknown): Promise<any> => {
       ready.package_tree_sha256 !== manifest.package_tree_sha256)
     throw new Error("official_task_or_package_identity_mismatch")
   const input = { run_id: runID, started_at: startedAt, case: selected, model: `openai/${modelID}`,
-    reasoning_effort: effort, max_response_steps: 50, inactivity_ms: inactivityMs,
+    reasoning_effort: effort, max_response_steps: maxResponseSteps, inactivity_ms: inactivityMs,
     runtime_revision: runtimeRevision,
-    source_files: Object.fromEntries(await Promise.all([import.meta.path, path.join(import.meta.dir, "native-run-contract.ts"),
+    source_files: Object.fromEntries(await Promise.all([import.meta.path, path.join(import.meta.dir, "run-native-automationbench-batch.ts"),
+      path.join(import.meta.dir, "native-run-contract.ts"),
+      path.join(import.meta.dir, "process-lifecycle.ts"),
       path.join(import.meta.dir, "native-automationbench-world.py"), path.join(harness, "automationbench_bridge.py"),
       path.join(harness, "verify_automationbench_replay.py")].map(async (file) => [path.basename(file),
         crypto.createHash("sha256").update(await fs.readFile(file)).digest("hex")]))),
     manifest_sha256: crypto.createHash("sha256").update(manifestBytes).digest("hex"),
     prompt: ready.prompt, tools: ready.tools }
   await fs.writeFile(path.join(output, "input.json"), JSON.stringify(input, null, 2) + "\n")
+  failureStage = "model_execution"
   const tools = Object.fromEntries(ready.tools.map((definition: any) => [definition.name, {
     description: definition.description,
     inputSchema: jsonSchema(definition.parameters),
@@ -133,7 +147,7 @@ const call = (request: unknown): Promise<any> => {
   const system = ready.prompt.filter((message: any) => message.role === "system").map((message: any) => message.content).join("\n\n")
   const messages = ready.prompt.filter((message: any) => message.role !== "system")
   const stream = streamText({
-    model: language, messages, tools, stopWhen: stepCountIs(50), maxRetries: 0, abortSignal: abort.signal,
+    model: language, messages, tools, stopWhen: stepCountIs(maxResponseSteps), maxRetries: 0, abortSignal: abort.signal,
     providerOptions: { openai: { store: false, instructions: system, reasoningEffort: effort } },
     onStepFinish: async (step: any) => {
       const request = typeof step.request.body === "string" ? JSON.parse(step.request.body) : step.request.body
@@ -154,10 +168,12 @@ const call = (request: unknown): Promise<any> => {
   }
   const finishReason = await wait<string>(stream.finishReason)
   requireScorableNativeCompletion(finishReason, abort.signal)
+  failureStage = "official_scoring"
   const score = await call({ kind: "score" })
   child.stdin.end()
   await wait(worldClosed)
   if (child.exitCode !== 0) throw new Error("official_world_exit_failure")
+  failureStage = "official_replay"
   const replayChild = spawn(python, [path.join(harness, "verify_automationbench_replay.py"),
     "--domain", selected.domain, "--task", selected.task, "--events", path.join(output, "world/automationbench-events.jsonl"),
     "--initial-world", path.join(output, "world/automationbench-initial-world.json"),
@@ -179,7 +195,7 @@ const call = (request: unknown): Promise<any> => {
   if (replay.passed !== true) throw new Error("official_replay_failed")
   outcome = { status: "scored", score, replay, usage: await wait(stream.totalUsage), finish_reason: finishReason }
 } catch (error) {
-  outcome = { status: "unscored_infrastructure_failure", error: redactError(
+  outcome = { status: "unscored_infrastructure_failure", failure_stage: failureStage, error: redactError(
     error instanceof Error ? error.message : String(error)) }
 } finally {
   clearInterval(watchdog)
@@ -192,6 +208,10 @@ const call = (request: unknown): Promise<any> => {
     clearTimeout(force)
   }
   await fs.writeFile(path.join(output, "result.json"), JSON.stringify({ run_id: runID,
-    case_index: caseIndex, model: `openai/${modelID}`, started_at: startedAt, finished_at: Date.now(), ...outcome }, null, 2) + "\n")
+    case_index: caseIndex, model: `openai/${modelID}`, started_at: startedAt, finished_at: Date.now(),
+    runtime_revision: runtimeRevision, reasoning_effort: effort, manifest_sha256: manifestSHA256,
+    max_response_steps: maxResponseSteps, inactivity_ms: inactivityMs,
+    termination_signal: admission.signal() ?? null, ...outcome }, null, 2) + "\n")
+  removeTerminationHandlers()
 }
 process.exitCode = outcome.status === "scored" ? 0 : 1

@@ -244,3 +244,35 @@ Recall：活动51b队列继续运行，最近有界快照为原生26例终态、
 重复的双wrapper字节/owner/mode校验已收敛为`restricted-shell-evidence.ts`单一实现，并进入benchmark source bundle；catalog与verify只消费该结果。修正后17项TypeScript、6项Python、benchmark typecheck再次通过；双路径完整catalog/verify重新执行，stdout摘要仍为2b8464/dd1b38且stderr均为空。新回执明确记录真实命令参数、输出路径和最终源码摘要，并将case51+的模型证据标为未覆盖，等待独立最终复核。
 
 独立最终复审通过：17项TypeScript/17断言、6项Python、benchmark typecheck均独立通过；五种非法身份全部明确拒绝，合法/交换/重复wrapper路径均符合契约。审查者核对6份源码摘要、双路径checker输出、2份UID探针摘要及115个封存文件，未解决发现为0。此结论只覆盖代码和隔离验收；活动安装、coordinator、8769与case51+模型执行仍未切换。
+
+### 批次结算与单例得分资格解耦
+
+Recall：最近有界快照原生39例终态（1次基础设施失败），Base11例终态（1严格通过、1真实invalid）和2例活动；旧catalog仍显示0 eligible。活动batch1/2已写failed receipt：batch1因case3真实invalid而失败，batch2的已评分结果则因旧manifest checker没有生成eligible claims而失败。当前用户看到的“都无效”由清单误判与批次连坐共同造成。已读coordinator的batchOutcomes/writeBatchReceipt、auditBatchEvidence、candidate/leaderboard收敛、final verifier、profile summary及viewer projection；当前无独立反馈。
+
+深度分析：batch receipt同时承担两种不同事实：五个计划slot是否都形成可核对终态，以及其中哪些run自身通过原始证据与官方评分。旧`complete`要求每个run均`exit=0/status=scored`且eligible恰好5个；audit又要求completed receipt的eligible集合覆盖全部slot。一个真实invalid因此让整个receipt failed，四个自身合法run永远只能停在candidate。旧manifest bug还能令全为scored的batch2同样failed。该设计把实验固定分母中的失败样本误作批次结构损坏，并使成功样本的可见性依赖兄弟结果，违背单例证据资格。影响全部batch、正常/失败终态、重启后preexisting adoption、串并行、最终100例覆盖、成本与耗时统计；不涉及模型业务决策、Provider重试或项目隔离。
+
+实施方案：保持receipt只有一个当前schema，`completed`改为“每个计划slot均由当前已封存attempt或明确preexisting eligible run结算”；`eligible`仍只列单例raw evidence通过者，可少于5。coordinator用精确slot集合而非全成功判定completed。audit分别验证settled coverage与eligible claims；对旧`failed` receipt，只有全部slot均有精确plan-bound terminal attempt且无结构/身份/并发错误时，派生`settled_from_failed_receipt`，并从已经重算的raw eligibility恢复其中合法run，原receipt字节保持不变。catalog/独立verify接受completed或settled_from_failed_receipt作为批次结算证据。final模式要求每个profile的100个case均有唯一终态attempt与全部batch已结算，而不是要求100个都进leaderboard。profile strict/partial固定以目标case数为分母，调用、token和耗时计入全部终态attempt；进行中coverage单独显示。viewer仍从真实leaderboard/attempt投影，不直接读取raw scored绕过checker。
+
+验收：新增聚焦正向契约覆盖四个valid加一个invalid的全slot结算、preexisting+新attempt结算、缺少终态的明确`settled_case_coverage`错误、旧failed receipt派生结算并只恢复valid子集；重跑candidate冲突/receipt审计相关检查。用活动root的只读副本纳入batch1/2真实receipt与全部对应sealed attempts，完整catalog/verify须使batch1四个、batch2五个合法run进入leaderboard，同时case3保持invalid；固定分母摘要需为1/100 strict而非1/valid。独立只读review后提交与push。活动51b/coordinator/8769不热改，部署切换仍另行授权。
+
+实现首验：coordinator现以五个slot的terminal launched与preexisting eligible并集判定settled；invalid或基础设施失败有终态便完成批次，coordinator_failed/无run identity仍明确拒绝。audit对旧failed receipt仅在五个slot全部绑定同plan终态且结构/身份/并发均通过时派生`settled_from_failed_receipt`，恢复的eligible仍逐例依赖raw evidence。catalog与独立verify接受两种settled状态；final模式按全部终态attempt验证100例覆盖，得分以100为固定分母，成本聚合全部终态attempt。5项新结算契约连同17项既有身份契约共22项22断言通过，benchmark typecheck通过。
+
+真实副本验收：从活动root复制原batch1/2 immutable receipts及case1–10全部sealed目录，完整catalog输出10 attempts/9 eligible，独立verify输出development/10/9/44且双stderr为空。batch1恢复case1/2/4/5、保留case3 invalid；batch2恢复case6–10。两批derived status均`settled_from_failed_receipt`，原receipt仍failed且字节不变。summary按固定100分母为strict1/100、partial0.055697；全部10个终态attempt的1019 model calls、540官方API attempts和9524655ms均计入成本。[结算审计回执](../../artifacts/opencorvus-paper/experiments/luna-base-2026-09-12/current-source-batch-settlement-audit.json)记录源码、快照和checker输出摘要。活动安装与页面未改，等待独立审查。
+
+### 冻结执行与终止后的调度准入
+
+Recall：用户明确要求停止继续跑分，先解决所有基础设施问题；尤其当前 Base 展示结果低于原生 Luna 时，不再用更多模型调用掩盖问题。已停止原生 Luna supervisor 与 Base coordinator 的全部执行子树，保留 8769 只读页面和全部证据。停止前页面已有原生 case1–57 评分、case2 传输失败、case58 在途；Base case1–17 已形成终态目录、case18 在途。用户要求后的验收边界改为零模型：只允许源码、聚焦测试、旧证据只读 catalog/verify 与独立审查，未经新的明确指令不恢复执行。已读当前 coordinator、共享 bounded-concurrency/stop/termination primitive、single runner、native runner、活动进程树和外置 native supervisor。独立反馈：本阶段实施前无。
+
+可观察现象：Base coordinator PID 52668 与 native Python supervisor PID 55075 收到 SIGTERM 后均未退出。更严重的是，Base 当时已有一个在途 slot 和一个已结束 slot，却在 SIGTERM 后又启动了 case18 run 89e4297e；最终必须对已确认的执行树使用 SIGKILL。8769 viewer PID 52670 未受影响。停止后复核没有任何以本轮 root 为参数的非 viewer 进程。这个事实排除了“只是页面状态旧”或“只是网络慢”：调度器在停止请求之后仍具备新的 spawn 权限。
+
+控制流根因：队列 mapper 只在进入回调时检查 termination flag，随后 await `ensureBatchAuthorization`，而 `runTrial` 在真正 `Bun.spawn` 前不再检查。终止信号可以落在这个 await 边界内，使早先的准入决定过期并在停止后启动新模型进程。`shouldStart` 只能阻止尚未进入 mapper 的条目，不能关闭已进入 mapper 但尚未 spawn 的条目。现有 stop controller 会终止已登记的 trial child，但无法终止尚未登记的未来 spawn。外置 native supervisor 是一次性 Python 串行脚本，没有仓库内的调度/终止/封存契约；它不能继续作为正式对照执行入口。
+
+实施方案：建立一个共享、单事实源的 benchmark admission gate（准入闸），信号请求同步且不可逆地关闭准入；所有 await 前检查只作早发现，真正 spawn 前必须再次用同一 gate 原子检查。coordinator 的 `shouldStart`、receipt signal 和 catalog 终止例外也读取同一状态，禁止影子布尔值。聚焦正向测试模拟“已进入 mapper→授权 await→SIGTERM→授权完成”的真实竞争，明确验证 mapper 以精确终止错误结算且没有 spawn。原生完整队列不再使用外置 Python supervisor；正式重跑前需要仓库内唯一 native batch coordinator，复用同一 gate、进程停止和终态收敛契约，并通过零模型故障注入。本轮先完成已证实 Base 竞争修复及批次/成本/身份链路，不能因为历史 supervisor 已停止就声称原生恢复入口合格。
+
+风险与验收：SIGTERM 仍允许已在途 runner 进行有界封存，但停止发生后启动计数必须保持不变；所有未启动 slot 必须明确进入 receipt 的未结算状态，不得伪装为失败模型结果。真实旧证据的 catalog/verify 必须同时保留 valid、invalid、failed 与 interrupted 的区别，固定分母100，不让失败成本归零。活动51b已冻结，不热改、不重启、不继续模型执行。
+
+实现首验：共享 `process-lifecycle.ts` 现在是 coordinator、single runner 和 native runner 的唯一信号/停止 primitive 来源。Base coordinator 在真正 `Bun.spawn` 前使用同一个不可逆 admission gate 再验，测试确定性复现授权 await 中收到 SIGTERM 的竞争并确认启动集合为空。Linux 真实进程探针收到 SIGTERM 后以 exit0 输出精确 `{signal:"SIGTERM", admission_open:false}`；Windows 不支持 Bun 的同等信号投递，因此仓库测试在 Windows 明确跳过该平台事件，逻辑竞态测试仍执行。
+
+原生路径已删除“正式运行依赖外置 Python for-loop”的交付前提：新增仓库内 native batch coordinator，持有输出根单 writer lock，显式选择固定病例，采用同一 admission/child stop 契约，原子发布 progress；`scored` 与 `unscored_infrastructure_failure` 都是固定队列中的终态，单例失败不再阻断其余独立病例。重启只采用真实Git HEAD且干净runtime上的精确终态：run/start/input、模型、清单、推理与步数参数、控制器/runner/checker源码摘要均匹配；scored必须带score并实际重新进入指定官方replay checker，输出与保存回执精确一致；failure必须保存阶段和错误，执行阶段失败还须存在同源input。遇到半截目录明确报`native_case_unsealed`，不从头覆盖或把它冒充恢复。原生single runner收到SIGINT/SIGTERM后abort当前流、清理world、写入带signal和阶段的基础设施失败终态再退出。一个scored与一个基础设施失败的零模型真实coordinator检查重新执行checker后得到completed、完整settlement；38项聚焦测试通过，另有Windows不支持的真实SIGTERM用Linux探针通过，两套严格TypeScript检查通过。尚未恢复任何模型执行。
+
+独立审查继续补出并关闭四个同族缺口：批次结算现在要求每个terminal的cohort audit通过，并把plan execution identity与attempt source的commit、bundle及manifest逐项绑定；failed/blocked_preflight退出码必须是整数1，不能用缺失/null/字符串绕过；Provider usage每一行必须有完整非负token/cost字段及明确billing状态，缺字段标为成本不完整而非0；catalog锁改为共享admission感知的单次尝试轮询，终止请求会打断等待并停止全部活动child，终止后不再启动收尾catalog。最终15例旧证据再次通过完整catalog/独立verify：15 attempts、13 eligible、53 paper files、双stderr为空；三份原failed receipt原字节不改，case3/case13仍分别为invalid/failure。

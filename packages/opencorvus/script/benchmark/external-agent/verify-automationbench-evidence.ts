@@ -3,9 +3,11 @@ import fs from "node:fs/promises"
 import path from "node:path"
 import { verifySelectedCaseSet } from "./verify-selected-case-set"
 import { verifyAutomationBenchRestrictedShells } from "./restricted-shell-evidence"
+import { inspectAutomationBenchTerminalCostEvidence } from "./terminal-cost-evidence"
 import {
-  automationBenchCaseSetAuthority,
   AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
+  AUTOMATIONBENCH_SETTLED_BATCH_STATUSES,
+  auditAutomationBenchTerminalCohortIdentity,
   automationBenchRestrictedShellAuthority,
   auditBenchmarkIsolation,
   auditAutomationBenchBatchPlanSchema,
@@ -210,6 +212,7 @@ if (protectedSecrets.length === 0) throw new Error("Source auth did not contain 
 const caseSetBytes = await fs.readFile(caseSetPath)
 const caseSetSHA256 = digest(caseSetBytes)
 const caseSet = JSON.parse(caseSetBytes.toString("utf8")) as {
+  package_tree_sha256: string
   selection: { count: number; dataset_index_sha256: string }
   cases: Array<Record<string, any>>
 }
@@ -348,6 +351,19 @@ for (const attempt of catalog.attempts) {
     snapshot: infrastructureSnapshot,
     board: infrastructureBoard,
   })
+  const frozenCase = caseSet.cases.find((item) => item.case_index === payload.benchmark?.case_index)
+  const cohortIdentityAudit = auditAutomationBenchTerminalCohortIdentity({
+    benchmark: payload.benchmark ?? {},
+    opencorvus: payload.opencorvus ?? {},
+    selectedCase: frozenCase,
+    model,
+    manifestSHA256: caseSetSHA256,
+    manifestCanonicalSHA256: caseSetCanonicalSHA256,
+    datasetIndexSHA256: caseSet.selection.dataset_index_sha256,
+    caseCount: caseSet.selection.count,
+    packageTreeSHA256: caseSet.package_tree_sha256,
+    allowIncompleteOfficialIdentity: names.includes("failure.json"),
+  })
   const rawEligible =
     names.includes("result.json") &&
     infrastructureAudit.passed &&
@@ -359,8 +375,15 @@ for (const attempt of catalog.attempts) {
     payload.opencorvus?.skill?.dispatched_coverage?.passed === true &&
     payload.benchmark?.metrics !== null &&
     payload.opencorvus?.source?.worktree_clean === true &&
+    cohortIdentityAudit.passed &&
     !permanentlyInvalid &&
     disposition === undefined
+  const costEvidence = await inspectAutomationBenchTerminalCostEvidence({
+    directory,
+    payload,
+    isResult: names.includes("result.json"),
+    model,
+  })
   if (rawEligible && (runManifest.run_id !== payload.run.id || runManifest.run_key !== payload.run.key)) {
     throw new Error(`Raw-eligible run manifest identity mismatch: ${attempt.run_id}`)
   }
@@ -368,6 +391,9 @@ for (const attempt of catalog.attempts) {
     ...attempt,
     raw_leaderboard_eligible: rawEligible,
     leaderboard_eligible: rawEligible,
+    source_run_status: payload.run.status,
+    cohort_identity_audit: cohortIdentityAudit,
+    cost_evidence: costEvidence,
     started_at: payload.run.started_at,
     finished_at: payload.run.finished_at ?? payload.run.failed_at ?? null,
     benchmark: payload.benchmark,
@@ -376,29 +402,13 @@ for (const attempt of catalog.attempts) {
   if (attempt.raw_leaderboard_eligible !== rawEligible) {
     throw new Error(`Catalog raw eligibility does not match sealed terminal evidence: ${attempt.run_id}`)
   }
-  if (!rawEligible) continue
-
-  const caseSetAuthority = automationBenchCaseSetAuthority({
-    caseIndex: payload.benchmark.case_index,
-    caseCount: caseSet.selection.count,
-    sealedSHA256: payload.benchmark.case_set_manifest_sha256,
-    sealedCanonicalSHA256: payload.benchmark.case_set_canonical_sha256,
-    expected: { sha256: caseSetSHA256, canonical_sha256: caseSetCanonicalSHA256 },
-  })
-  const frozenCase = caseSet.cases.find(
-    (item) => item.domain === payload.benchmark.domain && item.task === payload.benchmark.task,
-  )
-  if (
-    !frozenCase ||
-    payload.benchmark.task_contract_sha256 !== frozenCase.task_contract_sha256 ||
-    payload.benchmark.example_id !== frozenCase.example_id ||
-    payload.benchmark.case_index !== frozenCase.case_index ||
-    payload.benchmark.batch_index !== frozenCase.batch_index ||
-    !caseSetAuthority.passed ||
-    payload.benchmark.dataset_index_sha256 !== caseSet.selection.dataset_index_sha256
-  ) {
-    throw new Error(`Frozen case identity mismatch: ${attempt.run_id}`)
+  if (JSON.stringify(attempt.cohort_identity_audit) !== JSON.stringify(cohortIdentityAudit)) {
+    throw new Error(`Catalog cohort identity does not match sealed terminal evidence: ${attempt.run_id}`)
   }
+  if (JSON.stringify(attempt.cost_evidence) !== JSON.stringify(costEvidence)) {
+    throw new Error(`Catalog cost evidence does not match sealed terminal evidence: ${attempt.run_id}`)
+  }
+  if (!rawEligible) continue
 
   const [
     board,
@@ -729,7 +739,10 @@ for (let pass = 0; pass < verifiedBatches.length; pass++) {
 const independentlyEligible = independentlyRawEligible
   .filter((runID) =>
     verifiedBatches.some(
-      (batch) => batch.audit.passed === true && batch.audit.status === "completed" && batch.eligibleRunIDs.has(runID),
+      (batch) =>
+        batch.audit.passed === true &&
+        (AUTOMATIONBENCH_SETTLED_BATCH_STATUSES as readonly string[]).includes(String(batch.audit.status)) &&
+        batch.eligibleRunIDs.has(runID),
     ),
   )
   .sort()
@@ -784,9 +797,17 @@ if (finalMode) {
   if (catalog.scope?.case_count !== caseSet.selection.count) {
     throw new Error("Final verifier case count does not match the catalog scope")
   }
-  const selectedRows = catalog.leaderboard.filter((attempt) => finalProfiles.includes(attempt.opencorvus?.profile))
+  const selectedRows = catalog.attempts.filter(
+    (attempt) =>
+      finalProfiles.includes(attempt.opencorvus?.profile) &&
+      attempt.benchmark?.repetition === 1 &&
+      attempt.cohort_identity_audit?.passed === true &&
+      attempt.finished_at !== null,
+  )
   if (selectedRows.length !== finalProfiles.length * caseSet.selection.count) {
-    throw new Error(`Final matrix requires exactly ${finalProfiles.length * caseSet.selection.count} selected-profile trials`)
+    throw new Error(
+      `Final matrix requires exactly ${finalProfiles.length * caseSet.selection.count} terminal selected-profile trials`,
+    )
   }
   const missingBatchProfiles = missingCompletedBatchProfileReceipts({
     batches: verifiedBatches,
@@ -801,12 +822,11 @@ if (finalMode) {
     )
   }
   for (const profile of finalProfiles) {
-    const rows = catalog.leaderboard.filter((attempt) => attempt.opencorvus?.profile === profile)
+    const rows = selectedRows.filter((attempt) => attempt.opencorvus?.profile === profile)
     const indexes = rows.map((attempt) => attempt.benchmark?.case_index).sort((left, right) => left - right)
     const expected = Array.from({ length: caseSet.selection.count }, (_, index) => index + 1)
     if (
       rows.length !== caseSet.selection.count ||
-      rows.some((attempt) => attempt.benchmark?.repetition !== 1) ||
       JSON.stringify(indexes) !== JSON.stringify(expected)
     ) {
       throw new Error(

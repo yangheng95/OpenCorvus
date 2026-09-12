@@ -3,13 +3,15 @@ import fs from "node:fs/promises"
 import path from "node:path"
 import { verifySelectedCaseSet } from "./verify-selected-case-set"
 import { verifyAutomationBenchRestrictedShells } from "./restricted-shell-evidence"
+import { inspectAutomationBenchTerminalCostEvidence } from "./terminal-cost-evidence"
 import {
-  automationBenchCaseSetAuthority,
   AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
+  AUTOMATIONBENCH_SETTLED_BATCH_STATUSES,
   automationBenchRestrictedShellAuthority,
   evidenceFileSetMatches,
   paperEvidenceChecks,
   auditBenchmarkIsolation,
+  auditAutomationBenchTerminalCohortIdentity,
   analyzePromptComposition,
   auditSkillEvidenceSeal,
   auditTaskInfrastructureIncidents,
@@ -227,16 +229,16 @@ function percent(value: number | undefined) {
   return value === undefined ? "—" : `${(value * 100).toFixed(2)}%`
 }
 
-function integer(value: number | undefined) {
-  return value === undefined ? "—" : Math.round(value).toLocaleString("en-US")
+function integer(value: number | null | undefined) {
+  return value == null ? "—" : Math.round(value).toLocaleString("en-US")
 }
 
-function duration(value: number | undefined) {
-  return value === undefined ? "—" : `${(value / 60_000).toFixed(2)} min`
+function duration(value: number | null | undefined) {
+  return value == null ? "—" : `${(value / 60_000).toFixed(2)} min`
 }
 
-function relativeChange(current: number, baseline: number) {
-  if (baseline === 0) return "—"
+function relativeChange(current: number | null, baseline: number | null) {
+  if (current === null || baseline === null || baseline === 0) return "—"
   const change = ((current - baseline) / baseline) * 100
   return `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`
 }
@@ -714,31 +716,26 @@ for (const { directory, payload, isResult, terminalAmbiguous } of terminalEntrie
     extendedCaseCount: caseSet.selection.count,
     independentReplay: independentReplayByDirectory.get(directory),
   })
-  const caseSetAuthority = result
-    ? automationBenchCaseSetAuthority({
-        caseIndex: result.benchmark.case_index,
-        caseCount: caseSet.selection.count,
-        sealedSHA256: result.benchmark.case_set_manifest_sha256,
-        sealedCanonicalSHA256: result.benchmark.case_set_canonical_sha256,
-        expected: { sha256: caseSetSHA256, canonical_sha256: caseSetCanonicalSHA256 },
-      })
-    : undefined
-  const frozenCase = result
-    ? caseSet.cases.find(
-        (item) => item.domain === (result.benchmark as any).domain && item.task === result.benchmark.task,
-      )
-    : undefined
-  const benchmarkIdentityPassed =
-    result?.opencorvus.model === cli.model &&
-    result?.benchmark.version === "1.0.6" &&
-    result.benchmark.package_tree_sha256 === EXPECTED_PACKAGE_TREE_SHA256 &&
-    frozenCase !== undefined &&
-    result.benchmark.task_contract_sha256 === frozenCase.task_contract_sha256 &&
-    result.benchmark.example_id === frozenCase.example_id &&
-    result.benchmark.case_index === frozenCase.case_index &&
-    result.benchmark.batch_index === frozenCase.batch_index &&
-    caseSetAuthority?.passed === true &&
-    result.benchmark.dataset_index_sha256 === caseSet.selection.dataset_index_sha256
+  const costEvidence = await inspectAutomationBenchTerminalCostEvidence({
+    directory,
+    payload: payload as Record<string, any>,
+    isResult,
+    model: cli.model,
+  })
+  const frozenCase = caseSet.cases.find((item) => item.case_index === (payload.benchmark as any).case_index)
+  const cohortIdentityAudit = auditAutomationBenchTerminalCohortIdentity({
+    benchmark: payload.benchmark as Record<string, any>,
+    opencorvus: payload.opencorvus as Record<string, any>,
+    selectedCase: frozenCase,
+    model: cli.model,
+    manifestSHA256: caseSetSHA256,
+    manifestCanonicalSHA256: caseSetCanonicalSHA256,
+    datasetIndexSHA256: caseSet.selection.dataset_index_sha256,
+    caseCount: caseSet.selection.count,
+    packageTreeSHA256: EXPECTED_PACKAGE_TREE_SHA256,
+    allowIncompleteOfficialIdentity: !isResult,
+  })
+  const benchmarkIdentityPassed = result !== undefined && cohortIdentityAudit.passed
   const evidenceChecks = paperEvidenceChecks({
     manifestVerified: manifest.verified === true,
     providerLedgerVerified: ledgerAudit.passed === true,
@@ -840,7 +837,6 @@ for (const { directory, payload, isResult, terminalAmbiguous } of terminalEntrie
         .then((text) => analyzePromptComposition(JSON.parse(text) as unknown[]))
         .catch(() => undefined)
     : undefined
-  const tokens = result?.opencorvus.tokens
   records.push({
     run_id: payload.run.id ?? path.basename(directory),
     run_key: payload.run.key ?? path.relative(root, directory).replaceAll("\\", "/"),
@@ -848,19 +844,22 @@ for (const { directory, payload, isResult, terminalAmbiguous } of terminalEntrie
     raw_leaderboard_eligible: eligible,
     leaderboard_eligible: eligible,
     reason,
+    source_run_status: payload.run.status,
+    cohort_identity_audit: cohortIdentityAudit,
     started_at: payload.run.started_at,
     finished_at: result?.run.finished_at ?? failure?.run.failed_at ?? null,
-    duration_ms: result?.run.duration_ms ?? null,
+    duration_ms: costEvidence.duration_ms,
     benchmark: payload.benchmark,
     opencorvus: {
       ...payload.opencorvus,
-      tokens: tokens ?? null,
+      tokens: costEvidence.tokens,
     },
     failure: failure?.error ?? null,
     ...(promptComposition ? { prompt_composition: promptComposition } : {}),
     evidence_directory: path.relative(root, directory).replaceAll("\\", "/"),
     evidence_manifest: manifest,
     provider_ledger_audit: ledgerAudit,
+    cost_evidence: costEvidence,
     raw_evidence_audit: rawEvidenceAudit,
     permanent_invalidation: permanentInvalidation,
   })
@@ -880,6 +879,7 @@ for (const file of files.filter(
     raw_leaderboard_eligible: false,
     leaderboard_eligible: false,
     reason: permanentInvalidation.invalid ? permanentInvalidation.reason : "started_attempt_without_terminal_record",
+    source_run_status: "running",
     started_at: started.run.started_at,
     finished_at: null,
     duration_ms: null,
@@ -987,7 +987,7 @@ for (const record of records.filter((item) => item.leaderboard_eligible)) {
     (item) =>
       item.receipt_present &&
       item.audit.passed === true &&
-      item.audit.status === "completed" &&
+      (AUTOMATIONBENCH_SETTLED_BATCH_STATUSES as readonly string[]).includes(String(item.audit.status)) &&
       item.eligible_run_ids.includes(String(record.run_id)),
   )
   if (!completedBatch) {
@@ -1007,31 +1007,60 @@ function summarizeProfile(profile: "base" | "advanced") {
   const keys = rows.map((record) => `${record.benchmark.case_index}:${record.benchmark.repetition ?? 1}`)
   if (new Set(keys).size !== keys.length)
     throw new Error(`Eligible ${profile} runs contain duplicate case/repetition identities`)
-  const expectedKeys = Array.from({ length: caseSet.selection.count }, (_, index) => `${index + 1}:1`)
-  const matrixComplete = JSON.stringify([...keys].sort()) === JSON.stringify(expectedKeys.sort())
+  const terminalAttempts = records.filter(
+    (record) =>
+      record.opencorvus.profile === profile &&
+      record.benchmark?.repetition === 1 &&
+      record.cohort_identity_audit?.passed === true &&
+      record.finished_at !== null,
+  )
+  const completedCaseIndexes = new Set(
+    terminalAttempts
+      .map((record) => Number(record.benchmark?.case_index))
+      .filter((caseIndex) => Number.isSafeInteger(caseIndex) && caseIndex >= 1 && caseIndex <= caseSet.selection.count),
+  )
+  const matrixComplete =
+    terminalAttempts.length === caseSet.selection.count && completedCaseIndexes.size === caseSet.selection.count
+  const measuredCostAttempts = terminalAttempts.filter((record) => record.cost_evidence?.passed === true)
+  const costComplete = measuredCostAttempts.length === terminalAttempts.length
   const strictPasses = rows.reduce(
     (sum, record) => sum + Number(record.benchmark.metrics?.task_completed_correctly ?? 0),
     0,
   )
   const partialTotal = rows.reduce((sum, record) => sum + Number(record.benchmark.metrics?.partial_credit ?? 0), 0)
   const totals = (field: string) =>
-    rows.reduce((sum, record) => sum + Number(record.opencorvus.tokens?.[field] ?? 0), 0)
-  const durationTotal = rows.reduce((sum, record) => sum + Number(record.duration_ms ?? 0), 0)
+    measuredCostAttempts.reduce((sum, record) => sum + Number(record.opencorvus.tokens?.[field] ?? 0), 0)
+  const durationTotal = measuredCostAttempts.reduce((sum, record) => sum + Number(record.duration_ms ?? 0), 0)
   return {
     profile,
     target_cases: caseSet.selection.count,
-    completed_cases: rows.length,
+    completed_cases: completedCaseIndexes.size,
+    terminal_attempts: terminalAttempts.length,
+    measured_cost_attempts: measuredCostAttempts.length,
+    cost_complete: costComplete,
     matrix_complete: matrixComplete,
     strict_passes: strictPasses,
-    strict_success_rate: rows.length === 0 ? null : strictPasses / rows.length,
-    partial_credit_mean: rows.length === 0 ? null : partialTotal / rows.length,
-    tokens_total: totals("total"),
-    output_tokens_total: totals("output"),
-    model_calls_total: totals("modelCalls"),
-    benchmark_attempts_total: rows.reduce((sum, record) => sum + Number(record.benchmark.tool_attempts ?? 0), 0),
-    benchmark_failed_total: rows.reduce((sum, record) => sum + Number(record.benchmark.tool_failed ?? 0), 0),
-    duration_ms_total: durationTotal,
-    duration_ms_mean: rows.length === 0 ? null : durationTotal / rows.length,
+    strict_success_rate: strictPasses / caseSet.selection.count,
+    partial_credit_mean: partialTotal / caseSet.selection.count,
+    tokens_total: costComplete ? totals("total") : null,
+    output_tokens_total: costComplete ? totals("output") : null,
+    model_calls_total: costComplete ? totals("modelCalls") : null,
+    provider_connectivity_calls_total: costComplete
+      ? terminalAttempts.reduce(
+          (sum, record) => sum + Number(record.cost_evidence?.provider_connectivity_calls ?? 0),
+          0,
+        )
+      : null,
+    benchmark_attempts_total: costComplete ? measuredCostAttempts.reduce(
+      (sum, record) => sum + Number(record.cost_evidence?.benchmark_attempts ?? 0),
+      0,
+    ) : null,
+    benchmark_failed_total: costComplete ? measuredCostAttempts.reduce(
+      (sum, record) => sum + Number(record.cost_evidence?.benchmark_failed ?? 0),
+      0,
+    ) : null,
+    duration_ms_total: costComplete ? durationTotal : null,
+    duration_ms_mean: costComplete && terminalAttempts.length > 0 ? durationTotal / terminalAttempts.length : null,
   }
 }
 const profileSummaries = cli.profiles.map(summarizeProfile)
@@ -1039,13 +1068,13 @@ const exploratoryProfileSummaries = (["base", "advanced"] as const)
   .filter((profile) => !cli.profiles.includes(profile))
   .map(summarizeProfile)
 const primaryEligible = eligible.filter((record) => cli.profiles.includes(record.opencorvus.profile))
-const completeSummaries = profileSummaries.filter((summary) => summary.matrix_complete)
+const completeSummaries = profileSummaries.filter((summary) => summary.matrix_complete && summary.cost_complete)
 const internalRanking = [...completeSummaries]
   .sort(
     (left, right) =>
       Number(right.strict_success_rate) - Number(left.strict_success_rate) ||
       Number(right.partial_credit_mean) - Number(left.partial_credit_mean) ||
-      left.tokens_total - right.tokens_total,
+      Number(left.tokens_total ?? Number.POSITIVE_INFINITY) - Number(right.tokens_total ?? Number.POSITIVE_INFINITY),
   )
   .map((summary, index) => ({ rank: index + 1, profile: summary.profile }))
 const base = profileSummaries.find((summary) => summary.profile === "base")
@@ -1100,7 +1129,7 @@ const lines = [
   "| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
   ...profileSummaries.map((summary) => {
     const rank = internalRanking.find((item) => item.profile === summary.profile)?.rank
-    return `| ${rank ?? "—"} | ${summary.profile} | ${summary.completed_cases}/${summary.target_cases} | ${summary.strict_passes}/${summary.completed_cases || 0} (${percent(summary.strict_success_rate ?? undefined)}) | ${percent(summary.partial_credit_mean ?? undefined)} | ${integer(summary.tokens_total)} | ${integer(summary.output_tokens_total)} | ${integer(summary.model_calls_total)} | ${integer(summary.benchmark_attempts_total)} | ${integer(summary.benchmark_failed_total)} | ${duration(summary.duration_ms_mean ?? undefined)} |`
+    return `| ${rank ?? "—"} | ${summary.profile} | ${summary.completed_cases}/${summary.target_cases} | ${summary.strict_passes}/${summary.target_cases} (${percent(summary.strict_success_rate ?? undefined)}) | ${percent(summary.partial_credit_mean ?? undefined)} | ${integer(summary.tokens_total)} | ${integer(summary.output_tokens_total)} | ${integer(summary.model_calls_total)} | ${integer(summary.benchmark_attempts_total)} | ${integer(summary.benchmark_failed_total)} | ${duration(summary.duration_ms_mean ?? undefined)} |`
   }),
   ...(base?.matrix_complete && advanced?.matrix_complete
     ? [

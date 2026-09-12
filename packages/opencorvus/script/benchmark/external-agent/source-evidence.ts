@@ -16,13 +16,14 @@ export async function readBenchmarkSourceEvidence() {
   }
   const commit = git(["rev-parse", "HEAD"])
   const status = git(["status", "--short"])
-  const bundleFiles = [
+  const localBundleFiles = [
     "automationbench-api.SKILL.md",
     "automationbench_bridge.py",
     "automationbench_tool.py",
     "freeze_automationbench_case_set.py",
     "verify-selected-case-set.ts",
     "restricted-shell-evidence.ts",
+    "terminal-cost-evidence.ts",
     "catalog-automationbench-evidence.ts",
     "verify-automationbench-evidence.ts",
     "restricted-agent-shell-base.sh",
@@ -35,11 +36,18 @@ export async function readBenchmarkSourceEvidence() {
     "source-evidence.ts",
     "runtime-evidence.ts",
   ]
+  const bundleFiles = [
+    ...localBundleFiles.map((name) => ({ name, file: path.join(SCRIPT_DIRECTORY, name) })),
+    {
+      name: "script/benchmark/process-lifecycle.ts",
+      file: path.join(REPOSITORY_DIRECTORY, "script/benchmark/process-lifecycle.ts"),
+    },
+  ]
   const bundle = crypto.createHash("sha256")
-  for (const name of bundleFiles) {
+  for (const { name, file } of bundleFiles) {
     bundle.update(name)
     bundle.update("\0")
-    bundle.update(await fs.readFile(path.join(SCRIPT_DIRECTORY, name)))
+    bundle.update(await fs.readFile(file))
     bundle.update("\0")
   }
   return {

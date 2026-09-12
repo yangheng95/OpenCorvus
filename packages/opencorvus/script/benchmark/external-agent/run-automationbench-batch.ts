@@ -5,10 +5,15 @@ import lockfile from "proper-lockfile"
 import { readBenchmarkSourceEvidence } from "./source-evidence"
 import { ProviderError } from "../../../src/provider/error"
 import {
+  acquireBenchmarkResourceWithAdmission,
   auditBenchmarkBunRuntime,
+  auditAutomationBenchBatchSettlement,
+  auditAutomationBenchBatchPublication,
   AUTOMATIONBENCH_BASE_RESTRICTED_SHELL_CASE_COUNT,
   automationBenchCoordinatorBatchIndexes,
   automationBenchRestrictedShellSourceFile,
+  benchmarkRunnerShutdownGraceMs,
+  createBenchmarkAdmissionGate,
   createBenchmarkRunnerStopController,
   createRestartableDrain,
   installBenchmarkTerminationHandlers,
@@ -198,16 +203,15 @@ try {
   throw error
 }
 const activeChildren = new Set<ReturnType<typeof Bun.spawn>>()
-const activeTrialChildren = new Set<ReturnType<typeof Bun.spawn>>()
-let terminationSignal: "SIGINT" | "SIGTERM" | undefined
+const admission = createBenchmarkAdmissionGate("Batch coordinator")
 const childStops = createBenchmarkRunnerStopController<ReturnType<typeof Bun.spawn>>({
   isAlive: (child) => processIsAlive(child.pid),
   signal: (child, signal) => child.kill(signal),
   exited: (child) => child.exited,
 })
 const terminate = (signal: "SIGINT" | "SIGTERM") => {
-  terminationSignal ??= signal
-  for (const child of activeTrialChildren) void childStops.stop(child)
+  admission.request(signal)
+  for (const child of activeChildren) void childStops.stop(child)
 }
 const removeTerminationHandlers = installBenchmarkTerminationHandlers(terminate)
 
@@ -224,17 +228,20 @@ async function stopChild(child: ReturnType<typeof Bun.spawn>) {
   await childStops.stop(child)
 }
 
-async function refreshCatalog(options: { allowAfterTermination?: boolean } = {}) {
-  const releaseCatalog = await lockfile.lock(catalogLockPath, {
-    realpath: false,
-    stale: 60_000,
-    update: 10_000,
-    retries: { retries: 900, factor: 1, minTimeout: 1_000, maxTimeout: 1_000 },
+async function refreshCatalog() {
+  const releaseCatalog = await acquireBenchmarkResourceWithAdmission({
+    admission,
+    maxWaitMs: benchmarkRunnerShutdownGraceMs(),
+    isContended: (error) => (error as NodeJS.ErrnoException)?.code === "ELOCKED",
+    acquire: () => lockfile.lock(catalogLockPath, {
+      realpath: false,
+      stale: 60_000,
+      update: 10_000,
+      retries: 0,
+    }),
   })
   try {
-    if (terminationSignal && !options.allowAfterTermination) {
-      throw new Error(`Batch coordinator received ${terminationSignal}`)
-    }
+    admission.assertOpen()
     const child = Bun.spawn(
       [
         process.execPath,
@@ -270,6 +277,7 @@ async function refreshCatalog(options: { allowAfterTermination?: boolean } = {})
         attempts: Array<Record<string, any>>
         candidates: Array<Record<string, any>>
         leaderboard: Array<Record<string, any>>
+        batches: Array<Record<string, any>>
       }
     } finally {
       activeChildren.delete(child)
@@ -375,9 +383,11 @@ async function runTrial(context: BatchContext, item: FrozenCase, profile: Profil
     "--wave-index",
     String(waveIndex),
   ]
+  // Admission must be checked immediately before spawn. The earlier queue check
+  // can become stale while authorization is being written.
+  admission.assertOpen()
   const child = Bun.spawn(args, { cwd: process.cwd(), stdout: "pipe", stderr: "pipe" })
   activeChildren.add(child)
-  activeTrialChildren.add(child)
   try {
     const stdoutPromise = readBenchmarkObserverLivenessStream({
       stream: child.stdout,
@@ -411,7 +421,6 @@ async function runTrial(context: BatchContext, item: FrozenCase, profile: Profil
       stderr_tail: ProviderError.redactSensitiveProviderText(stderr).slice(-2000),
     }
   } finally {
-    activeTrialChildren.delete(child)
     activeChildren.delete(child)
   }
 }
@@ -436,9 +445,13 @@ function batchOutcomes(
     }
   })
   return {
-    complete:
-      launchedByWave.flat().every((item) => item.exit_code === 0 && item.run_status === "scored") &&
-      outcomes.every((outcome) => outcome.eligible.length === 5),
+    complete: outcomes.every((outcome, offset) =>
+      auditAutomationBenchBatchSettlement({
+        expected: context.waves[offset]!,
+        launched: outcome.launched,
+        eligible: outcome.eligible,
+      }).passed,
+    ),
     outcomes,
   }
 }
@@ -461,11 +474,11 @@ async function writeBatchReceipt(
         batch_index: context.batchIndex,
         status: rolling.complete ? "completed" : "failed",
         finished_at: Date.now(),
-        signal: rolling.complete ? undefined : terminationSignal ?? null,
+        signal: rolling.complete ? undefined : admission.signal() ?? null,
         ...Object.fromEntries(rolling.outcomes.map((outcome, index) => [`wave_${index + 1}`, outcome])),
         error: rolling.complete
           ? undefined
-          : { name: "Error", message: `Rolling batch ${context.batchIndex} contains a failed, invalid, or unsealed trial` },
+          : { name: "Error", message: `Rolling batch ${context.batchIndex} contains an unsettled or unsealed trial` },
       },
       null,
       2,
@@ -490,11 +503,17 @@ const settlementDrain = createRestartableDrain({
       settle: async (ready, catalog) => {
         for (const published of receiptPublicationPending) {
           if (published.complete) {
-            const finalizedSlots = published.waves
-              .flat()
-              .filter((slot) => eligibleByCase(catalog, slot.profile).has(slot.case_index))
-            if (finalizedSlots.length !== published.waves.flat().length) {
-              throw new Error(`Completed receipt did not finalize every selected batch ${published.batchIndex} slot`)
+            const publicationAudit = auditAutomationBenchBatchPublication({
+              batchRunID: published.batchRunID,
+              expectedEligibleRunIDs: (published.batchOutcomes ?? []).flatMap((outcome) =>
+                outcome.eligible.map((item) => String(item.run_id)),
+              ),
+              batches: catalog.batches,
+            })
+            if (!publicationAudit.passed) {
+              throw new Error(
+                `Completed receipt publication failed for batch ${published.batchIndex}: ${publicationAudit.violations.join(", ")}`,
+              )
             }
           }
           receiptPublicationPending.delete(published)
@@ -577,7 +596,7 @@ try {
     queuedTrials,
     queueConcurrency,
     async ({ context, item, profile, waveIndex }) => {
-      if (terminationSignal) throw new Error(`Batch coordinator received ${terminationSignal}`)
+      admission.assertOpen()
       try {
         await ensureBatchAuthorization(context)
       } catch (error) {
@@ -595,7 +614,7 @@ try {
       context.launchedByWave![waveIndex - 1]!.push(outcome)
       context.remainingSlots = (context.remainingSlots ?? 1) - 1
       try {
-        await refreshCatalog({ allowAfterTermination: true })
+        if (admission.isOpen()) await refreshCatalog()
       } catch (error) {
         schedulingFailure = error instanceof Error ? error : new Error(String(error))
         throw schedulingFailure
@@ -605,7 +624,7 @@ try {
     },
     {
       shouldStart: () =>
-        !terminationSignal &&
+        admission.isOpen() &&
         !schedulingFailure &&
         !settlementDrain.failure(),
     },
@@ -617,7 +636,7 @@ try {
   }
   const failedBatchIndexes = contexts.filter((context) => context.complete !== true).map((context) => context.batchIndex)
   if (failedBatchIndexes.length > 0) {
-    throw new Error(`Rolling batches ${failedBatchIndexes.join(",")} contain failed, invalid, or unsealed trials`)
+    throw new Error(`Rolling batches ${failedBatchIndexes.join(",")} contain unsettled or unsealed trials`)
   }
 } catch (error) {
   for (const context of contexts.filter((item) => !item.receiptWritten)) {
@@ -636,7 +655,7 @@ try {
             batch_index: context.batchIndex,
             status: "failed",
             finished_at: Date.now(),
-            signal: terminationSignal ?? null,
+            signal: admission.signal() ?? null,
             ...Object.fromEntries(outcomes.map((outcome, index) => [`wave_${index + 1}`, outcome])),
             error: error instanceof Error ? { name: error.name, message: error.message } : { name: "UnknownError" },
           },
@@ -655,7 +674,7 @@ try {
   await Promise.all([...activeChildren].map((child) => stopChild(child)))
   await Promise.all(contexts.map((context) => fs.rm(context.activeAuthorizationPath, { force: true })))
   try {
-    await refreshCatalog({ allowAfterTermination: true })
+    if (admission.isOpen()) await refreshCatalog()
   } finally {
     await Promise.all(releaseCoordinators.toReversed().map((release) => release()))
     removeTerminationHandlers()
