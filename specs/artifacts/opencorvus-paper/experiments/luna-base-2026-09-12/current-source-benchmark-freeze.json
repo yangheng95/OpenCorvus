@@ -24,6 +24,17 @@
     "retained": true,
     "snapshot_generated_at": 1789246734913
   },
+  "viewer_catalog_transition": {
+    "updated_at": 1789267597445,
+    "model_execution_performed": false,
+    "attempts": 18,
+    "eligible_scored": 13,
+    "strict_passes": 2,
+    "viewer_invalid_including_interrupted": 3,
+    "awaiting_batch_settlement": 2,
+    "interrupted": 1,
+    "rendered_page_verified": true
+  },
   "frozen_visible_state": {
     "native": {
       "scored": 56,
@@ -38,8 +49,8 @@
     }
   },
   "interpretation": [
-    "The Base visible state uses the frozen coordinator's old catalog semantics and is not a valid comparative score.",
-    "The isolated corrected catalog verifies 15 sealed Base terminals, 13 eligible scores, one real invalid run, and one infrastructure failure.",
+    "The frozen initial Base projection used the old catalog semantics; the retained viewer now reads the corrected catalog.",
+    "The corrected catalog exposes 13 eligible scores; real invalid, failure, awaiting, and interrupted states remain distinct.",
     "No model benchmark may resume without a new explicit user instruction."
   ]
 }
