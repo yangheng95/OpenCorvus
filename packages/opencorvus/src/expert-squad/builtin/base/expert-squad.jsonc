@@ -5,7 +5,7 @@
   "name": "Base",
   "label": "Base",
   "description": "Compact outcome delivery through capability-matched execution and independent verification; planning and parallel research only when needed.",
-  "version": "2026.09.12.3",
+  "version": "2026.09.13.3",
   "product_pillars": [
     "code",
     "work"
@@ -102,7 +102,7 @@
           "capability:capability_set:platform:tool-registry:delegated-worker-base"
         ],
         "label": "Base Tester",
-        "description": "Independently verifies the settled implementation against the original request and the plan's acceptance criteria through the final diff, executable checks, and rendered evidence, and publishes the canonical test report.",
+        "description": "Independently verifies the settled implementation against the original request and the plan's acceptance criteria through the final diff, executable checks, and rendered evidence.",
         "base_role": "delegated-worker",
         "prompt": "agents/base-tester/system.md"
       }

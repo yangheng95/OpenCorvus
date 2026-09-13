@@ -2,6 +2,7 @@ import { comparePromptComposition, type PromptCompositionFingerprint } from "../
 import crypto from "node:crypto"
 import { ProviderError } from "../../../src/provider/error"
 import { MissionCompletionInput, MissionCompletionReceipt } from "../../../src/mission/completion"
+import { shellCommandInvocations } from "../../../src/permission/shell-scope"
 export {
   BENCHMARK_RUNNER_CLEANUP_TIMEOUT_MS,
   acquireBenchmarkResourceWithAdmission,
@@ -2924,8 +2925,11 @@ export const SCHEDULER_AGENT_ID = "orchestrator"
  * `skill-projection.json` and left `result.json` without it, and nothing failed until a real batch
  * would have been rejected wholesale. One predicate, recomputed from raw evidence and required to
  * agree with both receipts, is the seam that keeps runner and checker from disagreeing silently.
+ * Projection coverage is a stable seal contract. Runtime adherence is a diagnostic derived from
+ * the raw transcript under the current client detector; improving that detector or correcting who
+ * must load a Skill cannot retroactively invalidate an otherwise immutable official score.
  */
-export function auditSkillEvidenceSeal(input: {
+export async function auditSkillEvidenceSeal(input: {
   profile: unknown
   resultSkill: any
   projectionFile: any
@@ -2935,8 +2939,17 @@ export function auditSkillEvidenceSeal(input: {
     profile: String(input.profile ?? ""),
     matrix: input.projectionFile?.matrix ?? {},
   })
-  const coverage = auditDispatchedSkillCoverage({ projection, transcript: input.transcript })
+  const coverage = await auditDispatchedSkillCoverage({ projection, transcript: input.transcript })
   const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right ?? null)
+  const stableCoverage = (value: any) => ({
+    passed: value?.passed,
+    dispatched_agents: value?.dispatched_agents,
+    uncovered_agents: value?.uncovered_agents,
+    dispatched_owner_sessions: value?.dispatched_owner_sessions,
+    violations: value?.violations,
+  })
+  const receiptCoverage = input.projectionFile?.skill?.dispatched_coverage
+  const resultCoverage = input.resultSkill?.dispatched_coverage
   const violations: string[] = []
   if (!projection.passed) violations.push("projection_failed")
   if (!coverage.passed) violations.push(...coverage.violations.map((violation) => `coverage:${violation}`))
@@ -2944,12 +2957,12 @@ export function auditSkillEvidenceSeal(input: {
   if (input.projectionFile?.skill?.name !== input.resultSkill?.name) violations.push("skill_name_mismatch")
   if (!same(projection, input.projectionFile?.skill?.projection)) violations.push("receipt_projection_mismatch")
   if (!same(projection, input.resultSkill?.projection)) violations.push("result_projection_mismatch")
-  if (!same(coverage, input.projectionFile?.skill?.dispatched_coverage)) violations.push("receipt_coverage_mismatch")
-  if (!same(coverage, input.resultSkill?.dispatched_coverage)) violations.push("result_coverage_mismatch")
+  if (!same(stableCoverage(coverage), stableCoverage(receiptCoverage))) violations.push("receipt_coverage_mismatch")
+  if (!same(receiptCoverage, resultCoverage)) violations.push("result_coverage_mismatch")
   return { passed: violations.length === 0, projection, coverage, violations }
 }
 
-export function auditDispatchedSkillCoverage(input: {
+export async function auditDispatchedSkillCoverage(input: {
   projection: {
     skill_name?: string
     mounted_agents: string[]
@@ -2990,16 +3003,35 @@ export function auditDispatchedSkillCoverage(input: {
     part_index: number
     status: string | null
   }> = []
+  const unparsedBashCommands: Array<{
+    agent_id: string
+    session_id: string | null
+    message_index: number
+    part_index: number
+    status: string | null
+  }> = []
   const missingSessionIDs: Array<{ agent_id: string; message_index: number }> = []
 
   const sessionID = (message: TranscriptMessage) => {
     const value = message.info?.sessionID ?? message.info?.session_id
     return typeof value === "string" && value.length > 0 ? value : null
   }
-  const invokesBenchmarkClient = (toolInput: Record<string, any>) => {
+  const invokesBenchmarkClient = async (toolInput: Record<string, any>) => {
     const command = toolInput.command
     if (typeof command !== "string") return false
-    return /(?:^|[\n;&|()])\s*(?:python3|python)\s+(?:\.\/)?automationbench_tool\.py(?:\s|$)/.test(command)
+    const invocations = await shellCommandInvocations(command)
+    return invocations.some(({ executable, arguments: args }) => {
+      const interpreter = executable.split(/[\\/]/).at(-1) ?? ""
+      if (!/^python(?:3(?:\.\d+)?)?(?:\.exe)?$/.test(interpreter)) return false
+      let index = 0
+      while ((args[index] ?? "").startsWith("-")) {
+        const option = args[index++]!
+        if (option === "-c" || option === "-m") return false
+        if (option === "-W" || option === "-X" || option === "--check-hash-based-pycs") index += 1
+        if (option === "--") break
+      }
+      return (args[index] ?? "").split(/[\\/]/).at(-1) === "automationbench_tool.py"
+    })
   }
 
   for (const [messageIndex, message] of input.transcript.entries()) {
@@ -3033,14 +3065,26 @@ export function auditDispatchedSkillCoverage(input: {
           part_index: partIndex,
         })
       }
-      if (part.tool === "bash" && invokesBenchmarkClient(toolInput)) {
-        clientAttempts.push({
-          agent_id: agentID,
-          session_id: currentSessionID,
-          message_index: messageIndex,
-          part_index: partIndex,
-          status: typeof state.status === "string" ? state.status : null,
-        })
+      if (part.tool === "bash") {
+        try {
+          if (await invokesBenchmarkClient(toolInput)) {
+            clientAttempts.push({
+              agent_id: agentID,
+              session_id: currentSessionID,
+              message_index: messageIndex,
+              part_index: partIndex,
+              status: typeof state.status === "string" ? state.status : null,
+            })
+          }
+        } catch {
+          unparsedBashCommands.push({
+            agent_id: agentID,
+            session_id: currentSessionID,
+            message_index: messageIndex,
+            part_index: partIndex,
+            status: typeof state.status === "string" ? state.status : null,
+          })
+        }
       }
     }
   }
@@ -3053,7 +3097,15 @@ export function auditDispatchedSkillCoverage(input: {
         (load.message_index < attempt.message_index ||
           (load.message_index === attempt.message_index && load.part_index < attempt.part_index)),
     )
-  const missingLoads = [...ownerSessions.values()]
+  const clientOwnerSessions = new Map<string, { agent_id: string; session_id: string }>()
+  for (const attempt of clientAttempts) {
+    if (!mounted.has(attempt.agent_id) || !attempt.session_id) continue
+    clientOwnerSessions.set(`${attempt.agent_id}\u0000${attempt.session_id}`, {
+      agent_id: attempt.agent_id,
+      session_id: attempt.session_id,
+    })
+  }
+  const missingLoads = [...clientOwnerSessions.values()]
     .filter(
       (owner) =>
         !successfulLoads.some(
@@ -3071,6 +3123,10 @@ export function auditDispatchedSkillCoverage(input: {
     ...missingSessionIDs.map((item) => `missing_session_id:${item.agent_id}:${item.message_index}`),
   ]
   const adherenceViolations = [
+    ...unparsedBashCommands.map(
+      (item) =>
+        `bash_parse_incomplete:${item.agent_id}:${item.session_id ?? "unknown"}:${item.message_index}:${item.part_index}`,
+    ),
     ...missingLoads.map((item) => `missing_skill_load:${item.agent_id}:${item.session_id}`),
     ...clientBeforeLoad.map(
       (item) =>
@@ -3092,6 +3148,7 @@ export function auditDispatchedSkillCoverage(input: {
     ),
     successful_skill_loads: successfulLoads,
     benchmark_client_attempts: clientAttempts,
+    unparsed_bash_commands: unparsedBashCommands,
     missing_skill_loads: missingLoads,
     client_before_skill_load: clientBeforeLoad,
     unmounted_client_attempts: unmountedClientAttempts,
@@ -3123,7 +3180,7 @@ export function automationBenchRunValidity(input: {
 }
 
 /** Compact receipt for the last successful public observation of a failed attempt. */
-export function failureObservationReceipt(input: {
+export async function failureObservationReceipt(input: {
   runID: string
   runKey: string
   taskID?: string
@@ -3185,7 +3242,7 @@ export function failureObservationReceipt(input: {
     interaction_count: input.observation.interactions.length,
     benchmark_event_count: input.observation.benchmarkEvents.length,
     skill_runtime_coverage: input.projection
-      ? auditDispatchedSkillCoverage({
+      ? await auditDispatchedSkillCoverage({
           projection: input.projection,
           transcript: input.observation.transcript,
         })

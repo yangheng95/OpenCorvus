@@ -1316,7 +1316,7 @@ async function captureFailureObservationEvidence() {
   const secrets = source?.protectedSecrets ?? []
   const runtimeActivity = redactSnapshot(runtimeActivityDiagnostics?.() ?? null, secrets)
   const receipt = {
-    ...failureObservationReceipt({
+    ...(await failureObservationReceipt({
       runID,
       runKey,
       taskID,
@@ -1326,7 +1326,7 @@ async function captureFailureObservationEvidence() {
       capturedAt: latestObservationAt ?? Date.now(),
       projection: skillProjection?.summary.projection,
       observation: latestObservation,
-    }),
+    })),
     launch_mode: "mission",
     runtime_activity: runtimeActivity,
   }
@@ -1827,7 +1827,7 @@ try {
       transcript: task.transcript,
     })),
   })
-  const skillCoverageAudit = auditDispatchedSkillCoverage({
+  const skillCoverageAudit = await auditDispatchedSkillCoverage({
     projection: skillProjection.summary.projection,
     transcript: terminal.transcript,
   })

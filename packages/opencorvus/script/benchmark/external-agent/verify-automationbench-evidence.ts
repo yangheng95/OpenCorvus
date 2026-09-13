@@ -509,7 +509,7 @@ for (const attempt of catalog.attempts) {
     projectGitInit: receipt.project_git_init,
     taskBoards,
   })
-  const skillSeal = auditSkillEvidenceSeal({
+  const skillSeal = await auditSkillEvidenceSeal({
     profile,
     resultSkill: payload.opencorvus.skill,
     projectionFile: skillProjection,

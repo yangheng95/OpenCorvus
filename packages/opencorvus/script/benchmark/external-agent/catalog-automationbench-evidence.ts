@@ -469,7 +469,7 @@ async function inspectRawRunEvidence(
         JSON.stringify(terminalQuiescenceAudit)
     const taskInfrastructureAudit = auditTaskInfrastructureIncidents({ snapshot: runtimeSnapshot, board })
     const taskInfrastructurePassed = taskInfrastructureAudit.passed
-    const skillSeal = auditSkillEvidenceSeal({
+    const skillSeal = await auditSkillEvidenceSeal({
       profile: result.opencorvus.profile,
       resultSkill: result.opencorvus.skill,
       projectionFile: skillProjection,
